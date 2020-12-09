@@ -1,0 +1,6 @@
+(executable
+ (public_name nilec)
+ (modules nilec)
+ (libraries
+   nile
+   cmdliner))

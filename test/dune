@@ -1,0 +1,11 @@
+(test
+ (name runner)
+ (action
+   (run %{test}
+     -testdata-dir %{workspace_root}/../../test
+     -ci true
+     -shards 8
+     -chooser failfirst))
+ (libraries
+   ounit2
+   nile))
