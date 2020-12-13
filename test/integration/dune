@@ -1,0 +1,6 @@
+(library
+  (name nileIntegration)
+  (public_name nile-integration-test)
+  (libraries
+    ounit2
+    nile))

@@ -1,6 +1,7 @@
 (executable
- (public_name nilec)
- (modules nilec)
+ (package nile)
+ (public_name nile)
+ (modules nile)
  (libraries
    nile
    cmdliner))

@@ -2,6 +2,45 @@ open Format
 open OUnit2
 open Nile
 
+let cmp _ _ = false
+
+let assert_un_equal ~ctxt expected actual =
+  let msg = "Unary operators are not equal" in
+  let printer ty =
+    ty
+      |> Op.pp_un
+      |> fprintf str_formatter "%t"
+      |> flush_str_formatter
+  in
+  match expected, actual with
+    | Op.Not, Op.Not
+    | Op.Neg, Op.Neg -> ()
+    | expected, actual -> assert_equal ~ctxt ~cmp ~printer ~msg expected actual
+
+let assert_bin_equal ~ctxt expected actual =
+  let msg = "Binary operators are not equal" in
+  let printer ty =
+    ty
+      |> Op.pp_bin
+      |> fprintf str_formatter "%t"
+      |> flush_str_formatter
+  in
+  match expected, actual with
+    | Op.Add, Op.Add
+    | Op.Sub, Op.Sub
+    | Op.Mul, Op.Mul
+    | Op.Div, Op.Div
+    | Op.Mod, Op.Mod
+    | Op.And, Op.And
+    | Op.Or, Op.Or
+    | Op.Eq, Op.Eq
+    | Op.Neq, Op.Neq
+    | Op.Lte, Op.Lte
+    | Op.Lt, Op.Lt
+    | Op.Gt, Op.Gt
+    | Op.Gte, Op.Gte -> ()
+    | expected, actual -> assert_equal ~ctxt ~cmp ~printer ~msg expected actual
+
 module type OpType =
   sig
     type t
@@ -51,25 +90,25 @@ module Assert (Op : OpType) =
     let higher_precedence_than = rel_precedence (<) "higher"
   end
 
-module UnOp =
-  struct
-    type t = Op.un
-    let pp = Op.pp_un
-    let equal = Op.un_equal
-    let precedence = Op.un_precedence
-  end
+module AssertUn = Assert (struct
+  type t = Op.un
+  let pp = Op.pp_un
+  let equal op op' = match op, op' with
+    | Op.Not, Op.Not | Op.Neg, Op.Neg -> true
+    | _ -> false
+  let precedence = Op.un_precedence
+end)
 
-module AssertUn = Assert (UnOp)
-
-module BinOp =
-  struct
-    type t = Op.bin
-    let pp = Op.pp_bin
-    let equal = Op.bin_equal
-    let precedence = Op.bin_precedence
-  end
-
-module AssertBin = Assert (BinOp)
+module AssertBin = Assert (struct
+  type t = Op.bin
+  let pp = Op.pp_bin
+  let equal op op' = match op, op' with
+    | Op.Add, Op.Add | Op.Sub, Op.Sub | Op.Mul, Op.Mul | Op.Div, Op.Div | Op.Mod, Op.Mod
+    | Op.And, Op.And | Op.Or, Op.Or
+    | Op.Eq, Op.Eq | Op.Neq, Op.Neq | Op.Lte, Op.Lte | Op.Lt, Op.Lt | Op.Gt, Op.Gt | Op.Gte, Op.Gte -> true
+    | _ -> false
+  let precedence = Op.bin_precedence
+end)
 
 let suite =
   let un_op_test =
@@ -97,20 +136,6 @@ let suite =
         "Integer Negation" >:: test_neg;
       ]
     in
-    let test_equal =
-      let test_not ctxt =
-        AssertUn.equal ~ctxt Op.un_not Op.un_not;
-        AssertUn.not_equal ~ctxt Op.un_not Op.un_neg
-      in
-      let test_neg ctxt =
-        AssertUn.equal ~ctxt Op.un_neg Op.un_neg;
-        AssertUn.not_equal ~ctxt Op.un_neg Op.un_not
-      in
-      "Equality" >::: [
-        "Boolean Negation" >:: test_not;
-        "Integer Negation" >:: test_neg;
-      ]
-    in
     let test_precedence =
       let test_not ctxt = AssertUn.equal_precedence ~ctxt Op.un_not [Op.un_not; Op.un_neg] in
       let test_neg ctxt = AssertUn.equal_precedence ~ctxt Op.un_neg [Op.un_not; Op.un_neg] in
@@ -122,7 +147,6 @@ let suite =
     "Unary" >::: [
       test_constructors;
       test_pp;
-      test_equal;
       test_precedence;
     ]
   in
@@ -224,127 +248,6 @@ let suite =
       let test_gte ctxt = AssertBin.pp ~ctxt Op.bin_gte ">=" in
       let test_gt ctxt = AssertBin.pp ~ctxt Op.bin_gt ">" in
       "Pretty Printing" >::: [
-        "Addition"              >:: test_add;
-        "Subtraction"           >:: test_sub;
-        "Multiplication"        >:: test_mul;
-        "Integer Division"      >:: test_div;
-        "Modulus"               >:: test_mod;
-        "Logical And"           >:: test_and;
-        "Logical Or"            >:: test_or;
-        "Equality"              >:: test_eq;
-        "Inequality"            >:: test_neq;
-        "Less Than or Equal"    >:: test_lte;
-        "Less Than"             >:: test_lt;
-        "Greater Than"          >:: test_gt;
-        "Greater Than or Equal" >:: test_gte;
-      ]
-    in
-    let test_equal =
-      let test_add ctxt =
-        AssertBin.equal ~ctxt Op.bin_add Op.bin_add;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_add) [
-          Op.bin_sub; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_sub ctxt =
-        AssertBin.equal ~ctxt Op.bin_sub Op.bin_sub;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_sub) [
-          Op.bin_add; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_mul ctxt =
-        AssertBin.equal ~ctxt Op.bin_mul Op.bin_mul;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_mul) [
-          Op.bin_add; Op.bin_sub; Op.bin_div; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_div ctxt =
-        AssertBin.equal ~ctxt Op.bin_div Op.bin_div;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_div) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_mod ctxt =
-        AssertBin.equal ~ctxt Op.bin_mod Op.bin_mod;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_mod) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_div;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_and ctxt =
-        AssertBin.equal ~ctxt Op.bin_and Op.bin_and;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_and) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_or ctxt =
-        AssertBin.equal ~ctxt Op.bin_or Op.bin_or;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_or) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_and;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_eq ctxt =
-        AssertBin.equal ~ctxt Op.bin_eq Op.bin_eq;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_eq) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_neq ctxt =
-        AssertBin.equal ~ctxt Op.bin_neq Op.bin_neq;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_neq) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_lte ctxt =
-        AssertBin.equal ~ctxt Op.bin_lte Op.bin_lte;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_lte) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lt; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_lt ctxt =
-        AssertBin.equal ~ctxt Op.bin_lt Op.bin_lt;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_lt) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_gt; Op.bin_gte
-        ]
-      in
-      let test_gt ctxt =
-        AssertBin.equal ~ctxt Op.bin_gt Op.bin_gt;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_gt) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gte
-        ]
-      in
-      let test_gte ctxt =
-        AssertBin.equal ~ctxt Op.bin_gte Op.bin_gte;
-        List.iter (AssertBin.not_equal ~ctxt Op.bin_gte) [
-          Op.bin_add; Op.bin_sub; Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_and; Op.bin_or;
-          Op.bin_eq; Op.bin_neq; Op.bin_lte; Op.bin_lt; Op.bin_gt
-        ]
-      in
-      "Equality" >::: [
         "Addition"              >:: test_add;
         "Subtraction"           >:: test_sub;
         "Multiplication"        >:: test_mul;
@@ -532,7 +435,6 @@ let suite =
     "Binary" >::: [
       test_constructors;
       test_pp;
-      test_equal;
       test_precedence;
     ]
   in

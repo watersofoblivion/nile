@@ -1,0 +1,7 @@
+(library
+  (name nileUnit)
+  (public_name nile-unit-test)
+  (libraries
+    cmdliner
+    ounit2
+    nile))

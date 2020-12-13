@@ -141,8 +141,8 @@ let suite =
         | exn -> raise exn
     in
 
-    let i = Ast.int 1 in
-    let b = Ast.bool true in
+    let i = Ast.int LocTest.dummy 1 in
+    let b = Ast.bool LocTest.dummy true in
 
     let test_bool ctxt =
       b
@@ -156,12 +156,12 @@ let suite =
       let test_not =
         let test_not ctxt =
           b
-            |> Ast.un_op Op.un_not
+            |> Ast.un_op LocTest.dummy Op.un_not
             |> assert_type_of ~ctxt Type.bool
         in
         let test_invalid_argument ctxt =
           i
-            |> Ast.un_op Op.un_not
+            |> Ast.un_op LocTest.dummy Op.un_not
             |> assert_invalid_unary_operand ~ctxt Type.bool Op.un_not Type.int
         in
         "Boolean Negation" >::: [
@@ -172,12 +172,12 @@ let suite =
       let test_neg =
         let test_neg ctxt =
           i
-            |> Ast.un_op Op.un_neg
+            |> Ast.un_op LocTest.dummy Op.un_neg
             |> assert_type_of ~ctxt Type.int
         in
         let test_invalid_argument ctxt =
           b
-            |> Ast.un_op Op.un_neg
+            |> Ast.un_op LocTest.dummy Op.un_neg
             |> assert_invalid_unary_operand ~ctxt Type.int Op.un_neg Type.bool
         in
         "Integer Negation" >::: [
@@ -193,15 +193,15 @@ let suite =
     let test_bin_op =
       let int_test op expected name =
         let test_op ctxt =
-          Ast.bin_op i op i
+          Ast.bin_op LocTest.dummy i op i
             |> assert_type_of ~ctxt expected
         in
         let test_invalid_argument ctxt =
-          Ast.bin_op b op i
+          Ast.bin_op LocTest.dummy b op i
             |> assert_invalid_binary_operand ~ctxt Type.int Type.bool op Type.int;
-          Ast.bin_op i op b
+          Ast.bin_op LocTest.dummy i op b
             |> assert_invalid_binary_operand ~ctxt Type.int Type.int op Type.bool;
-          Ast.bin_op b op b
+          Ast.bin_op LocTest.dummy b op b
             |> assert_invalid_binary_operand ~ctxt Type.int Type.bool op Type.bool
         in
         name >::: [
@@ -211,15 +211,15 @@ let suite =
       in
       let bool_test op expected name =
         let test_op ctxt =
-          Ast.bin_op b op b
+          Ast.bin_op LocTest.dummy b op b
             |> assert_type_of ~ctxt expected
         in
         let test_invalid_argument ctxt =
-          Ast.bin_op i op b
+          Ast.bin_op LocTest.dummy i op b
             |> assert_invalid_binary_operand ~ctxt Type.bool Type.int op Type.bool;
-          Ast.bin_op b op i
+          Ast.bin_op LocTest.dummy b op i
             |> assert_invalid_binary_operand ~ctxt Type.bool Type.bool op Type.int;
-          Ast.bin_op i op i
+          Ast.bin_op LocTest.dummy i op i
             |> assert_invalid_binary_operand ~ctxt Type.bool Type.int op Type.int
         in
         name >::: [
@@ -229,15 +229,15 @@ let suite =
       in
       let eq_test op expected name =
         let test_op ctxt =
-          Ast.bin_op b op b
+          Ast.bin_op LocTest.dummy b op b
             |> assert_type_of ~ctxt expected;
-          Ast.bin_op i op i
+          Ast.bin_op LocTest.dummy i op i
             |> assert_type_of ~ctxt expected
         in
         let test_invalid_argument ctxt =
-          Ast.bin_op i op b
+          Ast.bin_op LocTest.dummy i op b
             |> assert_invalid_equality_operand ~ctxt Type.int op Type.bool;
-          Ast.bin_op b op i
+          Ast.bin_op LocTest.dummy b op i
             |> assert_invalid_equality_operand ~ctxt Type.bool op Type.int
         in
         name >::: [
@@ -266,19 +266,19 @@ let suite =
       let ty = Type.int in
 
       let test_let ctxt =
-        let v = Ast.int 42 in
-        let b = Ast.binding id ty v in
-        let rest = Ast.var id in
+        let v = Ast.int LocTest.dummy 42 in
+        let b = Ast.binding LocTest.dummy id ty v in
+        let rest = Ast.var LocTest.dummy id in
 
-        Ast.bind b rest
+        Ast.bind LocTest.dummy b rest
           |> assert_type_of ~ctxt ty
       in
       let test_mismatched_types ctxt =
-        let v = Ast.bool true in
-        let b = Ast.binding id ty v in
-        let rest = Ast.var "unbound-identifier" in
+        let v = Ast.bool LocTest.dummy true in
+        let b = Ast.binding LocTest.dummy id ty v in
+        let rest = Ast.var LocTest.dummy "unbound-identifier" in
 
-        Ast.bind b rest
+        Ast.bind LocTest.dummy b rest
           |> assert_declaration_mismatch ~ctxt id ty Type.bool
       in
       "Value Bindings" >::: [
@@ -290,49 +290,49 @@ let suite =
       let idx = "x" in
       let idy = "y" in
 
-      let vx = Ast.var idx in
-      let vy = Ast.var idy in
+      let vx = Ast.var LocTest.dummy idx in
+      let vy = Ast.var LocTest.dummy idy in
 
       let tx = Type.int in
       let ty = Type.int in
 
-      let bx = Ast.bin_op vy Op.bin_add (Ast.int 1) in
-      let by = Ast.bin_op vx Op.bin_add (Ast.int 2) in
+      let bx = Ast.bin_op LocTest.dummy vy Op.bin_add (Ast.int LocTest.dummy 1) in
+      let by = Ast.bin_op LocTest.dummy vx Op.bin_add (Ast.int LocTest.dummy 2) in
 
       let bs = [
-        Ast.binding idx tx bx;
-        Ast.binding idy ty by;
+        Ast.binding LocTest.dummy idx tx bx;
+        Ast.binding LocTest.dummy idy ty by;
       ] in
 
       let ty = Type.bool in
-      let rest = Ast.bin_op vx Op.bin_eq vy in
+      let rest = Ast.bin_op LocTest.dummy vx Op.bin_eq vy in
 
       let test_let_rec ctxt =
-        Ast.bind_rec bs rest
+        Ast.bind_rec LocTest.dummy bs rest
           |> assert_type_of ~ctxt ty
       in
       let test_incorrect_types ctxt =
         let bs = [
-          Ast.binding idx Type.bool bx;
-          Ast.binding idy ty by;
+          Ast.binding LocTest.dummy idx Type.bool bx;
+          Ast.binding LocTest.dummy idy ty by;
         ] in
-        let unbound = Ast.var "unbound-identifier" in
-        let unbound' = Ast.var "another-unbound-identifier" in
-        let rest = Ast.bin_op unbound Op.bin_eq unbound' in
+        let unbound = Ast.var LocTest.dummy "unbound-identifier" in
+        let unbound' = Ast.var LocTest.dummy "another-unbound-identifier" in
+        let rest = Ast.bin_op LocTest.dummy unbound Op.bin_eq unbound' in
 
-        Ast.bind_rec bs rest
+        Ast.bind_rec LocTest.dummy bs rest
           |> assert_invalid_binary_operand ~ctxt Type.int Type.bool Op.bin_add Type.int
       in
       let test_declaration_mismatch ctxt =
         let bs = [
-          Ast.binding idx Type.bool bx;
-          Ast.binding idy Type.int (Ast.int 1);
+          Ast.binding LocTest.dummy idx Type.bool bx;
+          Ast.binding LocTest.dummy idy Type.int (Ast.int LocTest.dummy 1);
         ] in
-        let unbound = Ast.var "unbound-identifier" in
-        let unbound' = Ast.var "another-unbound-identifier" in
-        let rest = Ast.bin_op unbound Op.bin_eq unbound' in
+        let unbound = Ast.var LocTest.dummy "unbound-identifier" in
+        let unbound' = Ast.var LocTest.dummy "another-unbound-identifier" in
+        let rest = Ast.bin_op LocTest.dummy unbound Op.bin_eq unbound' in
 
-        Ast.bind_rec bs rest
+        Ast.bind_rec LocTest.dummy bs rest
           |> assert_declaration_mismatch ~ctxt idx Type.bool tx
       in
       "Recursive Value Bindings" >::: [
@@ -344,25 +344,25 @@ let suite =
     let test_abs =
       let idx = "x" in
       let tx = Type.int in
-      let px = Ast.param idx tx in
+      let px = Ast.param LocTest.dummy idx tx in
 
       let idy = "y" in
       let ty = Type.int in
-      let py = Ast.param idy ty in
+      let py = Ast.param LocTest.dummy idy ty in
 
-      let vx = Ast.var idx in
-      let vy = Ast.var idy in
-      let b = Ast.bin_op vx Op.bin_eq vy in
+      let vx = Ast.var LocTest.dummy idx in
+      let vy = Ast.var LocTest.dummy idy in
+      let b = Ast.bin_op LocTest.dummy vx Op.bin_eq vy in
       let tb = Type.bool in
 
       let test_abs ctxt =
         let expected = Type.func tx (Type.func ty tb) in
 
-        Ast.abs [px; py] tb b
+        Ast.abs LocTest.dummy [px; py] tb b
           |> assert_type_of ~ctxt expected
       in
       let test_result_mismatch ctxt =
-        Ast.abs [px; py] Type.int b
+        Ast.abs LocTest.dummy [px; py] Type.int b
           |> assert_result_mismatch ~ctxt Type.int tb
       in
       "Function Abstraction" >::: [
@@ -372,38 +372,38 @@ let suite =
     in
     let test_app =
       let id = "fn" in
-      let fn = Ast.var id in
+      let fn = Ast.var LocTest.dummy id in
       let res = Type.int in
       let ty' = Type.func Type.bool res in
       let ty = Type.func Type.int ty' in
       let env = Check.bind id ty Check.env in
 
-      let x = Ast.int 42 in
-      let y = Ast.bool true in
-      let z = Ast.int 0 in
+      let x = Ast.int LocTest.dummy 42 in
+      let y = Ast.bool LocTest.dummy true in
+      let z = Ast.int LocTest.dummy 0 in
 
       let test_app ctxt =
-        Ast.app fn [x; y]
+        Ast.app LocTest.dummy fn [x; y]
           |> assert_type_of ~ctxt ~env Type.int
       in
       let test_partial ctxt =
-        Ast.app fn [x]
+        Ast.app LocTest.dummy fn [x]
           |> assert_type_of ~ctxt ~env ty'
       in
       let test_cannot_apply ctxt =
         let ty = Type.int in
         let env = Check.bind id ty Check.env in
-        Ast.app fn [x; y]
+        Ast.app LocTest.dummy fn [x; y]
           |> assert_cannot_apply ~ctxt ~env ty
       in
       let test_too_many_args ctxt =
-        Ast.app fn [x; y; z]
+        Ast.app LocTest.dummy fn [x; y; z]
           |> assert_too_many_args ~ctxt ~env ty 3
       in
       let test_invalid_args ctxt =
-        Ast.app fn [y; x]
+        Ast.app LocTest.dummy fn [y; x]
           |> assert_invalid_args ~ctxt ~env Type.int Type.bool;
-        Ast.app fn [x; z]
+        Ast.app LocTest.dummy fn [x; z]
           |> assert_invalid_args ~ctxt ~env Type.bool Type.int
       in
       "Function Application" >::: [
@@ -416,7 +416,7 @@ let suite =
     in
     let test_var =
       let id = "x" in
-      let v = Ast.var id in
+      let v = Ast.var LocTest.dummy id in
 
       let test_bound ctxt =
         let ty = Type.int in
@@ -433,20 +433,20 @@ let suite =
       ]
     in
     let test_cond =
-      let c = Ast.bool true in
-      let t = Ast.int 1 in
-      let f = Ast.int 2 in
+      let c = Ast.bool LocTest.dummy true in
+      let t = Ast.int LocTest.dummy 1 in
+      let f = Ast.int LocTest.dummy 2 in
 
       let test_cond ctxt =
-        Ast.cond c t f
+        Ast.cond LocTest.dummy c t f
           |> assert_type_of ~ctxt Type.int
       in
       let test_invalid_condition ctxt =
-        Ast.cond t t f
+        Ast.cond LocTest.dummy t t f
           |> assert_invalid_condition ~ctxt Type.int
       in
       let test_branch_mismatch ctxt =
-        Ast.cond c t c
+        Ast.cond LocTest.dummy c t c
           |> assert_conditional_branch_mismatch ~ctxt Type.int Type.bool
       in
       "Conditional Expressions" >::: [

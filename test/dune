@@ -1,11 +1,25 @@
 (test
- (name runner)
+ (name unit)
+ (modules unit)
  (action
    (run %{test}
-     -testdata-dir %{workspace_root}/../../test
+     -testdata-dir %{workspace_root}/../../test/unit
      -ci true
      -shards 8
      -chooser failfirst))
  (libraries
    ounit2
-   nile))
+   nileUnit))
+
+(test
+ (name integration)
+ (modules integration)
+ (action
+   (run %{test}
+     -testdata-dir %{workspace_root}/../../test/integration
+     -ci true
+     -shards 8
+     -chooser failfirst))
+ (libraries
+   ounit2
+   nileIntegration))

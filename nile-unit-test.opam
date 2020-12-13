@@ -1,9 +1,9 @@
 opam-version: "2.0"
-name: "nile"
+name: "nile-unit-test"
 version: "0.1"
-synopsis: "An example compiler"
+synopsis: "Unit tests for the Nile compiler"
 description: """
-An example compiler
+Unit tests for the Nile compiler
 """
 maintainer: "Jonathan Bryant <bryantjt@amazon.com>"
 authors: "Jonathan Bryant <bryantjt@amazon.com>"
@@ -13,13 +13,11 @@ build: [
   ["dune" "subst"]
   ["dune" "build" "-p" name "-j" jobs]
   ["dune" "runtest" "-p" name "-j" jobs]
-  ["dune" "build" "@doc"]
 ]
 depends: [
   "dune"
-  "menhir"
+  "nile"
   "ounit2"
   "cmdliner"
   "llvm"
-  "bisect_ppx"
 ]

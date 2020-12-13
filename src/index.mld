@@ -1,0 +1,124 @@
+{0 Nile}
+
+Nile is a simple compiler for a toy language.  In the long term, Nile aims to be
+a commercial-grade compiler for a complete functional language.
+
+Goals:
+
+{ul
+  {- Targets the core of the ML language}
+  {- An efficient compiler generating efficient, optimized code}
+  {- Comprehensive test suite}
+  {- Comprehensive documentation}
+}
+
+Creating a novel language, extensive standard library, or tooling for artifact
+packaging and distribution are explicit {i non}-goals of this project.  The
+focus is on the core compiler itself.
+
+{1 Installation}
+
+The Nile compiler must be built from source and installed as an
+{{:https://opam.ocaml.org} OPAM} package.
+
+First, you need to install some dependencies if they are not already installed.
+Assuming you have {{:https://brew.sh} Homebrew} installed:
+
+{[brew install ocaml opam llvm]}
+
+If OPAM was not installed, be sure to initialize it and fetch the package index:
+
+{[
+opam init
+opam update
+]}
+
+Next, clone the
+{{:https://github.com/watersofoblivion/nile} repository from GitHub}:
+
+{[
+git clone https://github.com/watersofoblivion/nile
+]}
+
+Finally, from the downloaded source directory install the OPAM package:
+
+{[
+cd nile
+opam install .
+]}
+
+If all goes well, you should now have a [nilec] executable in your path, ready
+to compile Nile code.
+
+{1 Usage}
+
+TODO
+
+{1 Language Overview}
+
+TODO
+
+{1 Compiler Pipeline}
+
+The compiler is internally broken up into a few distinct stages.
+
+{ul
+  {- The source is parsed into an Abstract Syntax Tree, or AST.}
+  {- The AST is type-checked.}
+  {- The AST is converted to an intermediate representation called
+     Administrative Normal Form, or ANF, suitable for optimization.}
+  {- The ANF program is closure-converted, so that it is first-order and can be
+     generated as assembly.}
+  {- The closure-converted form of the program is converted into LLVM assembly.}
+  {- The LLVM assembly is linked using the {{:https://clang.llvm.org} Clang}
+     compiler.}
+}
+
+Providing the [--dump-all] flag to the command-line will print each form of the
+program as the compiler passes through each of the following stages.  This can
+be useful either for debugging, or for education to see what the compiler does
+at various stages of execution.  (Printing for individual stages can be enabled
+using the various [--dump-...] flags.  Run [nilec --help] for more information.)
+
+{1 Source Modules}
+
+The source contains several modules (listed in dependency order):
+
+{ul
+  {- {!Nile.Loc} - Low-level location tracking primitives.  Locations are
+                   tracked in all representations of the program.}
+  {- {!Nile.Type} - Types available to the language.  This set of types is
+                    shared by all representations of the language throughout the
+                    compiler.}
+  {- {!Nile.Op} - Unary and binary operators.  These operators are shared by all
+                  representations of the language throughout the compiler.}
+  {- {!Nile.Ast} - The abstract syntax of the language.  Also provides
+                   facilities for pretty-printing the language in the concrete
+                   syntax.}
+  {- {!Nile.Check} - Type-checking of the abstract syntax.}
+  {- {!Nile.Anf} - Administrative Normal Form of the language, used as an
+                   intermediate representation during later phases of the
+                   compiler.  Provides facilities for converting an Abstract
+                   Syntax Tree into ANF form and for pretty-printing the ANF
+                   form.}
+  {- {!Nile.Clos} - Closure-converted form of the language.  Provides facilities
+                    for performing closure conversion on the ANF form of the
+                    program and for pretty-printing the closure-converted
+                    program.}
+  {- {!Nile.Top} - Top-level bindings.  All representations of the language
+                   share a single representation of top-level bindings,
+                   parameterized by the particular language being represented.}
+  {- {!Nile.Lexer} - An {{:https://ocaml.org/releases/4.07/htmlman/lexyacc.html}
+                     OCamlLex} generated lexical analyzer for the tokens in the
+                     concrete syntax.}
+  {- {!Nile.Parser} - A {{:http://gallium.inria.fr/~fpottier/menhir/} Menhir}
+                      generated parser for the concrete syntax, generating an
+                      Abstract Syntax Tree.}
+  {- {!Nile.Codegen} - Generation of {{:https://llvm.org/} LLVM} assembly from
+                       the closure-converted form of a program.}
+  {- {!Nile.Cli} - A command-line interface for the compiler, built using
+                   {{:https://erratique.ch/software/cmdliner} Cmdliner}.  This
+                   module wires up all of the other modules in sequence to
+                   produce a pipeline that can compile raw source files to
+                   executable binaries.}
+}

@@ -4,11 +4,6 @@ type pos = {
   off:  int
 }
 
-let dummy_pos =
-  { line = -1;
-    col  = -1;
-    off  = -1 }
-
 let pos pos = {
   line = pos.Lexing.pos_lnum;
   col  = pos.pos_cnum - pos.pos_bol;
@@ -21,12 +16,6 @@ type t = {
   end_pos:   pos;
   length:    int
 }
-
-let dummy =
-  { fname     = "";
-    start_pos = dummy_pos;
-    end_pos   = dummy_pos;
-    length    = -1 }
 
 let mock fname (start_line, start_col, start_off) (end_line, end_col, end_off) =
   let length =
@@ -78,14 +67,3 @@ let track fname lexbuf =
   in
   lexbuf.Lexing.lex_start_p <- { pos with pos_fname = fname };
   lexbuf.lex_curr_p         <- { pos with pos_fname = fname }
-
-let pos_equal pos pos' =
-  pos.line = pos'.line &&
-  pos.col = pos'.col &&
-  pos.off = pos'.off
-
-let equal loc loc' =
-  loc.fname = loc'.fname &&
-  pos_equal loc.start_pos loc'.start_pos &&
-  pos_equal loc.end_pos loc'.end_pos &&
-  loc.length = loc'.length

@@ -11,10 +11,6 @@ let pp_un op fmt = match op with
   | Not -> fprintf fmt "!"
   | Neg -> fprintf fmt "-"
 
-let un_equal op op' = match op, op' with
-  | Not, Not | Neg, Neg -> true
-  | _ -> false
-
 let un_precedence = function
   | Not | Neg -> 2
 
@@ -61,12 +57,6 @@ let pp_bin op fmt = match op with
   | Lt -> fprintf fmt "<"
   | Gt -> fprintf fmt ">"
   | Gte -> fprintf fmt ">="
-
-let bin_equal op op' = match op, op' with
-  | Add, Add | Sub, Sub | Mul, Mul | Div, Div | Mod, Mod
-  | And, And | Or, Or
-  | Eq, Eq | Neq, Neq | Lte, Lte | Lt, Lt | Gt, Gt | Gte, Gte -> true
-  | _ -> false
 
 let bin_precedence = function
   | Mul | Div | Mod -> 3

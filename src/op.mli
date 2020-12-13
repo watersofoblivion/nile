@@ -20,9 +20,6 @@ val un_neg : un
 val pp_un : un -> formatter -> unit
 (** [pp_un op fmt] pretty-prints [op] to the formatter [fmt]. *)
 
-val un_equal : un -> un -> bool
-(** [un_equal op op'] tests if unary operators [op] and [op'] are equal. *)
-
 val un_precedence : un -> int
 (** [un_precedence op] returns the operator precedence of the unary operator
     [op]. *)
@@ -90,9 +87,6 @@ val bin_gte : bin
 
 val pp_bin : bin -> formatter -> unit
 (** [pp_bin op fmt] pretty-prints [op] to the formatter [fmt]. *)
-
-val bin_equal : bin -> bin -> bool
-(** [bin_equal op op'] tests if binary operators [op] and [op'] are equal. *)
 
 val bin_precedence : bin -> int
 (** [bin_precedence op] returns the operator precedence of the binary operator

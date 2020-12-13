@@ -1,22 +1,51 @@
 %{
   open Format
 
-(*  let make_bind = Ast.bind *)
-(*  let make_bind_rec = Ast.bind_rec *)
-(*  let make_cond = Ast.cond *)
+  let ast_loc = function
+    | Ast.Bool (loc, _)
+    | Ast.Int (loc, _)
+    | Ast.UnOp (loc, _, _)
+    | Ast.BinOp (loc, _, _, _)
+    | Ast.Let (loc, _, _)
+    | Ast.LetRec (loc, _, _)
+    | Ast.Abs (loc, _, _, _)
+    | Ast.App (loc, _, _)
+    | Ast.Var (loc, _)
+    | Ast.If (loc, _, _, _) -> loc
 
-  let make_binding (loc, id) ty expr = Ast.binding ~loc id ty expr
+  let make_bind kwd_loc b rest =
+    let loc = Loc.span kwd_loc (ast_loc rest) in
+    Ast.bind loc b rest
+  let make_bind_rec kwd_loc bs rest =
+    let loc = Loc.span kwd_loc (ast_loc rest) in
+    Ast.bind_rec loc bs rest
+
+  let make_param (loc, id) ty =
+    Ast.param loc id ty
+  let make_binding (loc, id) _ ty expr =
+    (*
+    let rec build_func ty args = function
+      | [] -> ()
+      | param :: params -> ()
+    in
+    *)
+    let loc = Loc.span loc (ast_loc expr) in
+    Ast.binding loc id ty expr
+
+  let make_cond kwd_loc c t f =
+    let loc = Loc.span kwd_loc (ast_loc f) in
+    Ast.cond loc c t f
 
   let make_un_op op_loc op r =
-    let loc = Loc.span op_loc (Ast.loc r) in
-    Ast.un_op ~loc op r
+    let loc = Loc.span op_loc (ast_loc r) in
+    Ast.un_op loc op r
   let make_bin_op l op r =
-    let loc = Loc.span (Ast.loc l) (Ast.loc r) in
-    Ast.bin_op ~loc l op r
+    let loc = Loc.span (ast_loc l) (ast_loc r) in
+    Ast.bin_op loc l op r
 
-  let make_bool (loc, b) = Ast.bool ~loc b
-  let make_int (loc, i) = Ast.int ~loc i
-  let make_var (loc, id) = Ast.var ~loc id
+  let make_bool (loc, b) = Ast.bool loc b
+  let make_int (loc, i) = Ast.int loc i
+  let make_var (loc, id) = Ast.var loc id
 
   let make_prim_ty (_, id) = match id with
     | "Int" -> Type.int
@@ -37,29 +66,26 @@
 %token <Loc.t * bool> BOOL
 %token <Loc.t * string> LIDENT UIDENT
 
-/*
-%left  LET BIND IN
-%left  IF
-%left  THEN
+%left  IN
 %left  ELSE
-*/
-%left  LAND LOR
-%right LNOT
+%left  LOR
+%left  LAND
 %left  EQ NEQ
 %left  LTE LT GT GTE
 %left  ADD SUB
 %left  MUL DIV MOD
+%right LNOT
 %right ARROW
 
-%type <Ast.b Top.t list> top
+%type <Top.Ast.t list> top
 
 %start top
 
 %%
 
 top:
-  LET binding top      { (Top.Let $2) :: $3 }
-| LET REC bindings top { (Top.LetRec $3) :: $4 }
+  LET binding top      { (Top.Ast.bind $1 $2) :: $3 }
+| LET REC bindings top { (Top.Ast.bind_rec $1 $3) :: $4 }
 | EOF                  { [] }
 ;
 
@@ -69,7 +95,21 @@ bindings:
 ;
 
 binding:
-  LIDENT COLON ty BIND abs { make_binding $1 $3 $5 }
+  LIDENT opt_params_list COLON ty BIND abs { make_binding $1 $2 $4 $6 }
+;
+
+opt_params_list:
+  LPAREN params_list RPAREN { $2 }
+|                           { [] }
+;
+
+params_list:
+  param COMMA params_list { $1 :: $3 }
+| param                   { [$1] }
+;
+
+param:
+  LIDENT COLON ty { make_param $1 $3 }
 ;
 
 ty:
@@ -83,23 +123,23 @@ abs:
 ;
 
 expr:
-/*  LET binding IN expr         { make_bind $2 $4 } */
-/*| LET REC bindings IN expr    { make_bind_rec $3 $5 } */
-/*| IF expr THEN expr ELSE expr { make_cond $2 $4 $6 } */
-| expr LAND expr              { make_bin_op $1 Op.bin_and $3 }
+  LET binding IN expr         { make_bind $1 $2 $4 }
+| LET REC bindings IN expr    { make_bind_rec $1 $3 $5 }
+| IF expr THEN expr ELSE expr { make_cond $1 $2 $4 $6 }
 | expr LOR expr               { make_bin_op $1 Op.bin_or $3 }
-| LNOT expr                   { make_un_op $1 Op.un_not $2 }
+| expr LAND expr              { make_bin_op $1 Op.bin_and $3 }
 | expr EQ expr                { make_bin_op $1 Op.bin_eq $3 }
 | expr NEQ expr               { make_bin_op $1 Op.bin_neq $3 }
+| expr LTE expr               { make_bin_op $1 Op.bin_lte $3 }
+| expr LT expr                { make_bin_op $1 Op.bin_lt $3 }
+| expr GT expr                { make_bin_op $1 Op.bin_gt $3 }
+| expr GTE expr               { make_bin_op $1 Op.bin_gte $3 }
 | expr ADD expr               { make_bin_op $1 Op.bin_add $3 }
 | expr SUB expr               { make_bin_op $1 Op.bin_sub $3 }
 | expr MUL expr               { make_bin_op $1 Op.bin_mul $3 }
 | expr DIV expr               { make_bin_op $1 Op.bin_div $3 }
 | expr MOD expr               { make_bin_op $1 Op.bin_mod $3 }
-| expr LTE expr               { make_bin_op $1 Op.bin_lte $3 }
-| expr LT expr                { make_bin_op $1 Op.bin_lt $3 }
-| expr GT expr                { make_bin_op $1 Op.bin_gt $3 }
-| expr GTE expr               { make_bin_op $1 Op.bin_gte $3 }
+| LNOT expr                   { make_un_op $1 Op.un_not $2 }
 | var                         { $1 }
 ;
 

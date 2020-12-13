@@ -1,15 +1,49 @@
 open Format
 
-type 'a t =
-  | Let of 'a
-  | LetRec of 'a list
+module type Lang =
+  sig
+    type t
+    type p = Loc.t * string * Type.t
 
-let rec pp ptr top fmt = match top with
-  | Let b -> fprintf fmt "let %t" (ptr b)
-  | LetRec bs -> pp_bindings ptr bs fmt
-and pp_bindings ptr bs fmt = match bs with
-  | [] -> ()
-  | b :: [] -> ptr b fmt
-  | b :: bs ->
-    fprintf fmt "%t and " (ptr b);
-    pp_bindings ptr bs fmt
+    val is_abs : t -> (p list * Type.t * t) option
+    val pp : t -> formatter -> unit
+  end
+
+module type Top =
+  sig
+    type e
+    type b = Loc.t * string * Type.t * e
+    type t = private
+      | Let of Loc.t * b
+      | LetRec of Loc.t * b list
+
+    val bind : Loc.t -> b -> t
+    val bind_rec : Loc.t -> b list -> t
+    val pp : t -> formatter -> unit
+  end
+
+module Make = functor (Lang: Lang) ->
+  struct
+    type e = Lang.t
+    type b = Loc.t * string * Type.t * e
+
+    type t =
+      | Let of Loc.t * b
+      | LetRec of Loc.t * b list
+
+    let bind loc b = Let (loc, b)
+    let bind_rec loc bs = LetRec (loc, bs)
+
+    let pp top _ = match top with
+      | Let _ -> ()
+      | LetRec _ -> ()
+  end
+
+module Ast: Top with type e = Ast.t = Make (struct
+  type t = Ast.t
+  type p = Loc.t * string * Type.t
+  let is_abs = function
+    | Ast.Abs (_, ps, ty, expr) -> Some (ps, ty, expr)
+    | _ -> None
+  let pp = Ast.pp
+end)

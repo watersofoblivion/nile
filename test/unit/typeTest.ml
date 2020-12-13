@@ -2,6 +2,26 @@ open Format
 open OUnit2
 open Nile
 
+let assert_type_equal ~ctxt expected actual =
+  let cmp _ _ = false in
+  let msg = "Types are not equal" in
+  let printer ty =
+    ty
+      |> Type.pp
+      |> fprintf str_formatter "%t"
+      |> flush_str_formatter
+  in
+  let rec assert_type_equal expected actual = match expected, actual with
+    | Type.Int, Type.Int -> ()
+    | Type.Bool, Type.Bool -> ()
+    | Type.Fun (a, b), Type.Fun (a', b') ->
+      assert_type_equal a a';
+      assert_type_equal b b'
+    | expected, actual ->
+      assert_equal ~ctxt ~cmp ~printer ~msg expected actual
+  in
+  assert_type_equal expected actual
+
 let suite =
   let test_constructor =
     let fail_type expected actual =

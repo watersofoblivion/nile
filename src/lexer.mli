@@ -17,25 +17,12 @@ val from_channel : ?fname:string -> in_channel -> lexbuf
     [ic].  Location tracking is initialized with the filename [fname], which
     defaults to "-". *)
 
-(** {2 Operations} *)
-
-val equal : Parser.token -> Parser.token -> bool
-(** [equal t t'] tests if the two tokens [t] and [t'] are equivalent.  Includes
-    a comparison of location information. *)
-
 (** {2 Entry Point} *)
 
 val lex : lexbuf -> Parser.token
 (** [lex lexbuf] lexes the next token from [lexbuf]. *)
 
 (** {2 Tokens} *)
-
-val loc : Parser.token -> Loc.t
-(** [loc tok] extracts location information from the token [tok]. *)
-
-val deloc : Parser.token -> Parser.token
-(** [deloc tok] strips location information from the token [tok] and replaces it
-    with {!Loc.dummy}. *)
 
 (** {3 Non-Printable Tokens} *)
 

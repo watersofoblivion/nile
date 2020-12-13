@@ -9,3 +9,7 @@
   (instrumentation (backend bisect_ppx))
   (libraries
     cmdliner))
+
+(documentation
+  (package nile)
+  (mld_files :standard))
