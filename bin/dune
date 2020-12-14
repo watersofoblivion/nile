@@ -1,7 +1,7 @@
 (executable
- (package nile)
- (public_name nile)
- (modules nile)
- (libraries
-   nile
-   cmdliner))
+  (package nile)
+  (public_name nile)
+  (modules nile)
+  (libraries
+    nile
+    cmdliner))

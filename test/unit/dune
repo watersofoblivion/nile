@@ -1,7 +1,12 @@
-(library
-  (name nileUnit)
-  (public_name nile-unit-test)
+(test
+  (name runner)
+  (action
+    (run %{test}
+      -testdata-dir %{workspace_root}/../../test/unit
+      -ci true
+      -shards 8
+      -chooser failfirst))
   (libraries
-    cmdliner
     ounit2
+    llvm
     nile))

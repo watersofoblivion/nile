@@ -1,5 +1,4 @@
 open OUnit2
-(* open NileIntegration *)
 
 let _ =
   "Nile" >::: [

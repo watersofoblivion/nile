@@ -2,6 +2,27 @@ open Format
 
 (** {1 Closure Conversion} *)
 
+(** {2 Configuration} *)
+
+type mode =
+  | Flat   (** Flat closures *)
+  | Linked (** Traditional linked closures *)
+  | SSC    (** Safe for Space Complexity closures *)
+(** Available closure conversion modes *)
+
+val modes : (string * mode) list
+(** [modes] are the available closure conversion modes *)
+
+type conf = {
+  mode: mode; (** The closure conversion mode *)
+}
+(** Closure conversion configuration *)
+
+val conf : mode -> conf
+(** [conf mode] constructs a closure conviersion configuration. *)
+
+(** {2 Syntax} *)
+
 type prim = private
   | Bool of bool
   | Int of int
@@ -38,3 +59,7 @@ val abs : string -> Type.t -> t -> t
 val cond : prim -> stmt -> stmt -> t
 
 val pp : t -> formatter -> unit
+
+(** {2 Conversion} *)
+
+val of_anf : Anf.t -> mode -> t

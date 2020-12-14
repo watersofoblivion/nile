@@ -1,6 +1,10 @@
-(library
-  (name nileIntegration)
-  (public_name nile-integration-test)
+(test
+  (name runner)
+  (action
+    (run %{test}
+      -testdata-dir %{workspace_root}/../../test/integration
+      -ci true
+      -shards 8
+      -chooser failfirst))
   (libraries
-    ounit2
-    nile))
+    ounit2))

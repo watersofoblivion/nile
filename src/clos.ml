@@ -1,5 +1,23 @@
 open Format
 
+type mode =
+  | Flat
+  | Linked
+  | SSC
+
+let modes = [
+  ("flat",   Flat);
+  ("linked", Linked);
+  ("ssc",    SSC);
+]
+
+type conf = {
+  mode: mode;
+}
+
+let conf mode =
+  { mode = mode }
+
 type prim =
   | Bool of bool
   | Int of int
@@ -54,3 +72,12 @@ let rec pp expr fmt = match expr with
   | Rec (bindings, rest) -> fprintf fmt "let rec %t in %t" (pp_bindings bindings) (pp rest)
   | Abs (id, ty, expr) -> fprintf fmt "%s: %t. %t" id (Type.pp ty) (pp expr)
   | If (c, t, f) -> fprintf fmt "if %t then %t else %t" (pp_prim c) (pp_stmt t) (pp_stmt f)
+
+let of_anf_flat _ = failwith "Not implemented"
+let of_anf_linked _ = failwith "Not implemented"
+let of_anf_ssc _ = failwith "Not implemented"
+
+let of_anf anf = function
+  | Flat -> of_anf_flat anf
+  | Linked -> of_anf_linked anf
+  | SSC -> of_anf_ssc anf

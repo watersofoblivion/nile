@@ -1,5 +1,4 @@
 open OUnit2
-open NileUnit
 
 let _ =
   "Nile" >::: [
@@ -13,6 +12,7 @@ let _ =
       AstTest.suite;
       CheckTest.suite;
       AnfTest.suite;
+      OptTest.suite;
       ClosTest.suite;
       CodegenTest.suite;
       CliTest.suite;
