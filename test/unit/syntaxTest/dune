@@ -1,6 +1,5 @@
 (library
   (name syntaxTest)
-  (instrumentation (backend bisect_ppx))
   (libraries
     ounit2
     syntax))

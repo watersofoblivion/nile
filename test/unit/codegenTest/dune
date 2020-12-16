@@ -1,6 +1,5 @@
 (library
   (name codegenTest)
-  (instrumentation (backend bisect_ppx))
   (libraries
     ounit2
     codegen))
