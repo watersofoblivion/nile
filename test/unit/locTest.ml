@@ -82,6 +82,28 @@ let suite =
       Loc.span start_loc end_loc
         |> assert_loc ~ctxt fname (1, 10, 15) (3, 100, 105) 90
     in
+    let test_negative_offsets =
+      let fname = "test-filename.nile" in
+
+      let test_start ctxt =
+        let start_loc = Loc.mock fname (-1, -1, -1) (-1, -1, 0) in
+        let end_loc = Loc.mock fname (-1, -1, -1) (-1, -1, 0) in
+
+        Loc.span start_loc end_loc
+          |> assert_loc ~ctxt fname (-1, -1, -1) (-1, -1, 0) (-1)
+      in
+      let test_end ctxt =
+        let start_loc = Loc.mock fname (-1, -1, 0) (-1, -1, -1) in
+        let end_loc = Loc.mock fname (-1, -1, 0) (-1, -1, -1) in
+
+        Loc.span start_loc end_loc
+          |> assert_loc ~ctxt fname (-1, -1, 0) (-1, -1, -1) (-1)
+      in
+      "Negative Offsets" >::: [
+        "Starting Location" >:: test_start;
+        "Ending Location"   >:: test_end;
+      ]
+    in
     let test_mismatched_filenames _ =
       let fname_1 = "file-1.nile" in
       let start_loc = Loc.mock fname_1 (1, 10, 15) (1, 10, 20) in
@@ -98,6 +120,7 @@ let suite =
     in
     "Merging Locations" >::: [
       "Spanning Locations"        >:: test_span;
+      test_negative_offsets;
       "With Mismatched Filenames" >:: test_mismatched_filenames
     ]
   in

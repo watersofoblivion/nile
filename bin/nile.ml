@@ -1,4 +1,4 @@
 open Nile
 
 let _ =
-  Cli.main ()
+  Cli.main Sys.argv

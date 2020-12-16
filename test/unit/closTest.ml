@@ -1,7 +1,7 @@
 open OUnit2
 open Nile
 
-let assert_mode ~ctxt expected actual = 
+let assert_mode ~ctxt expected actual =
   let cmp _ _ = false in
   let msg = "Closure conversion modes are not equal" in
   let printer = function
@@ -14,6 +14,9 @@ let assert_mode ~ctxt expected actual =
     | Clos.Linked, Clos.Linked -> ()
     | Clos.SSC, Clos.SSC -> ()
     | expected, actual -> assert_equal ~ctxt ~cmp ~printer ~msg expected actual
+
+let assert_conf ~ctxt mode actual =
+  assert_mode ~ctxt mode actual.Clos.mode
 
 let suite =
   let test_conf =

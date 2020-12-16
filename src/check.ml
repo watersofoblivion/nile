@@ -61,38 +61,59 @@ let conditional_branch_mismatch t f =
     |> raise
 
 let type_of_un_op op r = match op, r with
-  | Op.Not, Type.Bool -> Type.bool
-  | Op.Neg, Type.Int -> Type.int
-  | Op.Not, r -> invalid_unary_operand Type.bool op r
-  | Op.Neg, r -> invalid_unary_operand Type.int op r
+  | Op.Not loc, Type.Bool loc' ->
+    Loc.span loc loc'
+      |> Type.bool
+  | Op.Not loc, r ->
+    let loc = Loc.span loc (Type.loc r) in
+    invalid_unary_operand (Type.bool loc) op r
 
 let type_of_arith_op l op r = match l, r with
-  | Type.Int, Type.Int -> Type.int
-  | _ -> invalid_binary_operands Type.int l op r
+  | Type.Int loc, Type.Int loc' ->
+    Loc.span loc loc'
+      |> Type.int
+  | l, r ->
+    let loc = Loc.span (Type.loc l) (Type.loc r) in
+    invalid_binary_operands (Type.int loc) l op r
 
 let type_of_bool_op l op r = match l, r with
-  | Type.Bool, Type.Bool -> Type.bool
-  | _ -> invalid_binary_operands Type.bool l op r
+  | Type.Bool loc, Type.Bool loc' ->
+    Loc.span loc loc'
+      |> Type.bool
+  | l, r ->
+    let loc = Loc.span (Type.loc l) (Type.loc r) in
+    invalid_binary_operands (Type.bool loc) l op r
 
 let type_of_eq_op l op r = match l, r with
-  | Type.Int, Type.Int -> Type.bool
-  | Type.Bool, Type.Bool -> Type.bool
+  | Type.Int loc, Type.Int loc'
+  | Type.Bool loc, Type.Bool loc' ->
+    Loc.span loc loc'
+      |> Type.bool
   | _ -> invalid_equality_operands l op r
 
 let type_of_cmp_op l op r = match l, r with
-  | Type.Int, Type.Int -> Type.bool
-  | _ -> invalid_binary_operands Type.int l op r
+  | Type.Int loc, Type.Int loc' ->
+    Loc.span loc loc'
+      |> Type.bool
+  | l, r ->
+    let loc = Loc.span (Type.loc l) (Type.loc r) in
+    invalid_binary_operands (Type.int loc) l op r
 
 let type_of_bin_op l op r =
   match op with
-    | Op.Add | Op.Sub | Op.Mul | Op.Div | Op.Mod -> type_of_arith_op l op r
-    | Op.And | Op.Or -> type_of_bool_op l op r
-    | Op.Eq | Op.Neq -> type_of_eq_op l op r
-    | Op.Lte | Op.Lt | Op.Gt | Op.Gte -> type_of_cmp_op l op r
+    | Op.Add _ | Op.Sub _ | Op.Mul _ | Op.Div _ | Op.Mod _ -> type_of_arith_op l op r
+    | Op.And _ | Op.Or _ -> type_of_bool_op l op r
+    | Op.Eq _ | Op.Neq _ -> type_of_eq_op l op r
+    | Op.Lte _ | Op.Lt _ | Op.Gt _ | Op.Gte _ -> type_of_cmp_op l op r
 
 let rec type_of env = function
-  | Ast.Bool _ -> Type.bool
-  | Ast.Int _ -> Type.int
+  | Ast.Bool (loc, _) -> Type.bool loc
+  | Ast.Int (loc, _) -> Type.int loc
+  | Ast.Var (_, id) ->
+    begin
+      try lookup id env
+      with Not_found -> unbound_identifier id
+    end
   | Ast.UnOp (_, op, r) ->
     let r = type_of env r in
     type_of_un_op op r
@@ -100,6 +121,16 @@ let rec type_of env = function
     let l = type_of env l in
     let r = type_of env r in
     type_of_bin_op l op r
+  | Ast.If (_, c, t, f) ->
+    begin
+      match type_of env c with
+        | Type.Bool _ ->
+          let (t, f) = type_of env t, type_of env f in
+          if Type.equal t f
+          then t
+          else conditional_branch_mismatch t f
+        | c -> invalid_condition c
+    end
   | Ast.Let (_, (_, id, ty, expr), rest) ->
     let expr' = type_of env expr in
     if Type.equal expr' ty
@@ -126,7 +157,7 @@ let rec type_of env = function
     in
     if Type.equal res res'
     then
-      let fold (_, _, ty) acc = Type.func ty acc in
+      let fold (loc, _, ty) acc = Type.func loc ty acc in
       List.fold_right fold ps res
     else result_mismatch res res'
   | Ast.App (_, f, xs) ->
@@ -135,7 +166,7 @@ let rec type_of env = function
       let rec check f xs n =
         match f, xs with
           | f, [] -> f
-          | Type.Fun (a, b), x::xs ->
+          | Type.Fun (_, a, b), x::xs ->
             let x = type_of env x in
             if Type.equal a x
             then check b xs (n + 1)
@@ -149,19 +180,4 @@ let rec type_of env = function
       match ty with
         | Type.Fun _ as f -> check f xs 0
         | f -> cannot_apply f
-    end
-  | Ast.Var (_, id) ->
-    begin
-      try lookup id env
-      with Not_found -> unbound_identifier id
-    end
-  | Ast.If (_, c, t, f) ->
-    begin
-      match type_of env c with
-        | Type.Bool ->
-          let (t, f) = type_of env t, type_of env f in
-          if Type.equal t f
-          then t
-          else conditional_branch_mismatch t f
-        | c -> invalid_condition c
     end

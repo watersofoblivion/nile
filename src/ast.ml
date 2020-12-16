@@ -3,26 +3,26 @@ open Format
 type t =
   | Bool of Loc.t * bool
   | Int of Loc.t * int
+  | Var of Loc.t * string
   | UnOp of Loc.t * Op.un * t
   | BinOp of Loc.t * t * Op.bin * t
+  | If of Loc.t * t * t * t
   | Let of Loc.t * b * t
   | LetRec of Loc.t * b list * t
   | Abs of Loc.t * p list * Type.t * t
   | App of Loc.t * t * t list
-  | Var of Loc.t * string
-  | If of Loc.t * t * t * t
 and b = Loc.t * string * Type.t * t
 and p = Loc.t * string * Type.t
 
 let bool loc b = Bool (loc, b)
 let int loc i = Int (loc, i)
+let var loc id = Var (loc, id)
 let un_op loc op r = UnOp (loc, op, r)
 let bin_op loc l op r = BinOp (loc, l, op, r)
 let bind loc b rest = Let (loc, b, rest)
 let bind_rec loc bs rest = LetRec (loc, bs, rest)
 let abs loc ps ty expr = Abs (loc, ps, ty, expr)
 let app loc f xs = App (loc, f, xs)
-let var loc id = Var (loc, id)
 let cond loc c t f = If (loc, c, t, f)
 let binding loc id ty expr = (loc, id, ty, expr)
 let param loc id ty = (loc, id, ty)
@@ -39,6 +39,7 @@ let precedence = function
 let rec pp ast fmt = match ast with
   | Bool (_, b) -> fprintf fmt "%b" b
   | Int (_, i) -> fprintf fmt "%d" i
+  | Var (_, id) -> fprintf fmt "%s" id
   | UnOp (_, op, r) ->
     let prec = Op.un_precedence op in
     fprintf fmt "%t%t" (Op.pp_un op) (print_precedence prec r);
@@ -49,7 +50,6 @@ let rec pp ast fmt = match ast with
   | LetRec (_, bs, rest) -> fprintf fmt "@[<v>@[<hv>let rec %t@]@ in@]@ %t@]" (pp_bindings bs) (pp rest)
   | Abs (_, ps, ty, expr) -> fprintf fmt "(%t): %t => %t" (pp_params ps) (Type.pp ty) (pp expr)
   | App (_, f, xs) -> fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence 0 f) (pp_args xs)
-  | Var (_, id) -> fprintf fmt "%s" id
   | If (_, c, t, f) -> fprintf fmt "@[<hv>@[<hv>if@;<1 2>%t@]@ @[<hv>then@;<1 2>%t@]@ @[<hv>else@;<1 2>%t@]@]" (pp c) (pp t) (pp f)
 and print_precedence prec expr fmt =
   if prec < precedence expr
@@ -73,3 +73,15 @@ and pp_args xs fmt =
   let pp_sep fmt _ = fprintf fmt "@ " in
   let pp_x fmt x = fprintf fmt "%t" (print_precedence 0 x) in
   pp_print_list ~pp_sep pp_x fmt xs
+
+let loc = function
+  | Bool (loc, _)
+  | Int (loc, _)
+  | UnOp (loc, _, _)
+  | BinOp (loc, _, _, _)
+  | Let (loc, _, _)
+  | LetRec (loc, _, _)
+  | Abs (loc, _, _, _)
+  | App (loc, _, _)
+  | Var (loc, _)
+  | If (loc, _, _, _) -> loc

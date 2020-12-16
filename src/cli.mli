@@ -110,21 +110,20 @@ module Cmds :
   sig
     module DefaultCmd :
       sig
-        val term : string Term.ret Term.t
-        val info : Term.info
-
         val cmd : string Term.ret Term.t * Term.info
+        (** [cmd] is the default command, run when no subcommand is given.  It
+            simply displays the help. *)
       end
     (** The default command, run when no commands are given *)
 
     module BuildCmd :
       sig
-        val term : unit Term.t
-        val info : Term.info
-
         val src : string Term.t
+        (** [src] is the source file to compile. *)
 
         val exe : string option Term.t
+        (** [exe] is the target executable to generate.  By default, this is the
+            source executable with its extension replaced by ".exe". *)
 
         val compile : string -> string option -> Args.CompilerArgs.conf -> unit
 
@@ -134,5 +133,5 @@ module Cmds :
   end
 (** Top-level commands *)
 
-val main : unit -> unit
-(** [main] is the entry point for the compiler command-line. *)
+val main : string array -> unit
+(** [main argv] processes the command-line arguments [argv]. *)

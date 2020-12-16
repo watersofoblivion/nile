@@ -5,17 +5,16 @@ open Nile
 let cmp _ _ = false
 
 let assert_un_equal ~ctxt expected actual =
-  let msg = "Unary operators are not equal" in
+  (* let msg = "Unary operators are not equal" in
   let printer ty =
     ty
       |> Op.pp_un
       |> fprintf str_formatter "%t"
       |> flush_str_formatter
-  in
+  in *)
   match expected, actual with
-    | Op.Not, Op.Not
-    | Op.Neg, Op.Neg -> ()
-    | expected, actual -> assert_equal ~ctxt ~cmp ~printer ~msg expected actual
+    | Op.Not loc, Op.Not loc' -> LocTest.assert_loc_equal ~ctxt loc loc'
+    (* | expected, actual -> assert_equal ~ctxt ~cmp ~printer ~msg expected actual *)
 
 let assert_bin_equal ~ctxt expected actual =
   let msg = "Binary operators are not equal" in
@@ -26,19 +25,19 @@ let assert_bin_equal ~ctxt expected actual =
       |> flush_str_formatter
   in
   match expected, actual with
-    | Op.Add, Op.Add
-    | Op.Sub, Op.Sub
-    | Op.Mul, Op.Mul
-    | Op.Div, Op.Div
-    | Op.Mod, Op.Mod
-    | Op.And, Op.And
-    | Op.Or, Op.Or
-    | Op.Eq, Op.Eq
-    | Op.Neq, Op.Neq
-    | Op.Lte, Op.Lte
-    | Op.Lt, Op.Lt
-    | Op.Gt, Op.Gt
-    | Op.Gte, Op.Gte -> ()
+    | Op.Add loc, Op.Add loc'
+    | Op.Sub loc, Op.Sub loc'
+    | Op.Mul loc, Op.Mul loc'
+    | Op.Div loc, Op.Div loc'
+    | Op.Mod loc, Op.Mod loc'
+    | Op.And loc, Op.And loc'
+    | Op.Or loc, Op.Or loc'
+    | Op.Eq loc, Op.Eq loc'
+    | Op.Neq loc, Op.Neq loc'
+    | Op.Lte loc, Op.Lte loc'
+    | Op.Lt loc, Op.Lt loc'
+    | Op.Gt loc, Op.Gt loc'
+    | Op.Gte loc, Op.Gte loc' -> LocTest.assert_loc_equal ~ctxt loc loc'
     | expected, actual -> assert_equal ~ctxt ~cmp ~printer ~msg expected actual
 
 module type OpType =
@@ -94,8 +93,8 @@ module AssertUn = Assert (struct
   type t = Op.un
   let pp = Op.pp_un
   let equal op op' = match op, op' with
-    | Op.Not, Op.Not | Op.Neg, Op.Neg -> true
-    | _ -> false
+    | Op.Not _, Op.Not _ -> true
+    (* | _ -> false *)
   let precedence = Op.un_precedence
 end)
 
@@ -103,45 +102,35 @@ module AssertBin = Assert (struct
   type t = Op.bin
   let pp = Op.pp_bin
   let equal op op' = match op, op' with
-    | Op.Add, Op.Add | Op.Sub, Op.Sub | Op.Mul, Op.Mul | Op.Div, Op.Div | Op.Mod, Op.Mod
-    | Op.And, Op.And | Op.Or, Op.Or
-    | Op.Eq, Op.Eq | Op.Neq, Op.Neq | Op.Lte, Op.Lte | Op.Lt, Op.Lt | Op.Gt, Op.Gt | Op.Gte, Op.Gte -> true
+    | Op.Add _, Op.Add _ | Op.Sub _, Op.Sub _ | Op.Mul _, Op.Mul _ | Op.Div _, Op.Div _ | Op.Mod _, Op.Mod _
+    | Op.And _, Op.And _ | Op.Or _, Op.Or _
+    | Op.Eq _, Op.Eq _ | Op.Neq _, Op.Neq _ | Op.Lte _, Op.Lte _ | Op.Lt _, Op.Lt _ | Op.Gt _, Op.Gt _ | Op.Gte _, Op.Gte _ -> true
     | _ -> false
   let precedence = Op.bin_precedence
 end)
 
 let suite =
-  let un_op_test =
+  let test_un_op =
     let test_constructors =
-      let test_not _ =
-        match Op.un_not with
-          | Op.Not -> ()
-          | op -> AssertUn.fail_constructor "!" op
-      in
-      let test_neg _ =
-        match Op.un_neg with
-          | Op.Neg -> ()
-          | op -> AssertUn.fail_constructor "-" op
+      let test_not ctxt =
+        match Op.un_not LocTest.dummy with
+          | Op.Not loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+          (* | op -> AssertUn.fail_constructor "!" op *)
       in
       "Constructors" >::: [
         "Boolean Negation" >:: test_not;
-        "Integer Negation" >:: test_neg;
       ]
     in
     let test_pp =
-      let test_not ctxt = AssertUn.pp ~ctxt Op.un_not "!" in
-      let test_neg ctxt = AssertUn.pp ~ctxt Op.un_neg "-" in
+      let test_not ctxt = AssertUn.pp ~ctxt (Op.un_not LocTest.dummy) "!" in
       "Pretty Printing" >::: [
         "Boolean Negation" >:: test_not;
-        "Integer Negation" >:: test_neg;
       ]
     in
     let test_precedence =
-      let test_not ctxt = AssertUn.equal_precedence ~ctxt Op.un_not [Op.un_not; Op.un_neg] in
-      let test_neg ctxt = AssertUn.equal_precedence ~ctxt Op.un_neg [Op.un_not; Op.un_neg] in
+      let test_not ctxt = AssertUn.equal_precedence ~ctxt (Op.un_not LocTest.dummy) [(Op.un_not LocTest.dummy)] in
       "Precedence" >::: [
         "Boolean Negation" >:: test_not;
-        "Integer Negation" >:: test_neg;
       ]
     in
     "Unary" >::: [
@@ -150,70 +139,70 @@ let suite =
       test_precedence;
     ]
   in
-  let bin_op_test =
-    let test_add _ =
-      match Op.bin_add with
-        | Op.Add -> ()
+  let test_bin_op =
+    let test_add ctxt =
+      match Op.bin_add LocTest.dummy with
+        | Op.Add loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "+" op
     in
-    let test_sub _ =
-      match Op.bin_sub with
-        | Op.Sub -> ()
+    let test_sub ctxt =
+      match Op.bin_sub LocTest.dummy with
+        | Op.Sub loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "-" op
     in
-    let test_mul _ =
-      match Op.bin_mul with
-        | Op.Mul -> ()
+    let test_mul ctxt =
+      match Op.bin_mul LocTest.dummy with
+        | Op.Mul loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "*" op
     in
-    let test_div _ =
-      match Op.bin_div with
-        | Op.Div -> ()
+    let test_div ctxt =
+      match Op.bin_div LocTest.dummy with
+        | Op.Div loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "/" op
     in
-    let test_mod _ =
-      match Op.bin_mod with
-        | Op.Mod -> ()
+    let test_mod ctxt =
+      match Op.bin_mod LocTest.dummy with
+        | Op.Mod loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "%" op
     in
-    let test_and _ =
-      match Op.bin_and with
-        | Op.And -> ()
+    let test_and ctxt =
+      match Op.bin_and LocTest.dummy with
+        | Op.And loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "&&" op
     in
-    let test_or _ =
-      match Op.bin_or with
-        | Op.Or -> ()
+    let test_or ctxt =
+      match Op.bin_or LocTest.dummy with
+        | Op.Or loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "||" op
     in
-    let test_eq _ =
-      match Op.bin_eq with
-        | Op.Eq -> ()
+    let test_eq ctxt =
+      match Op.bin_eq LocTest.dummy with
+        | Op.Eq loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "==" op
     in
-    let test_neq _ =
-      match Op.bin_neq with
-        | Op.Neq -> ()
+    let test_neq ctxt =
+      match Op.bin_neq LocTest.dummy with
+        | Op.Neq loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "!=" op
     in
-    let test_lt _ =
-      match Op.bin_lt with
-        | Op.Lt -> ()
+    let test_lt ctxt =
+      match Op.bin_lt LocTest.dummy with
+        | Op.Lt loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "<" op
     in
-    let test_lte _ =
-      match Op.bin_lte with
-        | Op.Lte -> ()
+    let test_lte ctxt =
+      match Op.bin_lte LocTest.dummy with
+        | Op.Lte loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor "<=" op
     in
-    let test_gte _ =
-      match Op.bin_gte with
-        | Op.Gte -> ()
+    let test_gte ctxt =
+      match Op.bin_gte LocTest.dummy with
+        | Op.Gte loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor ">=" op
     in
-    let test_gt _ =
-      match Op.bin_gt with
-        | Op.Gt -> ()
+    let test_gt ctxt =
+      match Op.bin_gt LocTest.dummy with
+        | Op.Gt loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
         | op -> AssertBin.fail_constructor ">" op
     in
     let test_constructors =
@@ -234,19 +223,19 @@ let suite =
       ]
     in
     let test_pp =
-      let test_add ctxt = AssertBin.pp ~ctxt Op.bin_add "+" in
-      let test_sub ctxt = AssertBin.pp ~ctxt Op.bin_sub "-" in
-      let test_mul ctxt = AssertBin.pp ~ctxt Op.bin_mul "*" in
-      let test_div ctxt = AssertBin.pp ~ctxt Op.bin_div "/" in
-      let test_mod ctxt = AssertBin.pp ~ctxt Op.bin_mod "%" in
-      let test_and ctxt = AssertBin.pp ~ctxt Op.bin_and "&&" in
-      let test_or ctxt = AssertBin.pp ~ctxt Op.bin_or "||" in
-      let test_eq ctxt = AssertBin.pp ~ctxt Op.bin_eq "==" in
-      let test_neq ctxt = AssertBin.pp ~ctxt Op.bin_neq "!=" in
-      let test_lt ctxt = AssertBin.pp ~ctxt Op.bin_lt "<" in
-      let test_lte ctxt = AssertBin.pp ~ctxt Op.bin_lte "<=" in
-      let test_gte ctxt = AssertBin.pp ~ctxt Op.bin_gte ">=" in
-      let test_gt ctxt = AssertBin.pp ~ctxt Op.bin_gt ">" in
+      let test_add ctxt = AssertBin.pp ~ctxt (Op.bin_add LocTest.dummy) "+" in
+      let test_sub ctxt = AssertBin.pp ~ctxt (Op.bin_sub LocTest.dummy) "-" in
+      let test_mul ctxt = AssertBin.pp ~ctxt (Op.bin_mul LocTest.dummy) "*" in
+      let test_div ctxt = AssertBin.pp ~ctxt (Op.bin_div LocTest.dummy) "/" in
+      let test_mod ctxt = AssertBin.pp ~ctxt (Op.bin_mod LocTest.dummy) "%" in
+      let test_and ctxt = AssertBin.pp ~ctxt (Op.bin_and LocTest.dummy) "&&" in
+      let test_or ctxt = AssertBin.pp ~ctxt (Op.bin_or LocTest.dummy) "||" in
+      let test_eq ctxt = AssertBin.pp ~ctxt (Op.bin_eq LocTest.dummy) "==" in
+      let test_neq ctxt = AssertBin.pp ~ctxt (Op.bin_neq LocTest.dummy) "!=" in
+      let test_lt ctxt = AssertBin.pp ~ctxt (Op.bin_lt LocTest.dummy) "<" in
+      let test_lte ctxt = AssertBin.pp ~ctxt (Op.bin_lte LocTest.dummy) "<=" in
+      let test_gte ctxt = AssertBin.pp ~ctxt (Op.bin_gte LocTest.dummy) ">=" in
+      let test_gt ctxt = AssertBin.pp ~ctxt (Op.bin_gt LocTest.dummy) ">" in
       "Pretty Printing" >::: [
         "Addition"              >:: test_add;
         "Subtraction"           >:: test_sub;
@@ -265,155 +254,155 @@ let suite =
     in
     let test_precedence =
       let test_add ctxt =
-        AssertBin.lower_precedence_than Op.bin_add [
-          Op.bin_mul; Op.bin_div; Op.bin_mod
+        AssertBin.lower_precedence_than (Op.bin_add LocTest.dummy) [
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy)
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_add [Op.bin_sub];
-        AssertBin.higher_precedence_than Op.bin_add [
-          Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.equal_precedence ~ctxt (Op.bin_add LocTest.dummy) [(Op.bin_sub LocTest.dummy)];
+        AssertBin.higher_precedence_than (Op.bin_add LocTest.dummy) [
+          (Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy);
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_sub ctxt =
-        AssertBin.lower_precedence_than Op.bin_sub [
-          Op.bin_mul; Op.bin_div; Op.bin_mod
+        AssertBin.lower_precedence_than (Op.bin_sub LocTest.dummy) [
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy)
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_sub [Op.bin_add];
-        AssertBin.higher_precedence_than Op.bin_sub [
-          Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.equal_precedence ~ctxt (Op.bin_sub LocTest.dummy) [(Op.bin_add LocTest.dummy)];
+        AssertBin.higher_precedence_than (Op.bin_sub LocTest.dummy) [
+          (Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy);
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_mul ctxt =
-        AssertBin.equal_precedence ~ctxt Op.bin_mul [
-          Op.bin_div; Op.bin_mod;
+        AssertBin.equal_precedence ~ctxt (Op.bin_mul LocTest.dummy) [
+          (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy);
         ];
-        AssertBin.higher_precedence_than Op.bin_mul [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.higher_precedence_than (Op.bin_mul LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy);
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_div ctxt =
-        AssertBin.equal_precedence ~ctxt Op.bin_div [
-          Op.bin_mul; Op.bin_mod;
+        AssertBin.equal_precedence ~ctxt (Op.bin_div LocTest.dummy) [
+          (Op.bin_mul LocTest.dummy); (Op.bin_mod LocTest.dummy);
         ];
-        AssertBin.higher_precedence_than Op.bin_div [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.higher_precedence_than (Op.bin_div LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy);
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_mod ctxt =
-        AssertBin.equal_precedence ~ctxt Op.bin_mod [
-          Op.bin_mul; Op.bin_div;
+        AssertBin.equal_precedence ~ctxt (Op.bin_mod LocTest.dummy) [
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy);
         ];
-        AssertBin.higher_precedence_than Op.bin_mod [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.higher_precedence_than (Op.bin_mod LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy);
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_and _ =
-        AssertBin.lower_precedence_than Op.bin_and [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
-          Op.bin_eq; Op.bin_neq;
+        AssertBin.lower_precedence_than (Op.bin_and LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy);
+          (Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy);
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
         ];
-        AssertBin.higher_precedence_than Op.bin_and [
-          Op.bin_or;
+        AssertBin.higher_precedence_than (Op.bin_and LocTest.dummy) [
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_or _ =
-        AssertBin.lower_precedence_than Op.bin_or [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
+        AssertBin.lower_precedence_than (Op.bin_or LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy);
+          (Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy);
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
         ]
       in
       let test_eq ctxt =
-        AssertBin.lower_precedence_than Op.bin_eq [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
+        AssertBin.lower_precedence_than (Op.bin_eq LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy);
+          (Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy);
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_eq [Op.bin_neq];
-        AssertBin.higher_precedence_than Op.bin_eq [
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.equal_precedence ~ctxt (Op.bin_eq LocTest.dummy) [(Op.bin_neq LocTest.dummy)];
+        AssertBin.higher_precedence_than (Op.bin_eq LocTest.dummy) [
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_neq ctxt =
-        AssertBin.lower_precedence_than Op.bin_neq [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_mul; Op.bin_div; Op.bin_mod;
-          Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
+        AssertBin.lower_precedence_than (Op.bin_neq LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy);
+          (Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy);
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_neq [Op.bin_eq];
-        AssertBin.higher_precedence_than Op.bin_neq [
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.equal_precedence ~ctxt (Op.bin_neq LocTest.dummy) [(Op.bin_eq LocTest.dummy)];
+        AssertBin.higher_precedence_than (Op.bin_neq LocTest.dummy) [
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_lte ctxt =
-        AssertBin.lower_precedence_than Op.bin_lte [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_mul; Op.bin_div; Op.bin_mod;
+        AssertBin.lower_precedence_than (Op.bin_lte LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy);
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_lte [Op.bin_lt; Op.bin_gt; Op.bin_gte];
-        AssertBin.higher_precedence_than Op.bin_lte [
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.equal_precedence ~ctxt (Op.bin_lte LocTest.dummy) [(Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy)];
+        AssertBin.higher_precedence_than (Op.bin_lte LocTest.dummy) [
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_lt ctxt =
-        AssertBin.lower_precedence_than Op.bin_lt [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_mul; Op.bin_div; Op.bin_mod;
+        AssertBin.lower_precedence_than (Op.bin_lt LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy);
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_lt [Op.bin_lte; Op.bin_gt; Op.bin_gte];
-        AssertBin.higher_precedence_than Op.bin_lt [
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.equal_precedence ~ctxt (Op.bin_lt LocTest.dummy) [(Op.bin_lte LocTest.dummy); (Op.bin_gt LocTest.dummy); (Op.bin_gte LocTest.dummy)];
+        AssertBin.higher_precedence_than (Op.bin_lt LocTest.dummy) [
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_gt ctxt =
-        AssertBin.lower_precedence_than Op.bin_gt [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_mul; Op.bin_div; Op.bin_mod;
+        AssertBin.lower_precedence_than (Op.bin_gt LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy);
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_gt [Op.bin_lte; Op.bin_lt; Op.bin_gte];
-        AssertBin.higher_precedence_than Op.bin_gt [
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.equal_precedence ~ctxt (Op.bin_gt LocTest.dummy) [(Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gte LocTest.dummy)];
+        AssertBin.higher_precedence_than (Op.bin_gt LocTest.dummy) [
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       let test_gte ctxt =
-        AssertBin.lower_precedence_than Op.bin_gte [
-          Op.bin_add; Op.bin_sub;
-          Op.bin_mul; Op.bin_div; Op.bin_mod;
+        AssertBin.lower_precedence_than (Op.bin_gte LocTest.dummy) [
+          (Op.bin_add LocTest.dummy); (Op.bin_sub LocTest.dummy);
+          (Op.bin_mul LocTest.dummy); (Op.bin_div LocTest.dummy); (Op.bin_mod LocTest.dummy);
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_gte [Op.bin_lte; Op.bin_lt; Op.bin_gt];
-        AssertBin.higher_precedence_than Op.bin_gte [
-          Op.bin_eq; Op.bin_neq;
-          Op.bin_and;
-          Op.bin_or;
+        AssertBin.equal_precedence ~ctxt (Op.bin_gte LocTest.dummy) [(Op.bin_lte LocTest.dummy); (Op.bin_lt LocTest.dummy); (Op.bin_gt LocTest.dummy)];
+        AssertBin.higher_precedence_than (Op.bin_gte LocTest.dummy) [
+          (Op.bin_eq LocTest.dummy); (Op.bin_neq LocTest.dummy);
+          (Op.bin_and LocTest.dummy);
+          (Op.bin_or LocTest.dummy);
         ]
       in
       "Precedence" >::: [
@@ -439,6 +428,6 @@ let suite =
     ]
   in
   "Operators" >::: [
-    un_op_test;
-    bin_op_test;
+    test_un_op;
+    test_bin_op;
   ]

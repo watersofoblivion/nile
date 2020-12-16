@@ -49,7 +49,7 @@ module Args =
               |> sprintf "Select the closure conversion mode.  Valid values are: %s"
           in
           let docv = "MODE" in
-          Arg.(value & opt (enum Clos.modes) default & info ["closure-conversion-mode"] ~doc ~docv ~docs)
+          Arg.(value & opt (enum Clos.modes) default & info ["clos-mode"] ~doc ~docv ~docs)
 
         let term = Term.(const Clos.conf $ mode)
       end
@@ -91,7 +91,7 @@ module Args =
 
         let unannot_ast =
           let doc = "Print the un-annotated abstract syntax tree to STDERR" in
-          Arg.(value & flag & info ["dump-raw-ast"] ~doc ~docs)
+          Arg.(value & flag & info ["dump-unannot-ast"] ~doc ~docs)
 
         let annot_ast =
           let doc = "Print the annotated abstract syntax tree to STDERR" in
@@ -215,5 +215,5 @@ module Cmds =
 
 (* Top level *)
 
-let main _ =
-  Term.exit @@ Term.eval_choice Cmds.DefaultCmd.cmd [Cmds.BuildCmd.cmd]
+let main argv =
+  Term.exit @@ Term.eval_choice ~argv Cmds.DefaultCmd.cmd [Cmds.BuildCmd.cmd]
