@@ -1,5 +1,5 @@
 open OUnit2
-open Nile
+open Syntax
 
 let suite =
   let assert_parses parse ~ctxt lines expected =

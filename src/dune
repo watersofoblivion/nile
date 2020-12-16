@@ -1,14 +1,11 @@
-(ocamllex lexer)
-(menhir
- (modules parser)
- (flags --strict --explain --dump))
-
 (library
   (name nile)
-  (public_name nile)
   (instrumentation (backend bisect_ppx))
   (libraries
-    cmdliner))
+    syntax
+    ir
+    codegen
+    cli))
 
 (documentation
   (package nile)

@@ -1,6 +1,6 @@
 open Format
 open OUnit2
-open Nile
+open Syntax
 
 let cmp _ _ = false
 

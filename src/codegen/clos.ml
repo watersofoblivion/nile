@@ -1,4 +1,4 @@
-open Format
+(* open Format *)
 
 type mode =
   | Flat
@@ -18,7 +18,7 @@ type conf = {
 let conf mode =
   { mode = mode }
 
-type prim =
+(* type prim =
   | Bool of bool
   | Int of int
   | Var of string
@@ -80,4 +80,4 @@ let of_anf_ssc _ = failwith "Not implemented"
 let of_anf anf = function
   | Flat -> of_anf_flat anf
   | Linked -> of_anf_linked anf
-  | SSC -> of_anf_ssc anf
+  | SSC -> of_anf_ssc anf *)

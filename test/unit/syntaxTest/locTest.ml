@@ -1,5 +1,5 @@
 open OUnit2
-open Nile
+open Syntax
 
 let dummy = Loc.mock "-" (-1, -1, -1) (-1, -1, -1)
 

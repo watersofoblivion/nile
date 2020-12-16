@@ -1,5 +1,5 @@
 open OUnit2
-open Nile
+open Syntax
 
 (** {1 Types} *)
 

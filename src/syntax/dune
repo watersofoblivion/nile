@@ -1,0 +1,8 @@
+(ocamllex lexer)
+(menhir
+ (modules parser)
+ (flags --strict --explain --dump))
+
+(library
+  (name syntax)
+  (instrumentation (backend bisect_ppx)))

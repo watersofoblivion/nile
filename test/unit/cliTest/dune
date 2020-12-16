@@ -1,0 +1,8 @@
+(library
+  (name cliTest)
+  (instrumentation (backend bisect_ppx))
+  (libraries
+    ounit2
+    cli
+    irTest
+    codegenTest))

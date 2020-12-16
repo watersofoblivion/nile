@@ -1,4 +1,4 @@
-open Format
+(* open Format
 
 type prim =
   | Bool of bool
@@ -53,4 +53,4 @@ let rec pp expr fmt = match expr with
   | Bind (id, ty, stmt, rest) -> fprintf fmt "let %s: %t = %t in %t" id (Type.pp ty) (pp_stmt stmt) (pp rest)
   | Rec (bindings, rest) -> fprintf fmt "let rec %t in %t" (pp_bindings bindings) (pp rest)
   | Abs (id, ty, expr) -> fprintf fmt "%s: %t. %t" id (Type.pp ty) (pp expr)
-  | If (c, t, f) -> fprintf fmt "if %t then %t else %t" (pp_prim c) (pp_stmt t) (pp_stmt f)
+  | If (c, t, f) -> fprintf fmt "if %t then %t else %t" (pp_prim c) (pp_stmt t) (pp_stmt f) *)

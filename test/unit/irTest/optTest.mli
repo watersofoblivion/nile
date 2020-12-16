@@ -1,5 +1,5 @@
 open OUnit2
-open Nile
+open Ir
 
 (** {1 Optimizer} *)
 

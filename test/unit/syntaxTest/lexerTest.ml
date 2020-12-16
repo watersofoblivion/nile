@@ -1,6 +1,6 @@
 open Format
 open OUnit2
-open Nile
+open Syntax
 
 let assert_lexes ~ctxt expected str =
   let len = String.length str in

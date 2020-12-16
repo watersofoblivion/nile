@@ -9,4 +9,8 @@
   (libraries
     ounit2
     llvm
-    nile))
+    nile
+    syntaxTest
+    irTest
+    codegenTest
+    cliTest))

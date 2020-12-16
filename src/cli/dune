@@ -1,0 +1,8 @@
+(library
+  (name cli)
+  (instrumentation (backend bisect_ppx))
+  (libraries
+    cmdliner
+    syntax
+    ir
+    codegen))

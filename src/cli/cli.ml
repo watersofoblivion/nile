@@ -27,7 +27,7 @@ module Args =
           let docv = "MAXIMUM" in
           Arg.(value & opt int default & info ["opt-max-passes"] ~doc ~docv ~docs)
 
-        let term = Term.(const Opt.conf $ tailcall $ inline $ ccp $ max_passes)
+        let term = Term.(const Ir.Opt.conf $ tailcall $ inline $ ccp $ max_passes)
       end
 
     (* Closure Conversion *)
@@ -38,20 +38,20 @@ module Args =
 
         let mode =
           let default =
-            Clos.modes
+            Codegen.Clos.modes
               |> List.hd
               |> snd
           in
           let doc =
-            Clos.modes
+            Codegen.Clos.modes
               |> List.map fst
               |> String.concat ", "
               |> sprintf "Select the closure conversion mode.  Valid values are: %s"
           in
           let docv = "MODE" in
-          Arg.(value & opt (enum Clos.modes) default & info ["clos-mode"] ~doc ~docv ~docs)
+          Arg.(value & opt (enum Codegen.Clos.modes) default & info ["clos-mode"] ~doc ~docv ~docs)
 
-        let term = Term.(const Clos.conf $ mode)
+        let term = Term.(const Codegen.Clos.conf $ mode)
       end
 
     (* Dumping *)
@@ -129,8 +129,8 @@ module Args =
     module CompilerArgs =
       struct
         type conf = {
-          opt  : Opt.conf;
-          clos : Clos.conf;
+          opt  : Ir.Opt.conf;
+          clos : Codegen.Clos.conf;
           dump : DumpArgs.conf;
         }
 
@@ -193,14 +193,14 @@ module Cmds =
 
           let ast =
             src
-              |> Lexer.from_file
-              |> Parser.top Lexer.lex
+              |> Syntax.Lexer.from_file
+              |> Syntax.Parser.top Syntax.Lexer.lex
           in
 
           let _ =
             if config.Args.CompilerArgs.dump.annot_ast
             then
-              let iter ast = Top.Ast.pp ast err_formatter in
+              let iter ast = Syntax.Top.Ast.pp ast err_formatter in
               List.iter iter ast
             else ()
           in

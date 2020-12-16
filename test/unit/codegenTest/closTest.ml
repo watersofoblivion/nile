@@ -1,5 +1,5 @@
 open OUnit2
-open Nile
+open Codegen
 
 let assert_mode ~ctxt expected actual =
   let cmp _ _ = false in

@@ -1,0 +1,6 @@
+(library
+  (name irTest)
+  (instrumentation (backend bisect_ppx))
+  (libraries
+    ounit2
+    ir))

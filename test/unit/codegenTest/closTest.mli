@@ -1,5 +1,5 @@
 open OUnit2
-open Nile
+open Codegen
 
 (** {1 Closure Conversion} *)
 

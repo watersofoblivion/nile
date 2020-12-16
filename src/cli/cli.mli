@@ -19,7 +19,7 @@ module Args :
         (** [max_passes] sets the upper bound on the number of optimization
             passes. *)
 
-        val term : Opt.conf Term.t
+        val term : Ir.Opt.conf Term.t
         (** [term] builds an optimizer configuration from the command-line
             arguments. *)
       end
@@ -27,10 +27,10 @@ module Args :
 
     module ClosArgs :
       sig
-        val mode : Clos.mode Term.t
+        val mode : Codegen.Clos.mode Term.t
         (** [mode] sets the closure conversion mode. *)
 
-        val term : Clos.conf Term.t
+        val term : Codegen.Clos.conf Term.t
         (** [term] builds a closure conversion configuration from the
             command-line arguments. *)
       end
@@ -89,13 +89,13 @@ module Args :
     module CompilerArgs :
       sig
         type conf = private {
-          opt  : Opt.conf; (** Optimizer configuration *)
-          clos : Clos.conf; (** Closure conversion configuration *)
+          opt  : Ir.Opt.conf; (** Optimizer configuration *)
+          clos : Codegen.Clos.conf; (** Closure conversion configuration *)
           dump : DumpArgs.conf; (** Dump configuration *)
         }
         (** Compiler configuration *)
 
-        val conf : Opt.conf -> Clos.conf -> DumpArgs.conf -> conf
+        val conf : Ir.Opt.conf -> Codegen.Clos.conf -> DumpArgs.conf -> conf
         (** [conf opt clos dump] constructs a compiler configuration. *)
 
         val term : conf Term.t

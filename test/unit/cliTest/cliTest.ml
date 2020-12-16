@@ -1,6 +1,5 @@
 open Cmdliner
 open OUnit2
-open Nile
 
 let suite =
   let name = "unit-test" in
@@ -88,15 +87,15 @@ let suite =
       in
       let test_term ctxt =
         eval_term Cli.Args.OptArgs.term "Optimizer config" [||]
-          |> OptTest.assert_conf ~ctxt false false false 10;
+          |> IrTest.OptTest.assert_conf ~ctxt false false false 10;
         eval_term Cli.Args.OptArgs.term "Optimizer config" [|"--opt-tailcall"|]
-          |> OptTest.assert_conf ~ctxt true false false 10;
+          |> IrTest.OptTest.assert_conf ~ctxt true false false 10;
         eval_term Cli.Args.OptArgs.term "Optimizer config" [|"--opt-inline"|]
-          |> OptTest.assert_conf ~ctxt false true false 10;
+          |> IrTest.OptTest.assert_conf ~ctxt false true false 10;
         eval_term Cli.Args.OptArgs.term "Optimizer config" [|"--opt-ccp"|]
-          |> OptTest.assert_conf ~ctxt false false true 10;
+          |> IrTest.OptTest.assert_conf ~ctxt false false true 10;
         eval_term Cli.Args.OptArgs.term "Optimizer config" [|"--opt-max-passes"; "5"|]
-          |> OptTest.assert_conf ~ctxt false false false 5;
+          |> IrTest.OptTest.assert_conf ~ctxt false false false 5;
       in
       "Optimizer" >::: [
         test_args;
@@ -107,12 +106,12 @@ let suite =
       let test_args =
         let test_mode =
           let test_default ctxt =
-            assert_arg ~ctxt Cli.Args.ClosArgs.mode "Closure conversion config" Clos.Flat [||];
+            assert_arg ~ctxt Cli.Args.ClosArgs.mode "Closure conversion config" Codegen.Clos.Flat [||];
           in
           let test_valid ctxt =
-            assert_arg ~ctxt Cli.Args.ClosArgs.mode "Closure conversion config" Clos.Flat [|"--clos-mode"; "flat"|];
-            assert_arg ~ctxt Cli.Args.ClosArgs.mode "Closure conversion config" Clos.Linked [|"--clos-mode"; "linked"|];
-            assert_arg ~ctxt Cli.Args.ClosArgs.mode "Closure conversion config" Clos.SSC [|"--clos-mode"; "ssc"|];
+            assert_arg ~ctxt Cli.Args.ClosArgs.mode "Closure conversion config" Codegen.Clos.Flat [|"--clos-mode"; "flat"|];
+            assert_arg ~ctxt Cli.Args.ClosArgs.mode "Closure conversion config" Codegen.Clos.Linked [|"--clos-mode"; "linked"|];
+            assert_arg ~ctxt Cli.Args.ClosArgs.mode "Closure conversion config" Codegen.Clos.SSC [|"--clos-mode"; "ssc"|];
           in
           let test_invalid _ =
             eval_parse_error Cli.Args.ClosArgs.mode "Closure conversion config" [|"--clos-mode"; "invalid"|];
@@ -133,9 +132,9 @@ let suite =
       in
       let test_term ctxt =
         eval_term Cli.Args.ClosArgs.term "Closure conversion config" [||]
-          |> ClosTest.assert_conf ~ctxt Clos.Flat;
+          |> CodegenTest.ClosTest.assert_conf ~ctxt Codegen.Clos.Flat;
         eval_term Cli.Args.ClosArgs.term "Closure conversion config" [|"--clos-mode"; "linked"|]
-          |> ClosTest.assert_conf ~ctxt Clos.Linked
+          |> CodegenTest.ClosTest.assert_conf ~ctxt Codegen.Clos.Linked
       in
       "Closure Conversion" >::: [
         test_args;
@@ -206,14 +205,14 @@ let suite =
     in
     let test_compiler =
       let assert_config ~ctxt opt clos dump actual =
-        OptTest.assert_conf ~ctxt opt.Opt.tailcall opt.inline opt.ccp opt.max_passes actual.Cli.Args.CompilerArgs.opt;
-        ClosTest.assert_conf ~ctxt clos.Clos.mode actual.clos;
+        IrTest.OptTest.assert_conf ~ctxt opt.Ir.Opt.tailcall opt.inline opt.ccp opt.max_passes actual.Cli.Args.CompilerArgs.opt;
+        CodegenTest.ClosTest.assert_conf ~ctxt clos.Codegen.Clos.mode actual.clos;
         assert_dump ~ctxt dump.Cli.Args.DumpArgs.unannot_ast dump.annot_ast dump.unopt_ir dump.opt_ir dump.clos dump.unopt_llvm dump.opt_llvm actual.dump
       in
 
       let test_conf ctxt =
-        let opt = Opt.conf true false true 7 in
-        let clos = Clos.conf Clos.Linked in
+        let opt = Ir.Opt.conf true false true 7 in
+        let clos = Codegen.Clos.conf Codegen.Clos.Linked in
         let dump = Cli.Args.DumpArgs.conf true false true false true false true false in
 
         Cli.Args.CompilerArgs.conf opt clos dump
@@ -221,15 +220,15 @@ let suite =
       in
 
       let test_term ctxt =
-        let opt = Opt.conf false false false 10 in
-        let clos = Clos.conf Clos.Flat in
+        let opt = Ir.Opt.conf false false false 10 in
+        let clos = Codegen.Clos.conf Codegen.Clos.Flat in
         let dump = Cli.Args.DumpArgs.conf false false false false false false false false in
 
         eval_term Cli.Args.CompilerArgs.term "Top-level compiler config" [||]
           |> assert_config ~ctxt opt clos dump;
 
-        let opt = Opt.conf true false false 10 in
-        let clos = Clos.conf Clos.Linked in
+        let opt = Ir.Opt.conf true false false 10 in
+        let clos = Codegen.Clos.conf Codegen.Clos.Linked in
         let dump = Cli.Args.DumpArgs.conf true false false false false false false false in
         eval_term Cli.Args.CompilerArgs.term "Top-level compiler config" [|"--opt-tailcall"; "--clos-mode"; "linked"; "--dump-unannot-ast"|]
           |> assert_config ~ctxt opt clos dump
