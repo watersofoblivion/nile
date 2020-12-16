@@ -607,9 +607,7 @@ let suite =
              ];
         Ast.bind_rec LocTest.dummy [b_x; b_y] res
           |> assert_pp ~ctxt [
-               "let rec x: Int = y";
-               "    and y: Int = x";
-               "in";
+               "let rec x: Int = y and y: Int = x in";
                "x + y";
              ]
       in
@@ -630,13 +628,13 @@ let suite =
         Ast.bind_rec LocTest.dummy [b_final; b_final] v_final
           |> assert_pp ~ctxt [
                "let rec finalVariable: Int =";
-               "      let temporaryVariableOne: Int = w + x in";
-               "      let temporaryVariableTwo: Int = y + z in";
-               "      temporaryVariableOne + temporaryVariableTwo";
-               "    and finalVariable: Int =";
-               "      let temporaryVariableOne: Int = w + x in";
-               "      let temporaryVariableTwo: Int = y + z in";
-               "      temporaryVariableOne + temporaryVariableTwo";
+               "  let temporaryVariableOne: Int = w + x in";
+               "  let temporaryVariableTwo: Int = y + z in";
+               "  temporaryVariableOne + temporaryVariableTwo";
+               "and finalVariable: Int =";
+               "  let temporaryVariableOne: Int = w + x in";
+               "  let temporaryVariableTwo: Int = y + z in";
+               "  temporaryVariableOne + temporaryVariableTwo";
                "in";
                "finalVariable";
              ]
@@ -653,8 +651,7 @@ let suite =
              ];
         Ast.bind_rec LocTest.dummy [b; b] var_f
           |> assert_pp ~ctxt [
-               "let rec f(w: Int, x: Int): Int = w + x in";
-               "    and f(w: Int, x: Int): Int = w + x in";
+               "let rec f(w: Int, x: Int): Int = w + x and f(w: Int, x: Int): Int = w + x in";
                "f";
              ]
       in
@@ -676,13 +673,13 @@ let suite =
         Ast.bind_rec LocTest.dummy [b; b] var_f
           |> assert_pp ~ctxt [
                "let rec f(w: Int, x: Int, y: Int, z: Int): Int =";
-               "      let temporaryVariableOne: Int = w + x in";
-               "      let temporaryVariableTwo: Int = y + z in";
-               "      temporaryVariableOne + temporaryVariableTwo";
-               "    and f(w: Int, x: Int, y: Int, z: Int): Int =";
-               "      let temporaryVariableOne: Int = w + x in";
-               "      let temporaryVariableTwo: Int = y + z in";
-               "      temporaryVariableOne + temporaryVariableTwo";
+               "  let temporaryVariableOne: Int = w + x in";
+               "  let temporaryVariableTwo: Int = y + z in";
+               "  temporaryVariableOne + temporaryVariableTwo";
+               "and f(w: Int, x: Int, y: Int, z: Int): Int =";
+               "  let temporaryVariableOne: Int = w + x in";
+               "  let temporaryVariableTwo: Int = y + z in";
+               "  temporaryVariableOne + temporaryVariableTwo";
                "in";
                "f";
              ]
@@ -699,8 +696,7 @@ let suite =
              ];
         Ast.bind_rec LocTest.dummy [b; b] var_f
           |> assert_pp ~ctxt [
-               "let rec f(w: Int): Int -> Int = w + x in";
-               "    and f(w: Int): Int -> Int = w + x in";
+               "let rec f(w: Int): Int -> Int = w + x and f(w: Int): Int -> Int = w + x in";
                "f";
              ]
       in

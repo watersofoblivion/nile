@@ -47,7 +47,7 @@ let rec pp ast fmt = match ast with
     let prec = Op.bin_precedence op in
     fprintf fmt "@[<hov 2>%t@ %t@ %t@]" (print_precedence prec l) (Op.pp_bin op) (print_precedence prec r)
   | Let (_, b, rest) -> fprintf fmt "@[<v>@[<hv>let %t@ in@]@ %t@]" (pp_binding b) (pp rest)
-  | LetRec (_, bs, rest) -> fprintf fmt "@[<v>@[<hv>let rec %t@]@ in@]@ %t@]" (pp_bindings bs) (pp rest)
+  | LetRec (_, bs, rest) -> fprintf fmt "@[<v>@[<hv>@[<hv>let rec %t@ in@]@ %t@]" (pp_bindings bs) (pp rest)
   | Abs (_, ps, ty, expr) -> fprintf fmt "(%t): %t => %t" (pp_params ps) (Type.pp ty) (pp expr)
   | App (_, f, xs) -> fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence 0 f) (pp_args xs)
   | If (_, c, t, f) -> fprintf fmt "@[<hv>@[<hv>if@;<1 2>%t@]@ @[<hv>then@;<1 2>%t@]@ @[<hv>else@;<1 2>%t@]@]" (pp c) (pp t) (pp f)
@@ -71,8 +71,8 @@ and pp_params ps fmt =
   pp_print_list ~pp_sep param fmt ps
 and pp_args xs fmt =
   let pp_sep fmt _ = fprintf fmt "@ " in
-  let pp_x fmt x = fprintf fmt "%t" (print_precedence 0 x) in
-  pp_print_list ~pp_sep pp_x fmt xs
+  let pp_arg fmt arg = print_precedence 0 arg fmt in
+  pp_print_list ~pp_sep pp_arg fmt xs
 
 let loc = function
   | Bool (loc, _)
