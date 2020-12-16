@@ -134,8 +134,36 @@ let suite =
       test_fun;
     ]
   in
+  let test_loc =
+    let loc = Loc.mock "-" (1, 2, 3) (4, 5, 6) in
+
+    let assert_loc ~ctxt loc ty =
+      ty
+        |> Type.loc
+        |> LocTest.assert_loc_equal ~ctxt loc
+    in
+
+    let test_bool ctxt =
+      Type.bool loc
+        |> assert_loc ~ctxt loc
+    in
+    let test_int ctxt =
+      Type.int loc
+        |> assert_loc ~ctxt loc
+    in
+    let test_fun ctxt =
+      Type.func loc (Type.int LocTest.dummy) (Type.bool LocTest.dummy)
+        |> assert_loc ~ctxt loc
+    in
+    "Location Information" >::: [
+      "Boolean"  >:: test_bool;
+      "Integer"  >:: test_int;
+      "Function" >:: test_fun;
+    ]
+  in
   "Types" >::: [
     test_constructor;
     test_pp;
     test_equal;
+    test_loc;
   ]

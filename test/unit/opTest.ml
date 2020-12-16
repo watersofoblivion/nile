@@ -133,10 +133,23 @@ let suite =
         "Boolean Negation" >:: test_not;
       ]
     in
+    let test_loc =
+      let test_not ctxt =
+        let loc = Loc.mock "-" (1, 2, 3) (4, 5, 6) in
+        loc
+          |> Op.un_not
+          |> Op.un_loc
+          |> LocTest.assert_loc_equal ~ctxt loc
+      in
+      "Location Information" >::: [
+        "Boolean Negation" >:: test_not;
+      ]
+    in
     "Unary" >::: [
       test_constructors;
       test_pp;
       test_precedence;
+      test_loc;
     ]
   in
   let test_bin_op =
@@ -421,10 +434,101 @@ let suite =
         "Greater Than or Equal" >:: test_gte;
       ]
     in
+    let test_loc =
+      let assert_loc ~ctxt loc op =
+        op
+          |> Op.bin_loc
+          |> LocTest.assert_loc_equal ~ctxt loc
+      in
+
+      let loc = Loc.mock "-" (1, 2, 3) (4, 5, 6) in
+
+      let test_add ctxt =
+        loc
+          |> Op.bin_add
+          |> assert_loc ~ctxt loc
+      in
+      let test_sub ctxt =
+        loc
+          |> Op.bin_sub
+          |> assert_loc ~ctxt loc
+      in
+      let test_mul ctxt =
+        loc
+          |> Op.bin_mul
+          |> assert_loc ~ctxt loc
+      in
+      let test_div ctxt =
+        loc
+          |> Op.bin_div
+          |> assert_loc ~ctxt loc
+      in
+      let test_mod ctxt =
+        loc
+          |> Op.bin_mod
+          |> assert_loc ~ctxt loc
+      in
+      let test_and ctxt =
+        loc
+          |> Op.bin_and
+          |> assert_loc ~ctxt loc
+      in
+      let test_or ctxt =
+        loc
+          |> Op.bin_or
+          |> assert_loc ~ctxt loc
+      in
+      let test_eq ctxt =
+        loc
+          |> Op.bin_eq
+          |> assert_loc ~ctxt loc
+      in
+      let test_neq ctxt =
+        loc
+          |> Op.bin_neq
+          |> assert_loc ~ctxt loc
+      in
+      let test_lte ctxt =
+        loc
+          |> Op.bin_lte
+          |> assert_loc ~ctxt loc
+      in
+      let test_lt ctxt =
+        loc
+          |> Op.bin_lt
+          |> assert_loc ~ctxt loc
+      in
+      let test_gt ctxt =
+        loc
+          |> Op.bin_gt
+          |> assert_loc ~ctxt loc
+      in
+      let test_gte ctxt =
+        loc
+          |> Op.bin_gte
+          |> assert_loc ~ctxt loc
+      in
+      "Location Information" >::: [
+        "Addition"              >:: test_add;
+        "Subtraction"           >:: test_sub;
+        "Multiplication"        >:: test_mul;
+        "Integer Division"      >:: test_div;
+        "Modulus"               >:: test_mod;
+        "Logical And"           >:: test_and;
+        "Logical Or"            >:: test_or;
+        "Equality"              >:: test_eq;
+        "Inequality"            >:: test_neq;
+        "Less Than or Equal"    >:: test_lte;
+        "Less Than"             >:: test_lt;
+        "Greater Than"          >:: test_gt;
+        "Greater Than or Equal" >:: test_gte;
+      ]
+    in
     "Binary" >::: [
       test_constructors;
       test_pp;
       test_precedence;
+      test_loc;
     ]
   in
   "Operators" >::: [

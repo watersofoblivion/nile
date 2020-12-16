@@ -829,7 +829,71 @@ let suite =
       test_cond;
     ]
   in
+  let test_loc =
+    let loc = Loc.mock "-" (1, 2, 3) (4, 5, 6) in
+    let assert_loc ~ctxt loc ast =
+      ast
+        |> Ast.loc
+        |> LocTest.assert_loc_equal ~ctxt loc
+    in
+
+    let test_bool ctxt =
+      Ast.bool loc true
+        |> assert_loc ~ctxt loc
+    in
+    let test_int ctxt =
+      Ast.int loc 1
+        |> assert_loc ~ctxt loc
+    in
+    let test_var ctxt =
+      Ast.var loc "id"
+        |> assert_loc ~ctxt loc
+    in
+    let test_un_op ctxt =
+      Ast.un_op loc (Op.un_not LocTest.dummy) (Ast.int LocTest.dummy 1)
+        |> assert_loc ~ctxt loc
+    in
+    let test_bin_op ctxt =
+      Ast.bin_op loc (Ast.int LocTest.dummy 1) (Op.bin_add LocTest.dummy) (Ast.int LocTest.dummy 2)
+        |> assert_loc ~ctxt loc
+    in
+    let test_cond ctxt =
+      Ast.cond loc (Ast.bool LocTest.dummy true) (Ast.int LocTest.dummy 1) (Ast.int LocTest.dummy 2)
+        |> assert_loc ~ctxt loc
+    in
+    let test_abs ctxt =
+      Ast.abs loc [] (Type.int LocTest.dummy) (Ast.int LocTest.dummy 1)
+        |> assert_loc ~ctxt loc
+    in
+    let test_app ctxt =
+      Ast.app loc (Ast.var LocTest.dummy "f") [(Ast.var LocTest.dummy "x")]
+        |> assert_loc ~ctxt loc
+    in
+    let test_bind ctxt =
+      let b = Ast.binding LocTest.dummy "id" (Type.int LocTest.dummy) (Ast.int LocTest.dummy 1) in
+      Ast.bind loc b (Ast.var LocTest.dummy "id")
+        |> assert_loc ~ctxt loc
+    in
+    let test_bind_rec ctxt =
+      let b = Ast.binding LocTest.dummy "id" (Type.int LocTest.dummy) (Ast.int LocTest.dummy 1) in
+      Ast.bind_rec loc [b; b] (Ast.var LocTest.dummy "id")
+        |> assert_loc ~ctxt loc
+    in
+    "Location Information" >::: [
+      "Boolean"              >:: test_bool;
+      "Integer"              >:: test_int;
+      "Variable"             >:: test_var;
+      "Unary Operator"       >:: test_un_op;
+      "Binary Operator"      >:: test_bin_op;
+      "Conditional"          >:: test_cond;
+      "Function Abstraction" >:: test_abs;
+      "Function Application" >:: test_app;
+      "Bindings"             >:: test_bind;
+      "Recursive Bindings"   >:: test_bind_rec;
+    ]
+  in
   "Abstract Syntax" >::: [
     test_constructors;
     test_pp;
+    test_loc;
   ]
