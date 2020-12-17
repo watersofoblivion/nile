@@ -7,7 +7,7 @@ let suite =
       |> String.concat "\n"
       |> Lexer.from_string
       |> parse Lexer.lex
-      |> AstTest.assert_ast_equal ~ctxt expected
+      |> AstTest.assert_expr_equal ~ctxt expected
   in
   let assert_parses_expr = assert_parses Parser.unit_test in
 

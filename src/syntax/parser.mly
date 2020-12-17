@@ -2,10 +2,10 @@
   open Format
 
   let make_bind kwd_loc b rest =
-    let loc = Loc.span kwd_loc (Ast.loc rest) in
+    let loc = Loc.span kwd_loc (Ast.loc_expr rest) in
     Ast.bind loc b rest
   let make_bind_rec kwd_loc bs rest =
-    let loc = Loc.span kwd_loc (Ast.loc rest) in
+    let loc = Loc.span kwd_loc (Ast.loc_expr rest) in
     Ast.bind_rec loc bs rest
 
   let make_param (loc, id) ty =
@@ -17,18 +17,18 @@
       | param :: params -> ()
     in
     *)
-    let loc = Loc.span loc (Ast.loc expr) in
+    let loc = Loc.span loc (Ast.loc_expr expr) in
     Ast.binding loc id ty expr
 
   let make_cond kwd_loc c t f =
-    let loc = Loc.span kwd_loc (Ast.loc f) in
+    let loc = Loc.span kwd_loc (Ast.loc_expr f) in
     Ast.cond loc c t f
 
   let make_un_op op r =
-    let loc = Loc.span (Op.un_loc op) (Ast.loc r) in
+    let loc = Loc.span (Op.un_loc op) (Ast.loc_expr r) in
     Ast.un_op loc op r
   let make_bin_op l op r =
-    let loc = Loc.span (Ast.loc l) (Ast.loc r) in
+    let loc = Loc.span (Ast.loc_expr l) (Ast.loc_expr r) in
     Ast.bin_op loc l op r
 
   let make_bool (loc, b) = Ast.bool loc b
@@ -67,18 +67,22 @@
 %right LNOT
 %right ARROW
 
-%type <Top.Ast.t list> top
-%type <Ast.t> unit_test
+%type <Ast.file> file
+%type <Ast.expr> unit_test
 
-%start top
+%start file
 %start unit_test
 
 %%
 
+file:
+  top EOF { Ast.file $1 }
+;
+
 top:
-  LET binding top      { (Top.Ast.bind $1 $2) :: $3 }
-| LET REC bindings top { (Top.Ast.bind_rec $1 $3) :: $4 }
-| EOF                  { [] }
+  LET binding top      { (Ast.top_bind $1 $2) :: $3 }
+| LET REC bindings top { (Ast.top_bind_rec $1 $3) :: $4 }
+|                      { [] }
 ;
 
 /* Exposed for unit testing only */

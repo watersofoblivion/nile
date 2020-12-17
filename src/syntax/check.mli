@@ -67,6 +67,6 @@ exception ConditionalBranchMismatch of Type.t * Type.t
 
 (** {2 Checker} *)
 
-val type_of : env -> Ast.t -> Type.t
-(** [type_of env ast] returns the type of [ast] within the type environment
-    [env] or raises an exception if [ast] is incorrectly typed. *)
+val type_of : env -> Ast.expr -> Type.t
+(** [type_of env expr] returns the type of [expr] within the type environment
+    [env] or raises an exception if [expr] is incorrectly typed. *)

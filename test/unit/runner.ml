@@ -4,7 +4,6 @@ let _ =
   "Nile" >::: [
     "Unit Tests" >::: [
       "Syntax" >::: [
-        SyntaxTest.TopTest.suite;
         SyntaxTest.LocTest.suite;
         SyntaxTest.LexerTest.suite;
         SyntaxTest.ParserTest.suite;

@@ -194,14 +194,12 @@ module Cmds =
           let ast =
             src
               |> Syntax.Lexer.from_file
-              |> Syntax.Parser.top Syntax.Lexer.lex
+              |> Syntax.Parser.file Syntax.Lexer.lex
           in
 
           let _ =
             if config.Args.CompilerArgs.dump.annot_ast
-            then
-              let iter ast = Syntax.Top.Ast.pp ast err_formatter in
-              List.iter iter ast
+            then Syntax.Ast.pp_file ast err_formatter
             else ()
           in
 
