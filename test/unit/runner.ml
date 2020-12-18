@@ -13,10 +13,12 @@ let _ =
         SyntaxTest.CheckTest.suite;
       ];
       "Intermediate Representation" >::: [
+        IrTest.TypeTest.suite;
         IrTest.AnfTest.suite;
         IrTest.OptTest.suite;
       ];
       "Code Generation" >::: [
+        CodegenTest.TypeTest.suite;
         CodegenTest.ClosTest.suite;
         CodegenTest.AsmTest.suite;
       ];

@@ -2,3 +2,5 @@ _build
 _coverage
 .merlin
 announcement
+doc/public
+doc/node_modules
