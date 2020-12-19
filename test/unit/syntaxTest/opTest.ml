@@ -44,7 +44,6 @@ module type OpType =
   sig
     type t
     val pp : t -> formatter -> unit
-    val equal : t -> t -> bool
     val precedence : t -> int
   end
 
@@ -59,12 +58,6 @@ module Assert (Op : OpType) =
       fprintf str_formatter "%t" (Op.pp op)
         |> flush_str_formatter
         |> assert_equal ~ctxt expected
-
-    let equal ~ctxt op op' =
-      assert_equal ~ctxt ~cmp:Op.equal op op'
-    let not_equal ~ctxt op op' =
-      let cmp x y = not (Op.equal x y) in
-      assert_equal ~ctxt ~cmp op op'
 
     let equal_precedence ~ctxt op ops =
       let prec = Op.precedence op in
@@ -92,20 +85,12 @@ module Assert (Op : OpType) =
 module AssertUn = Assert (struct
   type t = Op.un
   let pp = Op.pp_un
-  let equal op op' = match op, op' with
-    | Op.Not _, Op.Not _ -> true
-    (* | _ -> false *)
   let precedence = Op.un_precedence
 end)
 
 module AssertBin = Assert (struct
   type t = Op.bin
   let pp = Op.pp_bin
-  let equal op op' = match op, op' with
-    | Op.Add _, Op.Add _ | Op.Sub _, Op.Sub _ | Op.Mul _, Op.Mul _ | Op.Div _, Op.Div _ | Op.Mod _, Op.Mod _
-    | Op.And _, Op.And _ | Op.Or _, Op.Or _
-    | Op.Eq _, Op.Eq _ | Op.Neq _, Op.Neq _ | Op.Lte _, Op.Lte _ | Op.Lt _, Op.Lt _ | Op.Gt _, Op.Gt _ | Op.Gte _, Op.Gte _ -> true
-    | _ -> false
   let precedence = Op.bin_precedence
 end)
 
