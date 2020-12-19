@@ -3,7 +3,8 @@ on:
   - pull_request
   - push
 jobs:
-  build:
+  # Build and test the commit
+  build-and-test:
     strategy:
       fail-fast: false
       matrix:
@@ -11,18 +12,44 @@ jobs:
           - ubuntu-latest
           - macos-latest
           - windows-latest
-        ocaml-version:
-          - 4.09.0
     runs-on: ${{ matrix.os }}
+    name: Build and Test on ${{ matrix.os }}
     steps:
+      # Check out the code
       - name: Checkout Code
         uses: actions/checkout@v2
 
-      - name: Setup OCaml v${{ matrix.ocaml-version }}
+      # Set up OCaml
+      - name: Setup OCaml
         uses: avsm/setup-ocaml@v1
         with:
-          ocaml-version: ${{ matrix.ocaml-version }}
+          ocaml-version: 4.09.0
 
+      # Build the compiler
+      - name: Pin OPAM
+        run: opam pin add nile.dev . --no-action
+      - name: Install System Dependencies
+        run: opam depext nile --yes --with-doc -with-test
+      - name: Install OPAM Dependencies
+        run: opam install . --deps-only --with-doc --with-test
+      - name: Build Nile
+        run: opam exec -- dune build bin
+
+      # Run unit and integration tests
+      - name: Run Unit Tests
+        run: opam exec -- dune runtest test/unit --instrument-with bisect_ppx --force
+      - name: Run Integration Tests
+        run: opam exec -- dune runtest test/integration --instrument-with bisect_ppx --force
+
+  # Generate the static documentation site
+  generate-docs:
+    name: Generate GitHub Pages Site
+    if: github.ref == "refs/heads/master"
+    runs-on:
+      - ubuntu-latest
+    needs:
+      - build-and-test
+    steps:
       # Generate the static site
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
@@ -35,36 +62,53 @@ jobs:
       - name: Generate Static Site
         run: hugo -s doc -b https://watersofoblivion.github.io/nile -t docsy --minify --log
 
-      # Build the compiler
-      - name: Pin OPAM
-        run: opam pin add nile.dev . --no-action
-      - name: Install System Dependencies
-        run: opam depext nile --yes --with-doc -with-test
-      - name: Install OPAM Dependencies
-        run: opam install . --deps-only --with-doc --with-test
-      - name: Build Nile
-        run: opam exec -- dune build bin
-
-      # Run unit tests and generate coverage information
-      - name: Run Unit Tests
-        run: opam exec -- dune runtest test/unit --instrument-with bisect_ppx --force
-      - name: Generate Unit Test Coverage Report
-        run: opam exec -- bisect-ppx-report html -o ./doc/public/static/coverage/unit
-
-      # Run integrations tests and generate coverage information
-      - name: Run Integration Tests
-        run: opam exec -- dune runtest test/integration --instrument-with bisect_ppx --force
-      - name: Generate Integration Test Coverage Report
-        run: opam exec -- bisect-ppx-report html -o ./doc/public/static/coverage/integration
-
       # Build the docs (TODO)
       - name: Build ODoc
         run: opam exec -- dune build @doc
       - name: Copy ODoc to Static Site
         run: cp -r ./_build/default/_doc/_html/* ./doc/public/static/odoc/
 
+      - name: Generate Unit Test Coverage Report
+        run: opam exec -- bisect-ppx-report html -o ./doc/public/static/coverage/unit
+
+      - name: Generate Integration Test Coverage Report
+        run: opam exec -- bisect-ppx-report html -o ./doc/public/static/coverage/integration
+
       - name: Deploy Static Site to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           public_dir: ./doc/public
+
+  # Release the latest version
+  release-latest:
+    name: Release Latest Version for ${{ matrix.os }}
+    if: github.ref == "refs/heads/master"
+    needs:
+      - build-and-test
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+
+  # Release a tagged version
+  release-tagged:
+      name: Release Tagged Version for ${{ matrix.os }}
+      if: startsWith(github.ref, "refs/heads/v")
+      needs:
+        - build-and-test
+      strategy:
+        fail-fast: false
+        matrix:
+          os:
+            - ubuntu-latest
+            - macos-latest
+            - windows-latest
+      runs-on: ${{ matrix.os }}
+      steps:
+        
