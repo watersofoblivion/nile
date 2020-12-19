@@ -77,7 +77,7 @@ jobs:
           hugo-version: latest
           extended: true
       - name: Clean Public Directory
-        run: rm -rf doc/public
+        run: rm -rf ${{ github.workspace }}/doc/public
 
       # Setup Node
       - name: Setup Node
@@ -98,7 +98,7 @@ jobs:
       - name: Generate Static Site
         run: |
           hugo \
-            -s doc \
+            -s ${{ github.workspace }}/doc \
             -b https://watersofoblivion.github.io/nile \
             -t docsy \
             --minify \
