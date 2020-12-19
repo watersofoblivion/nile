@@ -10,8 +10,10 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macos-latest
-          - windows-latest
+          # Bad LLVM version in OPAM
+          # - macos-latest
+          # Can't build on Windows because Cygwin only supports LLVM 8
+          # - windows-latest
     runs-on: ${{ matrix.os }}
     name: Build and Test on ${{ matrix.os }}
     steps:
@@ -20,38 +22,36 @@ jobs:
         uses: actions/checkout@v2
 
       # Setup OCaml
-      - name: Setup OCaml
+      - name: Install OCaml
         uses: avsm/setup-ocaml@v1
         with:
-          ocaml-version: 4.09.0
-
-      # Setup LLVM
-      - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
-        with:
-          version: "10.0"
-          directory: ${{ runner.temp }}/llvm
-        if: matrix.os != 'ubuntu-latest'
+          ocaml-version: 4.11.1
 
       # Build the compiler
-      - name: Pin OPAM
+      - name: Pin Package
         run: opam pin add nile.dev . --no-action
       - name: Install System Dependencies
         run: opam depext nile --yes
-      - name: Install OPAM Dependencies
+      - name: Install Package Dependencies
         run: opam install . --deps-only
       - name: Build Nile
         run: opam exec -- dune build bin
 
       # Run unit and integration tests
       - name: Run Unit Tests
-        run: opam exec -- dune runtest test/unit --instrument-with bisect_ppx --force
+        env:
+          BISECT_FILE: _build/default/_coverage/unit/coverage
+        run: |
+          opam exec -- dune runtest test/unit \
+            --instrument-with bisect_ppx \
+            --force
       - name: Run Integration Tests
-        run: opam exec -- dune runtest test/integration --instrument-with bisect_ppx --force
-
-      # "Install" the executable
-      - name: Install
-        run: opam exec -- dune build @install
+        env:
+          BISECT_FILE: _build/default/_coverage/unit/coverage
+        run: |
+          opam exec -- dune runtest test/integration \
+            --instrument-with bisect_ppx \
+            --force
 
   # Generate the static documentation site
   generate-docs:
@@ -62,7 +62,7 @@ jobs:
     needs:
       - build-and-test
     steps:
-      # Generate the static site
+      # Setup Hugo
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
         with:
@@ -71,21 +71,38 @@ jobs:
         run: rm -rf doc/public
       - name: Install NPM Dependencies
         run: npm install -D postcss postcss-cli autoprefixer
-      - name: Generate Static Site
-        run: hugo -s doc -b https://watersofoblivion.github.io/nile -t docsy --minify --log
 
-      # Build the docs (TODO)
+      # Generate the static site
+      - name: Generate Static Site
+        run: |
+          hugo \
+            -s doc \
+            -b https://watersofoblivion.github.io/nile \
+            -t docsy \
+            --minify \
+            --log
+
+      # Build the code documentation
       - name: Build ODoc
         run: opam exec -- dune build @doc
       - name: Copy ODoc to Static Site
         run: cp -r ./_build/default/_doc/_html/* ./doc/public/static/odoc/
 
+      # Generate test coverage reports
       - name: Generate Unit Test Coverage Report
-        run: opam exec -- bisect-ppx-report html -o ./doc/public/static/coverage/unit
-
+        run: |
+          opam exec -- bisect-ppx-report html \
+            --title "Nile Unit Test Coverage Report" \
+            --coverage-path _build/default/test/unit \
+            -o ./doc/public/static/coverage/unit
       - name: Generate Integration Test Coverage Report
-        run: opam exec -- bisect-ppx-report html -o ./doc/public/static/coverage/integration
+        run: |
+          opam exec -- bisect-ppx-report html \
+            --title "Nile Integration Test Coverage Report" \
+            --coverage-path _build/default/test/integration \
+            -o ./doc/public/static/coverage/integration
 
+      # Deploy the site to GitHub Pages
       - name: Deploy Static Site to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
@@ -101,12 +118,19 @@ jobs:
       matrix:
         os:
           - ubuntu-latest
-          - macos-latest
-          - windows-latest
+          # Bad LLVM version in OPAM
+          # - macos-latest
+          # Can't build on Windows because Cygwin only supports LLVM 8
+          # - windows-latest
     name: Create Tagged Release on ${{ matrix.os }}
     if: startsWith(github.ref, 'v')
     runs-on: ${{ matrix.os }}
     steps:
+      # "Install" the package
+      - name: Install
+        run: opam exec -- dune build @install
+
+      # Release the executable
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
