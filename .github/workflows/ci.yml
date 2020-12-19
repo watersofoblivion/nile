@@ -78,17 +78,17 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: '12.x'
-      - name: Cache Node dependencies
-        uses: actions/cache@v1
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-      - name: Install Node Dependencies
-        run: npm ci
+      # - name: Cache Node dependencies
+      #   uses: actions/cache@v1
+      #   with:
+      #     path: ~/.npm
+      #     key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-node-
       # - name: Install Node Dependencies
-      #   run: npm install -D postcss postcss-cli autoprefixer
+      #   run: npm ci
+      - name: Install Node Dependencies
+        run: npm install -D postcss postcss-cli autoprefixer
 
       # Generate the static site
       - name: Generate Static Site
