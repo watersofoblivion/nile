@@ -68,7 +68,7 @@ jobs:
       - name: Echo working dir
         run: pwd
       - name: List working dir
-        run: ls
+        run: ls -la
 
       # Setup Hugo
       - name: Setup Hugo
@@ -97,12 +97,13 @@ jobs:
       # Generate the static site
       - name: Generate Static Site
         run: |
+          cd ${{ github.workspace }}/doc && \
           hugo \
-            -s ${{ github.workspace }}/doc \
             -b https://watersofoblivion.github.io/nile \
             -t docsy \
             --minify \
-            --log
+            --log && \
+          cd ${{ github.workspace }}
 
       # Build the code documentation
       - name: Build ODoc
