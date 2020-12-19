@@ -41,6 +41,10 @@ jobs:
       - name: Run Integration Tests
         run: opam exec -- dune runtest test/integration --instrument-with bisect_ppx --force
 
+      # "Install" the executable
+      - name: Install
+        run: opam exec -- dune build @install
+
   # Generate the static documentation site
   generate-docs:
     name: Generate GitHub Pages Site
@@ -80,10 +84,10 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           public_dir: ./doc/public
 
-  # Release the latest version
-  release-latest:
-    name: Release Latest Version for ${{ matrix.os }}
-    if: github.ref == "refs/heads/master"
+  # Create a tagged release
+  create-tagged-release:
+    name: Create Tagged Release ${{ github.ref }}
+    if: startsWith(github.ref, "v")
     needs:
       - build-and-test
     strategy:
@@ -95,20 +99,20 @@ jobs:
           - windows-latest
     runs-on: ${{ matrix.os }}
     steps:
-
-  # Release a tagged version
-  release-tagged:
-      name: Release Tagged Version for ${{ matrix.os }}
-      if: startsWith(github.ref, "refs/heads/v")
-      needs:
-        - build-and-test
-      strategy:
-        fail-fast: false
-        matrix:
-          os:
-            - ubuntu-latest
-            - macos-latest
-            - windows-latest
-      runs-on: ${{ matrix.os }}
-      steps:
-        
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          relase_tag: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+      - name: Upload Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: _build/install/default/bin/nile
+          asset_name: nile
+          asset_content_type: application/octet-stream
