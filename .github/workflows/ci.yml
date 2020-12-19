@@ -65,6 +65,11 @@ jobs:
     needs:
       - build-and-test
     steps:
+      - name: Echo working dir
+        run: pwd
+      - name: List working dir
+        run: ls
+
       # Setup Hugo
       - name: Setup Hugo
         uses: peaceiris/actions-hugo@v2
@@ -90,10 +95,6 @@ jobs:
         run: npm ci
 
       # Generate the static site
-      - name: Echo working dir
-        run: pwd
-      - name: List working dir
-        run: ls
       - name: Generate Static Site
         run: |
           hugo \
