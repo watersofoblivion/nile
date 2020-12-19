@@ -5,6 +5,7 @@ on:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         os:
           - ubuntu-latest
@@ -32,7 +33,7 @@ jobs:
       - name: Install NPM Dependencies
         run: npm install -D postcss postcss-cli autoprefixer
       - name: Generate Static Site
-        run: hugo -s doc
+        run: hugo -s doc -b https://watersofoblivion.github.io/nile -t docsy --minify --log
 
       # Build the compiler
       - name: Pin OPAM
