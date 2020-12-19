@@ -4,19 +4,22 @@ linkTitle: Roadmap
 description: |
   Planned future work and releases
 weight: 20
+hide_feedback: true
 ---
 
-The plan is to release new user-facing features in a series of v0.x.0 minor releases, and implement backend features to clean up and/or optimize those new features in a series of v0.x.y patch releases.
+The plan is to release new user-facing frontend features in a series of v0.x.0 minor releases, and implement backend features to clean up and/or optimize those new features in a series of v0.x.y patch releases.
 
 For each minor or patch releases, it is assumed that all released features:
 
 * Are Unit tested with coverage approaching 100%
-* Are Integration tested
+* Are Integration tested with coverage approaching 100%
+* Have a Tutorial that explains their motivation and use cases
+* Are documented at a tool level in the User Guide
 * Are documented at a language level in the Language Spec
 * Are documented at a code level in the Interface (.mli file)
 * Have one or more benchmarks that exercises the feature
 
-The planned features are listed below.  See the [Bibliography](/docs/bibliography) for references to implementation information.
+The planned features are listed below.  Later releases have intentionally been left vague and their requirements will be solidified once the previous minor/patch version has been released.  See the [Bibliography](/docs/bibliography) for references to implementation information.
 
 v0.1.0
 ---

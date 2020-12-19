@@ -3,4 +3,4 @@ _coverage
 .merlin
 announcement
 doc/public
-doc/node_modules
+node_modules

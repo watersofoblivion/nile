@@ -8,7 +8,8 @@ An example compiler
 maintainer: "Jonathan Bryant <bryantjt@amazon.com>"
 authors: "Jonathan Bryant <bryantjt@amazon.com>"
 license: "MIT"
-homepage: "http://w.amazon.com/Nile"
+homepage: "https://watersofoblivion.github.com/nile"
+bug-reports: "https://github.com/watersofoblivion/nile/issues"
 build: [
   ["dune" "subst"]
   ["dune" "build" "-p" name "-j" jobs]

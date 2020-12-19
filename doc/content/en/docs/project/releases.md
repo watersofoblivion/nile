@@ -4,6 +4,7 @@ linkTitle: Releases
 description: |
   Released versions
 weight: 30
+hide_feedback: true
 ---
 
 v0.1.0
