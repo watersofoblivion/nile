@@ -9,12 +9,13 @@ maintainer: "Jonathan Bryant <bryantjt@amazon.com>"
 authors: "Jonathan Bryant <bryantjt@amazon.com>"
 license: "MIT"
 homepage: "https://watersofoblivion.github.com/nile"
+doc: "https://watersofoblivion.github.com/nile/docs"
 bug-reports: "https://github.com/watersofoblivion/nile/issues"
 build: [
-  ["dune" "subst"]
+  ["dune" "subst"] {dev}
   ["dune" "build" "-p" name "-j" jobs]
-  ["dune" "runtest" "-p" name "-j" jobs]
-  ["dune" "build" "@doc"]
+  ["dune" "runtest" "-p" name "-j" jobs] {with-test}
+  ["dune" "build" "@doc"] {with-doc}
 ]
 depends: [
   "dune"
