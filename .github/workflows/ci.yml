@@ -20,6 +20,9 @@ jobs:
       # Check out the code
       - name: Checkout Code
         uses: actions/checkout@v2
+        with:
+          submodules: recursive
+          fetch-depth: 0
 
       # Setup OCaml
       - name: Install OCaml
@@ -67,12 +70,30 @@ jobs:
         uses: peaceiris/actions-hugo@v2
         with:
           hugo-version: latest
+          extended: true
       - name: Clean Public Directory
         run: rm -rf doc/public
-      - name: Install NPM Dependencies
-        run: npm install -D postcss postcss-cli autoprefixer
+
+      # Setup Node
+      - name: Setup Node
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+      - name: Cache Node dependencies
+        uses: actions/cache@v1
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+      - name: Install Node Dependencies
+        run: npm ci
 
       # Generate the static site
+      - name: Echo working dir
+        run: pwd
+      - name: List working dir
+        run: ls
       - name: Generate Static Site
         run: |
           hugo \
