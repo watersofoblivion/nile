@@ -31,7 +31,7 @@ jobs:
         with:
           version: "10.0"
           directory: ${{ runner.temp }}/llvm
-        if: matrix.os != ubuntu-latest
+        if: matrix.os != 'ubuntu-latest'
 
       # Build the compiler
       - name: Pin OPAM
