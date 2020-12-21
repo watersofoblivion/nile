@@ -1,3 +1,5 @@
+open Common
+
 (** {1 Type Checking} *)
 
 (** {2 Environment} *)

@@ -24,8 +24,8 @@
     let loc = Loc.span kwd_loc (Ast.loc_expr f) in
     Ast.cond loc c t f
 
-  let make_un_op op r =
-    let loc = Loc.span (Op.un_loc op) (Ast.loc_expr r) in
+  let make_un_op loc op r =
+    let loc = Loc.span loc (Ast.loc_expr r) in
     Ast.un_op loc op r
   let make_bin_op l op r =
     let loc = Loc.span (Ast.loc_expr l) (Ast.loc_expr r) in
@@ -35,13 +35,11 @@
   let make_int (loc, i) = Ast.int loc i
   let make_var (loc, id) = Ast.var loc id
 
-  let make_prim_ty (loc, id) = match id with
-    | "Int" -> Type.int loc
-    | "Bool" -> Type.bool loc
+  let make_prim_ty (_, id) = match id with
+    | "Int" -> Common.Type.int
+    | "Bool" -> Common.Type.bool
     | ty -> failwith (sprintf "Unknown type %S" ty)
-  let make_fun_ty a b =
-    let loc = Loc.span (Type.loc a) (Type.loc b) in
-    Type.func loc a b
+  let make_fun_ty a b = Common.Type.func a b
 %}
 
 %token <Loc.t> LPAREN RPAREN COLON ARROW BIND COMMA
@@ -127,20 +125,20 @@ expr:
   LET binding IN expr         { make_bind $1 $2 $4 }
 | LET REC bindings IN expr    { make_bind_rec $1 $3 $5 }
 | IF expr THEN expr ELSE expr { make_cond $1 $2 $4 $6 }
-| expr LOR expr               { make_bin_op $1 (Op.bin_or $2) $3 }
-| expr LAND expr              { make_bin_op $1 (Op.bin_and $2) $3 }
-| expr EQ expr                { make_bin_op $1 (Op.bin_eq $2) $3 }
-| expr NEQ expr               { make_bin_op $1 (Op.bin_neq $2) $3 }
-| expr LTE expr               { make_bin_op $1 (Op.bin_lte $2) $3 }
-| expr LT expr                { make_bin_op $1 (Op.bin_lt $2) $3 }
-| expr GT expr                { make_bin_op $1 (Op.bin_gt $2) $3 }
-| expr GTE expr               { make_bin_op $1 (Op.bin_gte $2) $3 }
-| expr ADD expr               { make_bin_op $1 (Op.bin_add $2) $3 }
-| expr SUB expr               { make_bin_op $1 (Op.bin_sub $2) $3 }
-| expr MUL expr               { make_bin_op $1 (Op.bin_mul $2) $3 }
-| expr DIV expr               { make_bin_op $1 (Op.bin_div $2) $3 }
-| expr MOD expr               { make_bin_op $1 (Op.bin_mod $2) $3 }
-| LNOT expr                   { make_un_op (Op.un_not $1) $2 }
+| expr LOR expr               { make_bin_op $1 Common.Op.bin_or $3 }
+| expr LAND expr              { make_bin_op $1 Common.Op.bin_and $3 }
+| expr EQ expr                { make_bin_op $1 Common.Op.bin_eq $3 }
+| expr NEQ expr               { make_bin_op $1 Common.Op.bin_neq $3 }
+| expr LTE expr               { make_bin_op $1 Common.Op.bin_lte $3 }
+| expr LT expr                { make_bin_op $1 Common.Op.bin_lt $3 }
+| expr GT expr                { make_bin_op $1 Common.Op.bin_gt $3 }
+| expr GTE expr               { make_bin_op $1 Common.Op.bin_gte $3 }
+| expr ADD expr               { make_bin_op $1 Common.Op.bin_add $3 }
+| expr SUB expr               { make_bin_op $1 Common.Op.bin_sub $3 }
+| expr MUL expr               { make_bin_op $1 Common.Op.bin_mul $3 }
+| expr DIV expr               { make_bin_op $1 Common.Op.bin_div $3 }
+| expr MOD expr               { make_bin_op $1 Common.Op.bin_mod $3 }
+| LNOT expr                   { make_un_op $1 Common.Op.un_not $2 }
 | var                         { $1 }
 ;
 

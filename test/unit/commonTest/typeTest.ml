@@ -1,25 +1,16 @@
 open Format
 open OUnit2
-open Syntax
+open Common
 
 let assert_type_equal ~ctxt expected actual =
-  let cmp _ _ = false in
-  let msg = "Types are not equal" in
-  let printer ty =
-    ty
-      |> Type.pp
-      |> fprintf str_formatter "%t"
-      |> flush_str_formatter
-  in
   let rec assert_type_equal expected actual = match expected, actual with
-    | Type.Int loc, Type.Int loc'
-    | Type.Bool loc, Type.Bool loc' -> LocTest.assert_loc_equal ~ctxt loc loc'
-    | Type.Fun (loc, a, b), Type.Fun (loc', a', b') ->
-      LocTest.assert_loc_equal ~ctxt loc loc';
+    | Type.Int, Type.Int
+    | Type.Bool, Type.Bool -> ()
+    | Type.Fun (a, b), Type.Fun (a', b') ->
       assert_type_equal a a';
       assert_type_equal b b'
     | expected, actual ->
-      assert_equal ~ctxt ~cmp ~printer ~msg expected actual
+      assert_equal ~ctxt ~cmp:Util.never ~printer:(Util.printer Type.pp) ~msg:"Types are not equal" expected actual
   in
   assert_type_equal expected actual
 
@@ -31,22 +22,21 @@ let suite =
         |> assert_failure
     in
 
-    let test_int ctxt =
-      match Type.int LocTest.dummy with
-        | Type.Int loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+    let test_int _ =
+      match Type.int with
+        | Type.Int -> ()
         | t -> fail_type "Int" t
     in
-    let test_bool ctxt =
-      match Type.bool LocTest.dummy with
-        | Type.Bool loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+    let test_bool _ =
+      match Type.bool with
+        | Type.Bool -> ()
         | t -> fail_type "Bool" t
     in
     let test_fun ctxt =
-      let a = Type.int LocTest.dummy in
-      let b = Type.bool LocTest.dummy in
-      match Type.func LocTest.dummy a b with
-        | Type.Fun (loc, a', b') ->
-          LocTest.assert_loc_equal ~ctxt LocTest.dummy loc;
+      let a = Type.int in
+      let b = Type.bool in
+      match Type.func a b with
+        | Type.Fun (a', b') ->
           assert_type_equal ~ctxt a a';
           assert_type_equal ~ctxt b b'
         | t -> fail_type "Int -> Bool" t
@@ -63,14 +53,14 @@ let suite =
         |> flush_str_formatter
         |> assert_equal ~ctxt expected
     in
-    let test_int ctxt = assert_pp ~ctxt (Type.int LocTest.dummy) "Int" in
-    let test_bool ctxt = assert_pp ~ctxt (Type.bool LocTest.dummy) "Bool" in
+    let test_int ctxt = assert_pp ~ctxt Type.int "Int" in
+    let test_bool ctxt = assert_pp ~ctxt Type.bool "Bool" in
     let test_fun =
-      let f = Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.bool LocTest.dummy) in
+      let f = Type.func Type.int Type.bool in
 
       let test_simple ctxt = assert_pp ~ctxt f "Int -> Bool" in
       let test_higher_order ctxt =
-        let f = Type.func LocTest.dummy f f in
+        let f = Type.func f f in
         assert_pp ~ctxt f "(Int -> Bool) -> Int -> Bool"
       in
       "Functions" >::: [
@@ -85,10 +75,10 @@ let suite =
     ]
   in
   let test_equal =
-    let i = Type.int LocTest.dummy in
-    let b = Type.bool LocTest.dummy in
-    let f = Type.func LocTest.dummy i b in
-    let hof = Type.func LocTest.dummy f f in
+    let i = Type.int in
+    let b = Type.bool in
+    let f = Type.func i b in
+    let hof = Type.func f f in
 
     let assert_ty_equal ~ctxt expected actual =
       assert_equal ~ctxt ~cmp:Type.equal expected actual
@@ -134,36 +124,8 @@ let suite =
       test_fun;
     ]
   in
-  let test_loc =
-    let loc = Loc.mock "-" (1, 2, 3) (4, 5, 6) in
-
-    let assert_loc ~ctxt loc ty =
-      ty
-        |> Type.loc
-        |> LocTest.assert_loc_equal ~ctxt loc
-    in
-
-    let test_bool ctxt =
-      Type.bool loc
-        |> assert_loc ~ctxt loc
-    in
-    let test_int ctxt =
-      Type.int loc
-        |> assert_loc ~ctxt loc
-    in
-    let test_fun ctxt =
-      Type.func loc (Type.int LocTest.dummy) (Type.bool LocTest.dummy)
-        |> assert_loc ~ctxt loc
-    in
-    "Location Information" >::: [
-      "Boolean"  >:: test_bool;
-      "Integer"  >:: test_int;
-      "Function" >:: test_fun;
-    ]
-  in
   "Types" >::: [
     test_constructor;
     test_pp;
     test_equal;
-    test_loc;
   ]

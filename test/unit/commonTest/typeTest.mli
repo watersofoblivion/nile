@@ -1,5 +1,5 @@
 open OUnit2
-open Codegen
+open Common
 
 (** {1 Types} *)
 

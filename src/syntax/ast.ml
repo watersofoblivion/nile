@@ -1,4 +1,5 @@
 open Format
+open Common
 
 type expr =
   | Bool of Loc.t * bool

@@ -1,4 +1,5 @@
 open Format
+open Common
 
 (** {1 Abstract Syntax} *)
 

@@ -1,4 +1,5 @@
 open OUnit2
+open Common
 open Syntax
 
 let suite =
@@ -74,8 +75,7 @@ let suite =
         let loc_r = Loc.mock "-" (1, 1, 1) (1, 5, 5) in
         let r = Ast.bool loc_r true in
 
-        let loc_op = Loc.mock "-" (1, 0, 0) (1, 1, 1) in
-        let op = Op.un_not loc_op in
+        let op = Op.un_not in
 
         let loc = Loc.mock "-" (1, 0, 0) (1, 5, 5) in
         Ast.un_op loc op r
@@ -101,86 +101,69 @@ let suite =
       let loc_false = Loc.mock "-" (1, 8, 8) (1, 13, 13) in
       let fls = Ast.bool loc_false false in
 
-      let loc_op_one_ch = Loc.mock "-" (1, 2, 2) (1, 3, 3) in
-      let loc_op_two_ch = Loc.mock "-" (1, 2, 2) (1, 4, 4) in
-      let loc_op_log = Loc.mock "-" (1, 5, 5) (1, 7, 7) in
-
       let test_add ctxt =
-        let op = Op.bin_add loc_op_one_ch in
         let loc = Loc.span loc_one loc_two in
-        Ast.bin_op loc one op two
+        Ast.bin_op loc one Op.bin_add two
           |> assert_parses_expr ~ctxt ["1 + 2"]
       in
       let test_sub ctxt =
-        let op = Op.bin_sub loc_op_one_ch in
         let loc = Loc.span loc_one loc_two in
-        Ast.bin_op loc one op two
+        Ast.bin_op loc one Op.bin_sub two
           |> assert_parses_expr ~ctxt ["1 - 2"]
       in
       let test_mul ctxt =
-        let op = Op.bin_mul loc_op_one_ch in
         let loc = Loc.span loc_one loc_two in
-        Ast.bin_op loc one op two
+        Ast.bin_op loc one Op.bin_mul two
           |> assert_parses_expr ~ctxt ["1 * 2"]
       in
       let test_div ctxt =
-        let op = Op.bin_div loc_op_one_ch in
         let loc = Loc.span loc_one loc_two in
-        Ast.bin_op loc one op two
+        Ast.bin_op loc one Op.bin_div two
           |> assert_parses_expr ~ctxt ["1 / 2"]
       in
       let test_mod ctxt =
-        let op = Op.bin_mod loc_op_one_ch in
         let loc = Loc.span loc_one loc_two in
-        Ast.bin_op loc one op two
+        Ast.bin_op loc one Op.bin_mod two
           |> assert_parses_expr ~ctxt ["1 % 2"]
       in
       let test_and ctxt =
-        let op = Op.bin_and loc_op_log in
         let loc = Loc.span loc_true loc_false in
-        Ast.bin_op loc tru op fls
+        Ast.bin_op loc tru Op.bin_and fls
           |> assert_parses_expr ~ctxt ["true && false"]
       in
       let test_or ctxt =
-        let op = Op.bin_or loc_op_log in
         let loc = Loc.span loc_true loc_false in
-        Ast.bin_op loc tru op fls
+        Ast.bin_op loc tru Op.bin_or fls
           |> assert_parses_expr ~ctxt ["true || false"]
       in
       let test_eq ctxt =
-        let op = Op.bin_eq loc_op_two_ch in
         let loc = Loc.span loc_one loc_three in
-        Ast.bin_op loc one op three
+        Ast.bin_op loc one Op.bin_eq three
           |> assert_parses_expr ~ctxt ["1 == 3"]
       in
       let test_neq ctxt =
-        let op = Op.bin_neq loc_op_two_ch in
         let loc = Loc.span loc_one loc_three in
-        Ast.bin_op loc one op three
+        Ast.bin_op loc one Op.bin_neq three
           |> assert_parses_expr ~ctxt ["1 != 3"]
       in
       let test_lte ctxt =
-        let op = Op.bin_lte loc_op_two_ch in
         let loc = Loc.span loc_one loc_three in
-        Ast.bin_op loc one op three
+        Ast.bin_op loc one Op.bin_lte three
           |> assert_parses_expr ~ctxt ["1 <= 3"]
       in
       let test_lt ctxt =
-        let op = Op.bin_lt loc_op_one_ch in
         let loc = Loc.span loc_one loc_two in
-        Ast.bin_op loc one op two
+        Ast.bin_op loc one Op.bin_lt two
           |> assert_parses_expr ~ctxt ["1 < 2"]
       in
       let test_gt ctxt =
-        let op = Op.bin_gt loc_op_one_ch in
         let loc = Loc.span loc_one loc_two in
-        Ast.bin_op loc one op two
+        Ast.bin_op loc one Op.bin_gt two
           |> assert_parses_expr ~ctxt ["1 > 2"]
       in
       let test_gte ctxt =
-        let op = Op.bin_gte loc_op_two_ch in
         let loc = Loc.span loc_one loc_three in
-        Ast.bin_op loc one op three
+        Ast.bin_op loc one Op.bin_gte three
           |> assert_parses_expr ~ctxt ["1 >= 3"]
       in
       "Binary" >::: [

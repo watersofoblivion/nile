@@ -1,5 +1,5 @@
 open OUnit2
-open Syntax
+open Common
 
 (** {1 Operators} *)
 

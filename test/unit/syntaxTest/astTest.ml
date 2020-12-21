@@ -1,13 +1,7 @@
 open Format
 open OUnit2
+open Common
 open Syntax
-
-let never _ _ = false
-let printer pp x =
-  x
-    |> pp
-    |> fprintf str_formatter "%t"
-    |> flush_str_formatter
 
 let rec assert_expr_equal ~ctxt expected actual = match expected, actual with
   | Ast.Bool (loc, b), Ast.Bool (loc', b') ->
@@ -18,11 +12,11 @@ let rec assert_expr_equal ~ctxt expected actual = match expected, actual with
     assert_equal ~ctxt ~printer:string_of_int i i' ~msg:"Integer literals are not equal"
   | Ast.UnOp (loc, op, r), Ast.UnOp (loc', op', r') ->
     LocTest.assert_loc_equal ~ctxt loc loc';
-    OpTest.assert_un_equal ~ctxt op op';
+    CommonTest.OpTest.assert_un_equal ~ctxt op op';
     assert_expr_equal ~ctxt r r'
   | Ast.BinOp (loc, l, op, r), Ast.BinOp (loc', l', op', r') ->
     LocTest.assert_loc_equal ~ctxt loc loc';
-    OpTest.assert_bin_equal ~ctxt op op';
+    CommonTest.OpTest.assert_bin_equal ~ctxt op op';
     assert_expr_equal ~ctxt l l';
     assert_expr_equal ~ctxt r r'
   | Ast.Let (loc, b, rest), Ast.Let (loc', b', rest') ->
@@ -36,7 +30,7 @@ let rec assert_expr_equal ~ctxt expected actual = match expected, actual with
   | Ast.Abs (loc, ps, ty, expr), Ast.Abs (loc', ps', ty', expr') ->
     LocTest.assert_loc_equal ~ctxt loc loc';
     assert_params_equal ~ctxt ps ps';
-    TypeTest.assert_type_equal ~ctxt ty ty';
+    CommonTest.TypeTest.assert_type_equal ~ctxt ty ty';
     assert_expr_equal ~ctxt expr expr'
   | Ast.App (loc, f, xs), Ast.App (loc', f', xs') ->
     LocTest.assert_loc_equal ~ctxt loc loc';
@@ -53,7 +47,7 @@ let rec assert_expr_equal ~ctxt expected actual = match expected, actual with
     assert_expr_equal ~ctxt c c';
     assert_expr_equal ~ctxt t t';
     assert_expr_equal ~ctxt f f'
-  | expected, actual -> assert_equal ~ctxt ~cmp:never ~printer:(printer Ast.pp_expr) ~msg:"Expressions are not equal" expected actual
+  | expected, actual -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Ast.pp_expr) ~msg:"Expressions are not equal" expected actual
 and assert_bindings_equal ~ctxt bs bs' =
   let iter (b, b') = assert_binding_equal ~ctxt b b' in
   bs'
@@ -62,7 +56,7 @@ and assert_bindings_equal ~ctxt bs bs' =
 and assert_binding_equal ~ctxt (loc, id, ty, expr) (loc', id', ty', expr') =
   LocTest.assert_loc_equal ~ctxt loc loc';
   assert_equal ~ctxt ~printer:Fun.id id id' ~msg:"Bound identifier are not equal";
-  TypeTest.assert_type_equal ~ctxt ty ty';
+  CommonTest.TypeTest.assert_type_equal ~ctxt ty ty';
   assert_expr_equal ~ctxt expr expr'
 and assert_params_equal ~ctxt ps ps' =
   let iter (p, p') = assert_param_equal ~ctxt p p' in
@@ -72,7 +66,7 @@ and assert_params_equal ~ctxt ps ps' =
 and assert_param_equal ~ctxt (loc, id, ty) (loc', id', ty') =
   LocTest.assert_loc_equal ~ctxt loc loc';
   assert_equal ~ctxt ~printer:Fun.id id id' ~msg:"Parameter names are not equal";
-  TypeTest.assert_type_equal ~ctxt ty ty'
+  CommonTest.TypeTest.assert_type_equal ~ctxt ty ty'
 
 let assert_top_equal ~ctxt expected actual = match expected, actual with
   | Ast.TopLet (loc, b), Ast.TopLet (loc', b') ->
@@ -81,7 +75,7 @@ let assert_top_equal ~ctxt expected actual = match expected, actual with
   | Ast.TopRec (loc, bs), Ast.TopRec (loc', bs') ->
     LocTest.assert_loc_equal ~ctxt loc loc';
     assert_bindings_equal ~ctxt bs bs'
-  | expected, actual -> assert_equal ~ctxt ~cmp:never ~printer:(printer Ast.pp_top) ~msg:"Top-level bindings are not equal" expected actual
+  | expected, actual -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Ast.pp_top) ~msg:"Top-level bindings are not equal" expected actual
 
 let assert_file_equal ~ctxt expected actual =
   let iter (expected, actual) = assert_top_equal ~ctxt expected actual in
@@ -105,9 +99,9 @@ let assert_pp pp ~ctxt lines ast =
 let suite =
   let test_expr =
     let test_constructor =
-      let cmp = never in
+      let cmp = CommonTest.Util.never in
       let msg = "Abstract syntax trees are not equal" in
-      let printer = printer Ast.pp_expr in
+      let printer = CommonTest.Util.printer Ast.pp_expr in
 
       let test_primitive =
         let test_bool ctxt =
@@ -165,15 +159,7 @@ let suite =
           | _ -> assert_failure "Invalid unary operator"
         in
         (* let assert_invalid_op ~ctxt expected actual =
-          let cmp _ _ = false in
-          let msg = "Unexpected unary operator" in
-          let printer op =
-            op
-              |> Op.pp_un
-              |> fprintf str_formatter "%t"
-              |> flush_str_formatter
-          in
-          assert_equal ~ctxt ~cmp ~printer ~msg expected actual
+          assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Op.pp_un) ~msg:"Unexpected unary operator" expected actual
         in *)
 
         let r = Ast.int LocTest.dummy 1 in
@@ -182,11 +168,11 @@ let suite =
           let assert_op ~ctxt op =
             let _ = ctxt in
             match op with
-              | Op.Not loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Not -> ()
               (* | actual -> assert_invalid_op ~ctxt Op.un_not actual *)
           in
 
-          Ast.un_op LocTest.dummy (Op.un_not LocTest.dummy) r
+          Ast.un_op LocTest.dummy Op.un_not r
             |> assert_un_op ~ctxt ~assert_op LocTest.dummy r
         in
         "Unary Operators" >::: [
@@ -204,24 +190,16 @@ let suite =
             | _ -> assert_failure "Invalid binary operator"
           in
           let assert_invalid_op ~ctxt expected actual =
-            let cmp _ _ = false in
-            let msg = "Unexpected binary operator" in
-            let printer op =
-              op
-                |> Op.pp_bin
-                |> fprintf str_formatter "%t"
-                |> flush_str_formatter
-            in
-            assert_equal ~ctxt ~cmp ~printer ~msg expected actual
+            assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Op.pp_bin) ~msg:"Unexpected binary operator" expected actual
           in
 
           let l = Ast.int LocTest.dummy 1 in
           let r = Ast.int LocTest.dummy 2 in
 
           let test_add ctxt =
-            let op = Op.bin_add LocTest.dummy in
+            let op = Op.bin_add in
             let assert_op ~ctxt = function
-              | Op.Add loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Add -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -229,9 +207,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_sub ctxt =
-            let op = Op.bin_sub LocTest.dummy in
+            let op = Op.bin_sub in
             let assert_op ~ctxt = function
-              | Op.Sub loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Sub -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -239,9 +217,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_mul ctxt =
-            let op = Op.bin_mul LocTest.dummy in
+            let op = Op.bin_mul in
             let assert_op ~ctxt = function
-              | Op.Mul loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Mul -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -249,9 +227,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_div ctxt =
-            let op = Op.bin_div LocTest.dummy in
+            let op = Op.bin_div in
             let assert_op ~ctxt = function
-              | Op.Div loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Div -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -259,9 +237,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_mod ctxt =
-            let op = Op.bin_mod LocTest.dummy in
+            let op = Op.bin_mod in
             let assert_op ~ctxt = function
-              | Op.Mod loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Mod -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -269,9 +247,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_and ctxt =
-            let op = Op.bin_and LocTest.dummy in
+            let op = Op.bin_and in
             let assert_op ~ctxt = function
-              | Op.And loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.And -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -279,9 +257,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_or ctxt =
-            let op = Op.bin_or LocTest.dummy in
+            let op = Op.bin_or in
             let assert_op ~ctxt = function
-              | Op.Or loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Or -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -289,9 +267,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_eq ctxt =
-            let op = Op.bin_eq LocTest.dummy in
+            let op = Op.bin_eq in
             let assert_op ~ctxt = function
-              | Op.Eq loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Eq -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -299,9 +277,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_neq ctxt =
-            let op = Op.bin_neq LocTest.dummy in
+            let op = Op.bin_neq in
             let assert_op ~ctxt = function
-              | Op.Neq loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Neq -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -309,9 +287,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_lte ctxt =
-            let op = Op.bin_lte LocTest.dummy in
+            let op = Op.bin_lte in
             let assert_op ~ctxt = function
-              | Op.Lte loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Lte -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -319,9 +297,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_lt ctxt =
-            let op = Op.bin_lt LocTest.dummy in
+            let op = Op.bin_lt in
             let assert_op ~ctxt = function
-              | Op.Lt loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Lt -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -329,9 +307,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_gt ctxt =
-            let op = Op.bin_gt LocTest.dummy in
+            let op = Op.bin_gt in
             let assert_op ~ctxt = function
-              | Op.Gt loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Gt -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -339,9 +317,9 @@ let suite =
               |> assert_bin_op ~ctxt ~assert_op LocTest.dummy l r
           in
           let test_gte ctxt =
-            let op = Op.bin_gte LocTest.dummy in
+            let op = Op.bin_gte in
             let assert_op ~ctxt = function
-              | Op.Gte loc -> LocTest.assert_loc_equal ~ctxt LocTest.dummy loc
+              | Op.Gte -> ()
               | actual -> assert_invalid_op ~ctxt op actual
             in
 
@@ -407,20 +385,20 @@ let suite =
       let var_temp_one = Ast.var LocTest.dummy id_temp_one in
       let var_temp_two = Ast.var LocTest.dummy id_temp_two in
 
-      let expr_temp_one = Ast.bin_op LocTest.dummy var_w (Op.bin_add LocTest.dummy) var_x in
-      let expr_temp_two = Ast.bin_op LocTest.dummy var_y (Op.bin_add LocTest.dummy) var_z in
-      let expr_result = Ast.bin_op LocTest.dummy var_temp_one (Op.bin_add LocTest.dummy) var_temp_two in
+      let expr_temp_one = Ast.bin_op LocTest.dummy var_w Op.bin_add var_x in
+      let expr_temp_two = Ast.bin_op LocTest.dummy var_y Op.bin_add var_z in
+      let expr_result = Ast.bin_op LocTest.dummy var_temp_one Op.bin_add var_temp_two in
 
-      let b_temp_one = Ast.binding LocTest.dummy id_temp_one (Type.int LocTest.dummy) expr_temp_one in
-      let b_temp_two = Ast.binding LocTest.dummy id_temp_two (Type.int LocTest.dummy) expr_temp_two in
+      let b_temp_one = Ast.binding LocTest.dummy id_temp_one Type.int expr_temp_one in
+      let b_temp_two = Ast.binding LocTest.dummy id_temp_two Type.int expr_temp_two in
 
       let temp_two = Ast.bind LocTest.dummy b_temp_two expr_result in
       let temp_one = Ast.bind LocTest.dummy b_temp_one temp_two in
 
-      let param_w = Ast.param LocTest.dummy id_w (Type.int LocTest.dummy) in
-      let param_x = Ast.param LocTest.dummy id_x (Type.int LocTest.dummy) in
-      let param_y = Ast.param LocTest.dummy id_y (Type.int LocTest.dummy) in
-      let param_z = Ast.param LocTest.dummy id_z (Type.int LocTest.dummy) in
+      let param_w = Ast.param LocTest.dummy id_w Type.int in
+      let param_x = Ast.param LocTest.dummy id_x Type.int in
+      let param_y = Ast.param LocTest.dummy id_y Type.int in
+      let param_z = Ast.param LocTest.dummy id_z Type.int in
 
       let test_primitive =
         let test_bool ctxt =
@@ -451,18 +429,18 @@ let suite =
         let test_un =
           let test_equal_precedence ctxt =
             Ast.bool LocTest.dummy true
-              |> Ast.un_op LocTest.dummy (Op.un_not LocTest.dummy)
-              |> Ast.un_op LocTest.dummy (Op.un_not LocTest.dummy)
+              |> Ast.un_op LocTest.dummy Op.un_not
+              |> Ast.un_op LocTest.dummy Op.un_not
               |> assert_pp ~ctxt ["!!true"]
           in
           let test_higher_precedence ctxt =
             Ast.bool LocTest.dummy true
-              |> Ast.un_op LocTest.dummy (Op.un_not LocTest.dummy)
+              |> Ast.un_op LocTest.dummy Op.un_not
               |> assert_pp ~ctxt ["!true"]
           in
           let test_lower_precedence ctxt =
-            Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) (Op.bin_eq LocTest.dummy) (Ast.int LocTest.dummy 2)
-              |> Ast.un_op LocTest.dummy (Op.un_not LocTest.dummy)
+            Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) Op.bin_eq (Ast.int LocTest.dummy 2)
+              |> Ast.un_op LocTest.dummy Op.un_not
               |> assert_pp ~ctxt ["!(1 == 2)"]
           in
           "Unary" >::: [
@@ -473,47 +451,47 @@ let suite =
         in
         let test_bin =
           let test_constant ctxt =
-            Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) (Op.bin_add LocTest.dummy) (Ast.int LocTest.dummy 2)
+            Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) Op.bin_add (Ast.int LocTest.dummy 2)
               |> assert_pp ~ctxt ["1 + 2"]
           in
           let test_equal_precedence ctxt =
-            let lhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) (Op.bin_add LocTest.dummy) (Ast.int LocTest.dummy 2) in
-            let rhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 3) (Op.bin_add LocTest.dummy) (Ast.int LocTest.dummy 4) in
-            Ast.bin_op LocTest.dummy lhs (Op.bin_sub LocTest.dummy) rhs
+            let lhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) Op.bin_add (Ast.int LocTest.dummy 2) in
+            let rhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 3) Op.bin_add (Ast.int LocTest.dummy 4) in
+            Ast.bin_op LocTest.dummy lhs Op.bin_sub rhs
               |> assert_pp ~ctxt ["1 + 2 - 3 + 4"];
             rhs
-              |> Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 2) (Op.bin_sub LocTest.dummy)
-              |> Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) (Op.bin_add LocTest.dummy)
+              |> Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 2) Op.bin_sub
+              |> Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) Op.bin_add
               |> assert_pp ~ctxt ["1 + 2 - 3 + 4"]
           in
           let test_higher_precedence ctxt =
-            let lhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) (Op.bin_mul LocTest.dummy) (Ast.int LocTest.dummy 2) in
-            let rhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 3) (Op.bin_mul LocTest.dummy) (Ast.int LocTest.dummy 4) in
+            let lhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) Op.bin_mul (Ast.int LocTest.dummy 2) in
+            let rhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 3) Op.bin_mul (Ast.int LocTest.dummy 4) in
             let const = Ast.int LocTest.dummy 5 in
 
-            Ast.bin_op LocTest.dummy lhs (Op.bin_add LocTest.dummy) const
+            Ast.bin_op LocTest.dummy lhs Op.bin_add const
               |> assert_pp ~ctxt ["1 * 2 + 5"];
-            Ast.bin_op LocTest.dummy const (Op.bin_add LocTest.dummy) rhs
+            Ast.bin_op LocTest.dummy const Op.bin_add rhs
               |> assert_pp ~ctxt ["5 + 3 * 4"];
-            Ast.bin_op LocTest.dummy lhs (Op.bin_add LocTest.dummy) rhs
+            Ast.bin_op LocTest.dummy lhs Op.bin_add rhs
               |> assert_pp ~ctxt ["1 * 2 + 3 * 4"]
           in
           let test_lower_precedence ctxt =
-            let lhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) (Op.bin_eq LocTest.dummy) (Ast.int LocTest.dummy 2) in
-            let rhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 3) (Op.bin_eq LocTest.dummy) (Ast.int LocTest.dummy 4) in
+            let lhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 1) Op.bin_eq (Ast.int LocTest.dummy 2) in
+            let rhs = Ast.bin_op LocTest.dummy (Ast.int LocTest.dummy 3) Op.bin_eq (Ast.int LocTest.dummy 4) in
             let const = Ast.int LocTest.dummy 5 in
 
-            Ast.bin_op LocTest.dummy lhs (Op.bin_add LocTest.dummy) const
+            Ast.bin_op LocTest.dummy lhs Op.bin_add const
               |> assert_pp ~ctxt ["(1 == 2) + 5"];
-            Ast.bin_op LocTest.dummy const (Op.bin_add LocTest.dummy) rhs
+            Ast.bin_op LocTest.dummy const Op.bin_add rhs
               |> assert_pp ~ctxt ["5 + (3 == 4)"];
-            Ast.bin_op LocTest.dummy lhs (Op.bin_add LocTest.dummy) rhs
+            Ast.bin_op LocTest.dummy lhs Op.bin_add rhs
               |> assert_pp ~ctxt ["(1 == 2) + (3 == 4)"]
           in
           let test_long ctxt =
             let name = String.make 50 'a' in
             let var = Ast.var LocTest.dummy name in
-            Ast.bin_op LocTest.dummy var (Op.bin_add LocTest.dummy) var
+            Ast.bin_op LocTest.dummy var Op.bin_add var
               |> assert_pp ~ctxt [
                    name ^ " +";
                    "  " ^ name;
@@ -534,7 +512,7 @@ let suite =
       in
       let test_bind =
         let test_simple_var ctxt =
-          let b = Ast.binding LocTest.dummy id_x (Type.int LocTest.dummy) (Ast.int LocTest.dummy 1) in
+          let b = Ast.binding LocTest.dummy id_x Type.int (Ast.int LocTest.dummy 1) in
           Ast.bind LocTest.dummy b var_x
             |> assert_pp ~ctxt [
                  "let x: Int = 1 in";
@@ -544,7 +522,7 @@ let suite =
         let test_compound_var ctxt =
           let id_final = "finalVariable" in
           let v_final = Ast.var LocTest.dummy id_final in
-          let b_final = Ast.binding LocTest.dummy id_final (Type.int LocTest.dummy) temp_one in
+          let b_final = Ast.binding LocTest.dummy id_final Type.int temp_one in
 
           Ast.bind LocTest.dummy b_final v_final
             |> assert_pp ~ctxt [
@@ -557,8 +535,8 @@ let suite =
                ]
         in
         let test_simple_function ctxt =
-          let fn = Ast.abs LocTest.dummy [param_w; param_x] (Type.int LocTest.dummy) expr_temp_one in
-          let ty = Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.int LocTest.dummy)) in
+          let fn = Ast.abs LocTest.dummy [param_w; param_x] Type.int expr_temp_one in
+          let ty = Type.func Type.int (Type.func Type.int Type.int) in
           let b = Ast.binding LocTest.dummy id_f ty fn in
 
           Ast.bind LocTest.dummy b var_f
@@ -569,8 +547,8 @@ let suite =
         in
         let test_compound_function ctxt =
           let body = Ast.bind LocTest.dummy b_temp_one temp_two in
-          let fn = Ast.abs LocTest.dummy [param_w; param_x; param_y; param_z] (Type.int LocTest.dummy) body in
-          let ty = Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.int LocTest.dummy)))) in
+          let fn = Ast.abs LocTest.dummy [param_w; param_x; param_y; param_z] Type.int body in
+          let ty = Type.func Type.int (Type.func Type.int (Type.func Type.int (Type.func Type.int Type.int))) in
           let b = Ast.binding LocTest.dummy id_f ty fn in
 
           Ast.bind LocTest.dummy b var_f
@@ -584,8 +562,8 @@ let suite =
                ]
         in
         let test_complex_result ctxt =
-          let fn = Ast.abs LocTest.dummy [param_w] (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.int LocTest.dummy)) expr_temp_one in
-          let ty = Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.int LocTest.dummy)) in
+          let fn = Ast.abs LocTest.dummy [param_w] (Type.func Type.int Type.int) expr_temp_one in
+          let ty = Type.func Type.int (Type.func Type.int Type.int) in
           let b = Ast.binding LocTest.dummy id_f ty fn in
 
           Ast.bind LocTest.dummy b var_f
@@ -604,9 +582,9 @@ let suite =
       in
       let test_bind_rec =
         let test_simple_var ctxt =
-          let b_x = Ast.binding LocTest.dummy id_x (Type.int LocTest.dummy) var_y in
-          let b_y = Ast.binding LocTest.dummy id_y (Type.int LocTest.dummy) var_x in
-          let res = Ast.bin_op LocTest.dummy var_x (Op.bin_add LocTest.dummy) var_y in
+          let b_x = Ast.binding LocTest.dummy id_x Type.int var_y in
+          let b_y = Ast.binding LocTest.dummy id_y Type.int var_x in
+          let res = Ast.bin_op LocTest.dummy var_x Op.bin_add var_y in
 
           Ast.bind_rec LocTest.dummy [b_x] res
             |> assert_pp ~ctxt [
@@ -622,7 +600,7 @@ let suite =
         let test_compound_var ctxt =
           let id_final = "finalVariable" in
           let v_final = Ast.var LocTest.dummy id_final in
-          let b_final = Ast.binding LocTest.dummy id_final (Type.int LocTest.dummy) temp_one in
+          let b_final = Ast.binding LocTest.dummy id_final Type.int temp_one in
 
           Ast.bind_rec LocTest.dummy [b_final] v_final
             |> assert_pp ~ctxt [
@@ -648,8 +626,8 @@ let suite =
                ]
         in
         let test_simple_function ctxt =
-          let fn = Ast.abs LocTest.dummy [param_w; param_x] (Type.int LocTest.dummy) expr_temp_one in
-          let ty = Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.int LocTest.dummy)) in
+          let fn = Ast.abs LocTest.dummy [param_w; param_x] Type.int expr_temp_one in
+          let ty = Type.func Type.int (Type.func Type.int Type.int) in
           let b = Ast.binding LocTest.dummy id_f ty fn in
 
           Ast.bind_rec LocTest.dummy [b] var_f
@@ -665,8 +643,8 @@ let suite =
         in
         let test_compound_function ctxt =
           let body = Ast.bind LocTest.dummy b_temp_one temp_two in
-          let fn = Ast.abs LocTest.dummy [param_w; param_x; param_y; param_z] (Type.int LocTest.dummy) body in
-          let ty = Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.int LocTest.dummy)))) in
+          let fn = Ast.abs LocTest.dummy [param_w; param_x; param_y; param_z] Type.int body in
+          let ty = Type.func Type.int (Type.func Type.int (Type.func Type.int (Type.func Type.int Type.int))) in
           let b = Ast.binding LocTest.dummy id_f ty fn in
 
           Ast.bind_rec LocTest.dummy [b] var_f
@@ -693,8 +671,8 @@ let suite =
                ]
         in
         let test_complex_result ctxt =
-          let fn = Ast.abs LocTest.dummy [param_w] (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.int LocTest.dummy)) expr_temp_one in
-          let ty = Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.func LocTest.dummy (Type.int LocTest.dummy) (Type.int LocTest.dummy)) in
+          let fn = Ast.abs LocTest.dummy [param_w] (Type.func Type.int Type.int) expr_temp_one in
+          let ty = Type.func Type.int (Type.func Type.int Type.int) in
           let b = Ast.binding LocTest.dummy id_f ty fn in
 
           Ast.bind_rec LocTest.dummy [b] var_f
@@ -727,8 +705,8 @@ let suite =
         in
         let test_literal ctxt =
           let f =
-            let ty = Type.bool LocTest.dummy in
-            let body = Ast.bin_op LocTest.dummy var_x (Op.bin_eq LocTest.dummy) var_y in
+            let ty = Type.bool in
+            let body = Ast.bin_op LocTest.dummy var_x Op.bin_eq var_y in
             Ast.abs LocTest.dummy [param_x; param_y] ty body
           in
           let x = Ast.int LocTest.dummy 1 in
@@ -749,12 +727,12 @@ let suite =
           let x =
             let x = Ast.int LocTest.dummy 1 in
             let y = Ast.int LocTest.dummy 2 in
-            Ast.bin_op LocTest.dummy x (Op.bin_add LocTest.dummy) y
+            Ast.bin_op LocTest.dummy x Op.bin_add y
           in
           let y =
             let x = Ast.bool LocTest.dummy true in
             let y = Ast.bool LocTest.dummy false in
-            Ast.bin_op LocTest.dummy x (Op.bin_and LocTest.dummy) y
+            Ast.bin_op LocTest.dummy x Op.bin_and y
           in
           let z =
             let g = Ast.var LocTest.dummy "g" in
@@ -858,11 +836,11 @@ let suite =
           |> assert_loc ~ctxt loc
       in
       let test_un_op ctxt =
-        Ast.un_op loc (Op.un_not LocTest.dummy) (Ast.int LocTest.dummy 1)
+        Ast.un_op loc Op.un_not (Ast.int LocTest.dummy 1)
           |> assert_loc ~ctxt loc
       in
       let test_bin_op ctxt =
-        Ast.bin_op loc (Ast.int LocTest.dummy 1) (Op.bin_add LocTest.dummy) (Ast.int LocTest.dummy 2)
+        Ast.bin_op loc (Ast.int LocTest.dummy 1) Op.bin_add (Ast.int LocTest.dummy 2)
           |> assert_loc ~ctxt loc
       in
       let test_cond ctxt =
@@ -870,7 +848,7 @@ let suite =
           |> assert_loc ~ctxt loc
       in
       let test_abs ctxt =
-        Ast.abs loc [] (Type.int LocTest.dummy) (Ast.int LocTest.dummy 1)
+        Ast.abs loc [] Type.int (Ast.int LocTest.dummy 1)
           |> assert_loc ~ctxt loc
       in
       let test_app ctxt =
@@ -878,12 +856,12 @@ let suite =
           |> assert_loc ~ctxt loc
       in
       let test_bind ctxt =
-        let b = Ast.binding LocTest.dummy "id" (Type.int LocTest.dummy) (Ast.int LocTest.dummy 1) in
+        let b = Ast.binding LocTest.dummy "id" Type.int (Ast.int LocTest.dummy 1) in
         Ast.bind loc b (Ast.var LocTest.dummy "id")
           |> assert_loc ~ctxt loc
       in
       let test_bind_rec ctxt =
-        let b = Ast.binding LocTest.dummy "id" (Type.int LocTest.dummy) (Ast.int LocTest.dummy 1) in
+        let b = Ast.binding LocTest.dummy "id" Type.int (Ast.int LocTest.dummy 1) in
         Ast.bind_rec loc [b; b] (Ast.var LocTest.dummy "id")
           |> assert_loc ~ctxt loc
       in
@@ -910,12 +888,12 @@ let suite =
     let loc = Loc.mock "-" (1, 2, 3) (4, 5, 6) in
 
     let id = "id-one" in
-    let ty = Type.int LocTest.dummy in
+    let ty = Type.int in
     let x = Ast.int LocTest.dummy 1 in
     let b = Ast.binding LocTest.dummy id ty x in
 
     let id' = "id-two" in
-    let ty' = Type.bool LocTest.dummy in
+    let ty' = Type.bool in
     let x' = Ast.bool LocTest.dummy true in
     let b' = Ast.binding LocTest.dummy id' ty' x' in
 
@@ -926,7 +904,7 @@ let suite =
           | Ast.TopLet (loc', b') ->
             LocTest.assert_loc_equal ~ctxt loc loc';
             assert_binding_equal ~ctxt b b'
-          | top' -> assert_equal ~ctxt ~cmp:never ~printer:(printer Ast.pp_top) ~msg:"Top-level bindings are not equal" top top'
+          | top' -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Ast.pp_top) ~msg:"Top-level bindings are not equal" top top'
       in
       let test_top_bind_rec ctxt =
         let bs = [b; b'] in
@@ -935,7 +913,7 @@ let suite =
           | Ast.TopRec (loc', bs') ->
             LocTest.assert_loc_equal ~ctxt loc loc';
             assert_bindings_equal ~ctxt bs bs'
-          | top' -> assert_equal ~ctxt ~cmp:never ~printer:(printer Ast.pp_top) ~msg:"Top-level bindings are not equal" top top'
+          | top' -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Ast.pp_top) ~msg:"Top-level bindings are not equal" top top'
       in
       "Constructors" >::: [
         "Value Binding"           >:: test_top_bind;
@@ -988,19 +966,19 @@ let suite =
   let test_file =
     let expected =
       let b =
-        let ty = Type.int LocTest.dummy in
+        let ty = Type.int in
         Ast.int LocTest.dummy 1
           |> Ast.binding LocTest.dummy "id-one" ty
       in
       let b' =
-        let ty = Type.bool LocTest.dummy in
+        let ty = Type.bool in
         Ast.bool LocTest.dummy true
           |> Ast.binding LocTest.dummy "id-two" ty
       in
       Ast.top_bind_rec LocTest.dummy [b; b']
     in
     let expected' =
-      let ty = Type.bool LocTest.dummy in
+      let ty = Type.bool in
       Ast.bool LocTest.dummy true
         |> Ast.binding LocTest.dummy "id-two" ty
         |> Ast.top_bind LocTest.dummy
@@ -1012,7 +990,7 @@ let suite =
         | actual :: actual' :: [] ->
           assert_top_equal ~ctxt expected actual;
           assert_top_equal ~ctxt expected' actual'
-        | actual -> assert_equal ~ctxt ~cmp:never ~printer:(printer Ast.pp_file) ~msg:"Source files are not equal" file actual
+        | actual -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Ast.pp_file) ~msg:"Source files are not equal" file actual
       in
       "Constructor" >:: test_file;
     in

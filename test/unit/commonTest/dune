@@ -1,0 +1,5 @@
+(library
+  (name commonTest)
+  (libraries
+    ounit2
+    common))
