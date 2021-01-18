@@ -24,6 +24,13 @@ Pretty-Printing
 * [Format Unraveled](https://hal.archives-ouvertes.fr/hal-01503081/file/format-unraveled.pdf) - An extended explanation of OCaml's Format module, with extensive examples.  Also includes a thorough discussion of OCaml's semantic tags.
 * [Oppen's Algorithm](https://www.cs.tufts.edu/~nr/cs257/archive/derek-oppen/prettyprinting.pdf) - The original paper on the algorithm underlying OCaml's Format module.  Provides a complete description and implementation of the algorithm (in Pascal!).
 
+Pattern Matching
+---
+
+* [A Term Pattern-Match Compiler Inspired by Finite Automata Theory](https://link.springer.com/content/pdf/10.1007%2F3-540-55984-1_24.pdf)
+* [When Do Match-Compilation Heuristics Matter?](https://www.cs.purdue.edu/homes/suresh/502-Fall2008/papers/patternMatch-ramsey.pdf)
+* [Compiling Pattern Matching to Good Decision Trees](http://pauillac.inria.fr/~maranget/papers/ml05e-maranget.pdf)
+
 Intermediate Representation (Administrative Normal Form)
 ---
 
@@ -34,7 +41,15 @@ Intermediate Representation (Administrative Normal Form)
 Optimization
 ---
 
-* [Secrets of the Glasgow Haskell Compiler Inliner](https://www.microsoft.com/en-us/research/wp-content/uploads/2002/07/inline.pdf) - A deep dive on the implementation of the Glasgow Haskell Compiler's inliner.  Provides several practical techniques to developing heuristics for when to inline functions.
+### Inlining
+
+* [Secrets of the Glasgow Haskell Compiler Inliner](https://www.microsoft.com/en-us/research/wp-content/uploads/2002/07/inline.pdf) - A deep dive on the implementation of the Glasgow Haskell Compiler's inliner.  Provides several practical techniques to developing heuristics for when to inline functions.  Limited to first-order functions.
+* [Pratical and Effective Higher-Order Optimization](http://manticore.cs.uchicago.edu/papers/icfp14-reflow.pdf) - Presents an algorithm for higher-order function inlining based on a 0CFA control-flow analysis.  The algorithm described is used in the Manticore parallel ML compiler.
+
+
+### Constant Propagation
+
+* [Constant Propagation with Conditional Branches](https://www.cs.utexas.edu/users/lin/cs380c/wegman.pdf) - Describes constant propagation as a dataflow problem and presents four different algorithms: Simple Constant, Sparse Simple Constant, Conditional Constant, and Sparse Conditional Constant Propagation.
 * [A Functional Perspective on SSA Optimisation Algorithms](https://www.researchgate.net/publication/220371229_A_Functional_Perspective_on_SSA_Optimisation_Algorithms/fulltext/0ffc67ff0cf255165fc8561a/A-Functional-Perspective-on-SSA-Optimisation-Algorithms.pdf) - Presents and compares the implementation of the Condition Constant Propagation algorithm on both SSA form and in ANF form.
 
 
@@ -49,7 +64,8 @@ Code Generation
 
 ### Escape Analysis
 
-* [Orbit](https://cpsc.yale.edu/sites/default/files/files/tr632.pdf) (Kranz, 1987) - A deep dive on the closure conversion and escape analysis portion of the Orbit compiler.  Presents techniques for generating efficient closures, allocating closures on the stack instead of the heap, and for eliminating certain closures all together.
+* [Orbit](https://cpsc.yale.edu/sites/default/files/files/tr632.pdf) (Kranz, 1987) - A deep dive on the closure conversion and escape analysis portion of the Orbit compiler.  Presents techniques for generating efficient closures, allocating closures on the stack instead of the heap, and for eliminating certain closures all together.  Limited to first-order closures.
+* [Higher Order Escape Analysis: Optimizing Stack Allocation in Functional Programming Implementations](https://link.springer.com/content/pdf/10.1007/3-540-52592-0_61.pdf) - Presents an algorithm for performing escape analysis on higher-order functions.
 
 ### Auto-boxing
 

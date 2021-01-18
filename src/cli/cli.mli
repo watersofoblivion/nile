@@ -4,38 +4,6 @@ open Cmdliner
 
 module Args :
   sig
-    module OptArgs :
-      sig
-        val tailcall : bool Term.t
-        (** [tailcall] enables tail-call optimization. *)
-
-        val inline : bool Term.t
-        (** [inline] enables the inliner. *)
-
-        val ccp : bool Term.t
-        (** [ccp] enables conditional constant propagation. *)
-
-        val max_passes : int Term.t
-        (** [max_passes] sets the upper bound on the number of optimization
-            passes. *)
-
-        val term : Ir.Opt.conf Term.t
-        (** [term] builds an optimizer configuration from the command-line
-            arguments. *)
-      end
-    (** Optimizer arguments *)
-
-    module ClosArgs :
-      sig
-        val mode : Codegen.Clos.mode Term.t
-        (** [mode] sets the closure conversion mode. *)
-
-        val term : Codegen.Clos.conf Term.t
-        (** [term] builds a closure conversion configuration from the
-            command-line arguments. *)
-      end
-    (** Closure conversion arguments *)
-
     module DumpArgs :
       sig
         type conf = private {
@@ -89,14 +57,12 @@ module Args :
     module CompilerArgs :
       sig
         type conf = private {
-          opt  : Ir.Opt.conf; (** Optimizer configuration *)
-          clos : Codegen.Clos.conf; (** Closure conversion configuration *)
           dump : DumpArgs.conf; (** Dump configuration *)
         }
         (** Compiler configuration *)
 
-        val conf : Ir.Opt.conf -> Codegen.Clos.conf -> DumpArgs.conf -> conf
-        (** [conf opt clos dump] constructs a compiler configuration. *)
+        val conf : DumpArgs.conf -> conf
+        (** [conf dump] constructs a compiler configuration. *)
 
         val term : conf Term.t
         (** [term] constructs a compiler configuration from the command-line

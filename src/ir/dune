@@ -1,6 +1,0 @@
-(library
-  (name ir)
-  (instrumentation (backend bisect_ppx))
-  (libraries
-    common
-    syntax))

@@ -5,55 +5,6 @@ open Cmdliner
 
 module Args =
   struct
-    module OptArgs =
-      struct
-        let docs = "OPTIONS: OPTIMIZER"
-
-        let tailcall =
-          let doc = "Enable tail-call optimization" in
-          Arg.(value & flag & info ["opt-tailcall"] ~doc ~docs)
-
-        let inline =
-          let doc = "Enable inliner" in
-          Arg.(value & flag & info ["opt-inline"] ~doc ~docs)
-
-        let ccp =
-          let doc = "Enable conditional constant propagation" in
-          Arg.(value & flag & info ["opt-ccp"] ~doc ~docs)
-
-        let max_passes =
-          let default = 10 in
-          let doc = "Maximum number of optimization passes" in
-          let docv = "MAXIMUM" in
-          Arg.(value & opt int default & info ["opt-max-passes"] ~doc ~docv ~docs)
-
-        let term = Term.(const Ir.Opt.conf $ tailcall $ inline $ ccp $ max_passes)
-      end
-
-    (* Closure Conversion *)
-
-    module ClosArgs =
-      struct
-        let docs = "OPTIONS: CLOSURE CONVERSION MODE"
-
-        let mode =
-          let default =
-            Codegen.Clos.modes
-              |> List.hd
-              |> snd
-          in
-          let doc =
-            Codegen.Clos.modes
-              |> List.map fst
-              |> String.concat ", "
-              |> sprintf "Select the closure conversion mode.  Valid values are: %s"
-          in
-          let docv = "MODE" in
-          Arg.(value & opt (enum Codegen.Clos.modes) default & info ["clos-mode"] ~doc ~docv ~docs)
-
-        let term = Term.(const Codegen.Clos.conf $ mode)
-      end
-
     (* Dumping *)
 
     module DumpArgs =
@@ -129,17 +80,13 @@ module Args =
     module CompilerArgs =
       struct
         type conf = {
-          opt  : Ir.Opt.conf;
-          clos : Codegen.Clos.conf;
           dump : DumpArgs.conf;
         }
 
-        let conf opt clos dump =
-          { opt  = opt;
-            clos = clos;
-            dump = dump; }
+        let conf dump =
+          { dump = dump; }
 
-        let term = Term.(const conf $ OptArgs.term $ ClosArgs.term $ DumpArgs.term)
+        let term = Term.(const conf $ DumpArgs.term)
       end
   end
 
@@ -171,8 +118,6 @@ module Cmds =
             `P "Builds a native executable from a Nile source file.";
 
             `S Manpage.s_options;
-            `S Args.OptArgs.docs;
-            `S Args.ClosArgs.docs;
             `S Args.DumpArgs.docs;
           ]
           in
@@ -188,18 +133,45 @@ module Cmds =
           let docv = "TARGET-EXE" in
           Arg.(value & opt (some string) None & info ["o"; "output"] ~doc ~docv)
 
+        let dump_with_title title pp syntax fmt =
+          let len = String.length title in
+          let line = String.make (len + 2) '-' in
+          Format.fprintf fmt "@[<v>*%s*@ | %s |@ *%s*@ @ %t@ @]" line title line (pp syntax)
+
         let compile src exe config =
           let _ = exe in
 
-          let ast =
+          let unannot =
             src
               |> Syntax.Lexer.from_file
               |> Syntax.Parser.file Syntax.Lexer.lex
           in
 
           let _ =
+            if config.Args.CompilerArgs.dump.unannot_ast
+            then dump_with_title "Unannotated Abstract Syntax Tree" Syntax.Unannot.pp_file unannot err_formatter
+            else ()
+          in
+
+          let annot = Syntax.Annot.annotate_file Syntax.Annot.env unannot in
+          let _ = Syntax.Annot.type_of_file Syntax.Annot.env annot in
+          let _ =
             if config.Args.CompilerArgs.dump.annot_ast
-            then Syntax.Ast.pp_file ast err_formatter
+            then dump_with_title "Annotated Abstract Syntax Tree" Syntax.Annot.pp_file annot err_formatter
+            else ()
+          in
+
+          let (_, ir) = Ir.Anf.of_file 0 [] [] annot in
+          let _ = Ir.Anf.type_of_file Ir.Anf.env ir in
+          let _ =
+            if config.Args.CompilerArgs.dump.unopt_ir
+            then dump_with_title "Unoptimized Administrative Normal Form Intermediate Representation" Ir.Anf.pp_file ir err_formatter
+            else ()
+          in
+
+          let _ =
+            if config.Args.CompilerArgs.dump.opt_ir
+            then dump_with_title "Optimized Administrative Normal Form Intermediate Representation" Ir.Anf.pp_file ir err_formatter
             else ()
           in
 

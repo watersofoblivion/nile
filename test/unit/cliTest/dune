@@ -1,9 +1,0 @@
-(library
-  (name cliTest)
-  (libraries
-    ounit2
-    cli
-    commonTest
-    syntaxTest
-    irTest
-    codegenTest))

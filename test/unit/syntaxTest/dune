@@ -1,6 +1,0 @@
-(library
-  (name syntaxTest)
-  (libraries
-    ounit2
-    commonTest
-    syntax))

@@ -1,6 +1,8 @@
 open Format
 open Common
 
+(* Syntax *)
+
 type expr =
   | Bool of Loc.t * bool
   | Int of Loc.t * int
@@ -10,10 +12,17 @@ type expr =
   | If of Loc.t * expr * expr * expr
   | Let of Loc.t * binding * expr
   | LetRec of Loc.t * binding list * expr
-  | Abs of Loc.t * param list * Type.t * expr
-  | App of Loc.t * expr * expr list
-and binding = Loc.t * string * Type.t * expr
-and param = Loc.t * string * Type.t
+  | Abs of Loc.t * string * Type.t * Type.t option * expr
+  | App of Loc.t * expr * expr
+and binding = Loc.t * string * Type.t option * expr
+
+type top =
+  | TopLet of Loc.t * binding
+  | TopRec of Loc.t * binding list
+
+type file = top list
+
+(* Constructors *)
 
 let bool loc b = Bool (loc, b)
 let int loc i = Int (loc, i)
@@ -22,11 +31,17 @@ let un_op loc op r = UnOp (loc, op, r)
 let bin_op loc l op r = BinOp (loc, l, op, r)
 let bind loc b rest = Let (loc, b, rest)
 let bind_rec loc bs rest = LetRec (loc, bs, rest)
-let abs loc ps ty expr = Abs (loc, ps, ty, expr)
+let abs loc id ty res expr = Abs (loc, id, ty, res, expr)
 let app loc f xs = App (loc, f, xs)
 let cond loc c t f = If (loc, c, t, f)
 let binding loc id ty expr = (loc, id, ty, expr)
-let param loc id ty = (loc, id, ty)
+
+let top_bind loc b = TopLet (loc, b)
+let top_bind_rec loc bs = TopRec (loc, bs)
+
+let file tops = tops
+
+(* Operations *)
 
 let precedence = function
   | Bool _ | Int _ | Var _ -> 0
@@ -36,6 +51,24 @@ let precedence = function
   | If _ -> 13
   | Abs _ -> 14
   | Let _ | LetRec _ -> 15
+
+let loc_expr = function
+  | Bool (loc, _)
+  | Int (loc, _)
+  | UnOp (loc, _, _)
+  | BinOp (loc, _, _, _)
+  | Let (loc, _, _)
+  | LetRec (loc, _, _)
+  | Abs (loc, _, _, _, _)
+  | App (loc, _, _)
+  | Var (loc, _)
+  | If (loc, _, _, _) -> loc
+
+let loc_top = function
+  | TopLet (loc, _)
+  | TopRec (loc, _) -> loc
+
+(* Pretty Printing *)
 
 let rec pp_expr expr fmt = match expr with
   | Bool (_, b) -> fprintf fmt "%b" b
@@ -75,36 +108,9 @@ and pp_args xs fmt =
   let pp_arg fmt arg = print_precedence 0 arg fmt in
   pp_print_list ~pp_sep pp_arg fmt xs
 
-let loc_expr = function
-  | Bool (loc, _)
-  | Int (loc, _)
-  | UnOp (loc, _, _)
-  | BinOp (loc, _, _, _)
-  | Let (loc, _, _)
-  | LetRec (loc, _, _)
-  | Abs (loc, _, _, _)
-  | App (loc, _, _)
-  | Var (loc, _)
-  | If (loc, _, _, _) -> loc
-
-type top =
-  | TopLet of Loc.t * binding
-  | TopRec of Loc.t * binding list
-
-let top_bind loc b = TopLet (loc, b)
-let top_bind_rec loc bs = TopRec (loc, bs)
-
 let pp_top top fmt = match top with
   | TopLet (_, b) -> fprintf fmt "@[<hv>let %t@]" (pp_binding b)
   | TopRec (_, bs) -> fprintf fmt "@[<hv>let rec %t" (pp_bindings bs)
-
-let loc_top = function
-  | TopLet (loc, _)
-  | TopRec (loc, _) -> loc
-
-type file = top list
-
-let file tops = tops
 
 let pp_file file fmt =
   let pp_sep fmt _ = fprintf fmt "@ @ " in

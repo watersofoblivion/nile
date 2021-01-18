@@ -1,7 +1,0 @@
-(library
-  (name irTest)
-  (libraries
-    ounit2
-    commonTest
-    syntaxTest
-    ir))

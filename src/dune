@@ -1,12 +1,9 @@
+(include_subdirs unqualified)
+
 (library
   (name nile)
   (instrumentation (backend bisect_ppx))
   (libraries
-    syntax
-    ir
-    codegen
-    cli))
-
-(documentation
-  (package nile)
-  (mld_files :standard))
+    llvm
+    llvm.analysis
+    cmdliner))

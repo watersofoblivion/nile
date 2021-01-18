@@ -3,6 +3,14 @@ open Syntax
 
 let dummy = Loc.mock "-" (-1, -1, -1) (-1, -1, -1)
 
+let gen =
+  let idx = ref 0 in
+  let next _ =
+    incr idx;
+    !idx
+  in
+  (fun _ -> Loc.mock "-" (next (), next (), next ()) (next (), next (), next ()))
+
 let assert_loc ~ctxt fname (start_line, start_col, start_off) (end_line, end_col, end_off) len actual =
   assert_equal ~ctxt ~printer:Fun.id fname actual.Loc.fname ~msg:"Location filenames are different";
   assert_equal ~ctxt ~printer:string_of_int start_line actual.start_pos.line ~msg:"Location start lines are different";

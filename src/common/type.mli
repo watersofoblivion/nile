@@ -3,21 +3,30 @@ open Format
 (** {1 Types} *)
 
 type t = private
-  | Int (** Integers *)
-  | Bool (** Booleans *)
-  | Fun of t * t (** Functions *)
+  | Unit                  (** Unit *)
+  | Bool                  (** Booleans *)
+  | Int                   (** Integers *)
+  | Fun of t * t          (** Functions *)
+  | Tuple of int * t list (** Tuple *)
 (** Types *)
 
 (** {2 Constructors} *)
 
-val int : t
-(** [int] constructs an integer type *)
+val unit : t
+(** [unit] constructs a unit type *)
 
 val bool : t
 (** [bool] constructs a boolean type *)
 
+val int : t
+(** [int] constructs an integer type *)
+
 val func : t -> t -> t
-(** [func a b] constructs a function type from [a] to [b]. *)
+(** [func a b] constructs a function type mapping values of type [a] to values
+    of type [b]. *)
+
+val tuple : t list -> t
+(** [tuple tys] constructs a tuple type with element types [tys]. *)
 
 (** {2 Operations} *)
 

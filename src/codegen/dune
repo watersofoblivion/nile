@@ -1,5 +1,0 @@
-(library
-  (name codegen)
-  (instrumentation (backend bisect_ppx))
-  (libraries
-    common))

@@ -13,12 +13,25 @@ val un_not : un
 
 (** {2 Operations} *)
 
-val pp_un : un -> formatter -> unit
-(** [pp_un op fmt] pretty-prints [op] to the formatter [fmt]. *)
-
 val un_precedence : un -> int
 (** [un_precedence op] returns the operator precedence of the unary operator
     [op]. *)
+
+(** {2 Pretty Printing} *)
+
+val pp_un : un -> formatter -> unit
+(** [pp_un op fmt] pretty-prints [op] to the formatter [fmt]. *)
+
+(** {2 Type Checking} *)
+
+exception InvalidUnaryOperand of Type.t * un * Type.t
+(** Raised when the type of a unary operand is invalid.  Contains the expected
+    type, the operator, and the actual type. *)
+
+val type_of_un : un -> Type.t -> Type.t
+(** [type_of_un op r] determines the result type of the unary operator [op]
+    applied to an argument of type [r].  Raises {!InvalidUnaryOperand} if [op]
+    cannot be applied to an argument of type [r]. *)
 
 (** {1 Binary Operators} *)
 
@@ -29,12 +42,12 @@ type bin = private
   | Div (** Integer Division *)
   | Mod (** Modulus *)
   | And (** Logical And *)
-  | Or (** Logical Or *)
-  | Eq (** Equality *)
+  | Or  (** Logical Or *)
+  | Eq  (** Equality *)
   | Neq (** Inequality *)
   | Lte (** Less Than or Equal *)
-  | Lt (** Less Than *)
-  | Gt (** Greater Than *)
+  | Lt  (** Less Than *)
+  | Gt  (** Greater Than *)
   | Gte (** Greater Than or Equal *)
 (** Binary Operators *)
 
@@ -81,9 +94,28 @@ val bin_gte : bin
 
 (** {2 Operations} *)
 
-val pp_bin : bin -> formatter -> unit
-(** [pp_bin op fmt] pretty-prints [op] to the formatter [fmt]. *)
-
 val bin_precedence : bin -> int
 (** [bin_precedence op] returns the operator precedence of the binary operator
     [op]. *)
+
+(** {2 Pretty Printing} *)
+
+val pp_bin : bin -> formatter -> unit
+(** [pp_bin op fmt] pretty-prints [op] to the formatter [fmt]. *)
+
+(** {2 Type Checking} *)
+
+exception InvalidBinaryOperands of Type.t * Type.t * bin * Type.t
+(** Raised when the types of a binary operand is invalid.  Contains the expected
+    type of the operands, the actual type of the left-hand operand, the
+    operator, and the actual type of the right-hand operand. *)
+
+exception InvalidEqualityOperands of Type.t * bin * Type.t
+(** Raised when the types of an equality operand is invalid.  Contains the
+    actual type of the left-hand operand, the operator, and the actual type of
+    the right-hand operand. *)
+
+val type_of_bin : Type.t -> bin -> Type.t -> Type.t
+(** [type_of_bin l op r] determines the result type of the binary operator [op]
+    applied to arguments of type [l] and [r].  Raises {!InvalidBinarOperand} if
+    [op] cannot be applied to arguments of type [l] and [r]. *)

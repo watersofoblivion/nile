@@ -17,12 +17,12 @@ let assert_bin_equal ~ctxt expected actual =
     | Op.Mod, Op.Mod
     | Op.And, Op.And
     | Op.Or, Op.Or
-    | Op.Eq, Op.Eq
-    | Op.Neq, Op.Neq
     | Op.Lte, Op.Lte
     | Op.Lt, Op.Lt
     | Op.Gt, Op.Gt
-    | Op.Gte, Op.Gte -> ()
+    | Op.Gte, Op.Gte
+    | Op.Eq, Op.Eq
+    | Op.Neq, Op.Neq -> ()
     | expected, actual -> assert_equal ~ctxt ~cmp:Util.never ~printer:(Util.printer Op.pp_bin) ~msg:"Binary operators are not equal" expected actual
 
 module type OpType =
@@ -199,13 +199,13 @@ let suite =
       let test_div ctxt = AssertBin.pp ~ctxt Op.bin_div "/" in
       let test_mod ctxt = AssertBin.pp ~ctxt Op.bin_mod "%" in
       let test_and ctxt = AssertBin.pp ~ctxt Op.bin_and "&&" in
-      let test_or ctxt  = AssertBin.pp ~ctxt Op.bin_or  "||" in
-      let test_eq ctxt  = AssertBin.pp ~ctxt Op.bin_eq  "==" in
+      let test_or  ctxt = AssertBin.pp ~ctxt Op.bin_or  "||" in
+      let test_eq  ctxt = AssertBin.pp ~ctxt Op.bin_eq  "==" in
       let test_neq ctxt = AssertBin.pp ~ctxt Op.bin_neq "!=" in
-      let test_lt ctxt  = AssertBin.pp ~ctxt Op.bin_lt  "<" in
+      let test_lt  ctxt = AssertBin.pp ~ctxt Op.bin_lt  "<" in
       let test_lte ctxt = AssertBin.pp ~ctxt Op.bin_lte "<=" in
       let test_gte ctxt = AssertBin.pp ~ctxt Op.bin_gte ">=" in
-      let test_gt ctxt  = AssertBin.pp ~ctxt Op.bin_gt  ">" in
+      let test_gt  ctxt = AssertBin.pp ~ctxt Op.bin_gt  ">" in
       "Pretty Printing" >::: [
         "Addition"              >:: test_add;
         "Subtraction"           >:: test_sub;
@@ -309,7 +309,7 @@ let suite =
           Op.bin_mul; Op.bin_div; Op.bin_mod;
           Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_eq [Op.bin_neq];
+        AssertBin.equal_precedence ~ctxt Op.bin_eq [Op.bin_eq; Op.bin_neq];
         AssertBin.higher_precedence_than Op.bin_eq [
           Op.bin_and;
           Op.bin_or;
@@ -321,7 +321,7 @@ let suite =
           Op.bin_mul; Op.bin_div; Op.bin_mod;
           Op.bin_lte; Op.bin_lt; Op.bin_gt; Op.bin_gte;
         ];
-        AssertBin.equal_precedence ~ctxt Op.bin_neq [Op.bin_eq];
+        AssertBin.equal_precedence ~ctxt Op.bin_neq [Op.bin_eq; Op.bin_neq];
         AssertBin.higher_precedence_than Op.bin_neq [
           Op.bin_and;
           Op.bin_or;

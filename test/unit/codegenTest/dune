@@ -1,6 +1,0 @@
-(library
-  (name codegenTest)
-  (libraries
-    ounit2
-    commonTest
-    codegen))

@@ -1,3 +1,5 @@
+(include_subdirs unqualified)
+
 (test
   (name runner)
   (action
@@ -9,8 +11,5 @@
   (libraries
     ounit2
     llvm
-    nile
-    syntaxTest
-    irTest
-    codegenTest
-    cliTest))
+    llvm.executionengine
+    nile))

@@ -1,6 +1,6 @@
 ---
 title: Overview
-linkTitle: Overview
+linkTitle: Docs
 weight: 1
 documentation: |
   Everything Nile.
