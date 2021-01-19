@@ -1,6 +1,6 @@
 open OUnit2
-open Common
-open Ir
+open Nile.Common
+open Nile.Ir
 open CommonTest
 
 let rec assert_atom_equal ~ctxt expected actual = match expected, actual with

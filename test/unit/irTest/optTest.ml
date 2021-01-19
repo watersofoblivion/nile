@@ -1,5 +1,5 @@
 open OUnit2
-open Ir
+open Nile.Ir
 
 let assert_conf ~ctxt tailcall inline ccp max_passes actual =
   assert_equal ~ctxt ~printer:string_of_bool tailcall actual.Opt.tailcall ~msg:"Tail-call optimization configuration is not correct";

@@ -1,6 +1,6 @@
 open OUnit2
-open Common
-open Syntax
+open Nile.Common
+open Nile.Syntax
 
 let suite =
   let test_expr =

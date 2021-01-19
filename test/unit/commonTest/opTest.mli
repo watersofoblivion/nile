@@ -1,5 +1,5 @@
 open OUnit2
-open Common
+open Nile.Common
 
 (** {1 Operators} *)
 

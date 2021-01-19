@@ -1,7 +1,7 @@
 open OUnit2
-open Common
-open Syntax
-open Ir
+open Nile.Common
+open Nile.Syntax
+open Nile.Ir
 open CommonTest
 open SyntaxTest
 

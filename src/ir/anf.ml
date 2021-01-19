@@ -243,88 +243,14 @@ and normalize_and_bind idx aenv tenv join ast kontinue =
       | _ -> failwith "Not an atom or expression"
     )
 
-let rec of_top idx aenv tenv join ast =
-  normalize_top idx aenv tenv join ast (fun idx ty anf -> (idx, ty, anf))
-
-and normalize_top idx aenv tenv join ast kontinue = match ast with
-  | Unannot.Bool (_, b) -> normalize_top_bool idx b kontinue
-  | Unannot.Int (_, i) -> normalize_top_int idx i kontinue
-  | Unannot.Var (_, id) -> normalize_top_var idx aenv tenv id kontinue
-  | Unannot.UnOp (_, op, r) -> normalize_top_un_op idx aenv tenv join op r kontinue
-  | Unannot.BinOp (_, l, op, r) -> normalize_top_bin_op idx aenv tenv join l op r kontinue
-  | Unannot.If (_, c, t, f) ->
-    if tail_branch c
-    then normalize_top_cond_with_join idx aenv tenv join c t f kontinue
-    else normalize_top_cond idx aenv tenv join c t f kontinue
-  | Unannot.Let (_, (_, id, ty, expr), rest) ->
-    if tail_branch expr
-    then normalize_top_bind_with_join idx aenv tenv join id ty expr rest kontinue
-    else normalize_top_bind idx aenv tenv join id ty expr rest kontinue
-  | Unannot.LetRec (_, bs, rest) -> let _ = (bs, rest) in failwith "TODO"
-  | Unannot.Abs (_, id, ty, res, body) -> normalize_top_abs idx aenv tenv join id ty res body kontinue
-  | Unannot.App (_, f, x) -> normalize_top_app idx aenv tenv join f x body kontinue
-
-and normalize_top_bool idx b kontinue =
-  bool b
-    |> atom
-    |> expr
-    |> kontinue idx Type.bool
-
-and normalize_top_int idx i kontinue =
-  int i
-    |> atom
-    |> expr
-    |> kontinue idx Type.int
-
-and normalize_top_var idx aenv tenv id kontinue =
-  let alpha = List.assoc id aenv in
-  let ty = List.assoc alpha tenv in
-  var alpha
-    |> atom
-    |> expr
-    |> kontinue idx ty
-
-and normalize_top_un_op idx aenv tenv join op r kontinue =
-  normalize_top_and_bind idx aenv tenv join r (fun idx _ r ->
-    let ty = match op with
-      | Op.Not -> Type.bool
-    in
-    un_op op (to_atom r)
-      |> expr
-      |> kontinue idx ty
-  )
-
-and normalize_top_bin_op idx aenv tenv join l op r kontinue =
-and normalize_top_cond_with_join idx aenv tenv join c t f kontinue =
-and normalize_top_cond idx aenv tenv join c t f kontinue =
-and normalize_top_bind_with_join idx aenv tenv join id ty expr rest kontinue =
-and normalize_top_bind idx aenv tenv join id ty expr rest kontinue =
-and normalize_top_abs idx aenv tenv join id ty res body kontinue =
-and normalize_top_app idx aenv tenv join f x kontinue =
-and normalize_top_and_join idx aenv tenv join idx_j ty_j ast =
-
-and normalize_top_and_bind idx aenv tenv join ast kontinue =
-  normalize_top idx aenv tenv join ast (fun idx ty anf ->
-    match anf with
-      | Expr (Atom _) -> kontinue idx ty anf
-      | Expr e ->
-        let b = binding idx ty e in
-        let (idx, ty, rest) =
-          var idx
-            |> atom
-            |> expr
-            |> kontinue (idx + 1) ty
-        in
-        (idx, ty, bind b rest)
-      | _ -> failwith "Not an atom or expression"
-    )
+let of_top _ _ _ _ = failwith "TODO"
 
 let rec of_file idx aenv tenv = function
   | [] -> (idx, [])
   | top :: file ->
     let (idx, aenv, tenv, tops) = of_top idx aenv tenv top in
     let (idx, file) = of_file idx aenv tenv file in
-    (idx, tops @ file)
+    (idx, List.rev_append tops file)
 
 (* Pretty-Printing *)
 

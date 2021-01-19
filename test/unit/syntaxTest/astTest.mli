@@ -1,5 +1,5 @@
 open OUnit2
-open Syntax
+open Nile.Syntax
 
 (** {1 Abstract Syntax} *)
 

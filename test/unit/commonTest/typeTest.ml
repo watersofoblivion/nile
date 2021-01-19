@@ -1,6 +1,6 @@
 open Format
 open OUnit2
-open Common
+open Nile.Common
 
 let rec assert_type_equal ~ctxt expected actual = match expected, actual with
   | Type.Unit, Type.Unit

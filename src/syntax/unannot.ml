@@ -71,46 +71,98 @@ let loc_top = function
 (* Pretty Printing *)
 
 let rec pp_expr expr fmt = match expr with
-  | Bool (_, b) -> fprintf fmt "%b" b
-  | Int (_, i) -> fprintf fmt "%d" i
-  | Var (_, id) -> fprintf fmt "%s" id
-  | UnOp (_, op, r) ->
-    let prec = Op.un_precedence op in
-    fprintf fmt "%t%t" (Op.pp_un op) (print_precedence prec r);
-  | BinOp (_, l, op, r) ->
-    let prec = Op.bin_precedence op in
-    fprintf fmt "@[<hov 2>%t@ %t@ %t@]" (print_precedence prec l) (Op.pp_bin op) (print_precedence prec r)
-  | Let (_, b, rest) -> fprintf fmt "@[<v>@[<hv>let %t@ in@]@ %t@]" (pp_binding b) (pp_expr rest)
-  | LetRec (_, bs, rest) -> fprintf fmt "@[<v>@[<hv>@[<hv>let rec %t@ in@]@ %t@]" (pp_bindings bs) (pp_expr rest)
-  | Abs (_, ps, ty, expr) -> fprintf fmt "(%t): %t => %t" (pp_params ps) (Type.pp ty) (pp_expr expr)
-  | App (_, f, xs) -> fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence 0 f) (pp_args xs)
-  | If (_, c, t, f) -> fprintf fmt "@[<hv>@[<hv>if@;<1 2>%t@]@ @[<hv>then@;<1 2>%t@]@ @[<hv>else@;<1 2>%t@]@]" (pp_expr c) (pp_expr t) (pp_expr f)
+  | Bool (_, b) -> pp_bool b fmt
+  | Int (_, i) -> pp_int i fmt
+  | Var (_, id) -> pp_var id fmt
+  | UnOp (_, op, r) -> pp_un_op op r fmt
+  | BinOp (_, l, op, r) -> pp_bin_op l op r fmt
+  | Let (_, b, rest) -> pp_bind b rest fmt
+  | LetRec (_, bs, rest) -> pp_bind_rec bs rest fmt
+  | Abs (_, id, ty, res, expr) -> pp_abs id ty res expr fmt
+  | App (_, f, x) -> pp_app f x fmt
+  | If (_, c, t, f) -> pp_cond c t f fmt
+
+and pp_bool b fmt =
+  fprintf fmt "%b" b
+
+and pp_int i fmt =
+  fprintf fmt "%d" i
+
+and pp_var id fmt =
+  fprintf fmt "%s" id
+
+and pp_un_op op r fmt =
+  let prec = Op.un_precedence op in
+  fprintf fmt "%t%t" (Op.pp_un op) (print_precedence prec r);
+
+and pp_bin_op l op r fmt =
+  let prec = Op.bin_precedence op in
+  fprintf fmt "@[<hov 2>%t@ %t@ %t@]" (print_precedence prec l) (Op.pp_bin op) (print_precedence prec r)
+
+and pp_bind b rest fmt =
+  fprintf fmt "@[<v>@[<hv>let %t@ in@]@ %t@]" (pp_binding b) (pp_expr rest)
+
+and pp_bind_rec bs rest fmt =
+  fprintf fmt "@[<v>@[<hv>@[<hv>let rec %t@ in@]@ %t@]" (pp_bindings bs) (pp_expr rest)
+
+and pp_abs id ty res expr fmt =
+  fprintf fmt "(%s: %t" id (Type.pp ty);
+  let res = pp_params res expr fmt in
+  let _ = match res with
+    | Some res -> fprintf fmt "): %t" (Type.pp res)
+    | None -> fprintf fmt ")"
+  in
+  fprintf fmt " => %t" (pp_expr expr)
+
+and pp_app f x fmt =
+  fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence 0 f) (pp_expr x)
+
+and pp_cond c t f fmt =
+  fprintf fmt "@[<hv>@[<hv>if@;<1 2>%t@]@ @[<hv>then@;<1 2>%t@]@ @[<hv>else@;<1 2>%t@]@]" (pp_expr c) (pp_expr t) (pp_expr f)
+
 and print_precedence prec expr fmt =
   if prec < precedence expr
   then fprintf fmt "(%t)" (pp_expr expr)
   else fprintf fmt "%t" (pp_expr expr)
+
 and pp_bindings bs fmt =
   let pp_sep fmt _ = fprintf fmt "@ @[<hv>and " in
   let pp_b fmt b = fprintf fmt "%t@]" (pp_binding b) in
   pp_print_list ~pp_sep pp_b fmt bs
+
 and pp_binding (_, id, ty, expr) fmt = match expr with
-  | Abs (_, ps, ty, expr) ->
-    fprintf fmt "%s(" id;
-    pp_params ps fmt;
-    fprintf fmt "): %t =@;<1 2>%t" (Type.pp ty) (pp_expr expr)
-  | expr -> fprintf fmt "%s: %t =@;<1 2>%t" id (Type.pp ty) (pp_expr expr)
-and pp_params ps fmt =
-  let pp_sep fmt _ = fprintf fmt ", " in
-  let param fmt (_, id, ty) = fprintf fmt "%s: %t" id (Type.pp ty) in
-  pp_print_list ~pp_sep param fmt ps
-and pp_args xs fmt =
-  let pp_sep fmt _ = fprintf fmt "@ " in
-  let pp_arg fmt arg = print_precedence 0 arg fmt in
-  pp_print_list ~pp_sep pp_arg fmt xs
+  | Abs (_, id', ty, res, expr) ->
+    fprintf fmt "%s(%s: %t" id id' (Type.pp ty);
+    let res = pp_params res expr fmt in
+    fprintf fmt ")";
+    let _ = match res with
+      | Some res -> fprintf fmt ": %t" (Type.pp res)
+      | None -> ()
+    in
+    fprintf fmt " =@;<1 2>%t" (pp_expr expr)
+  | expr ->
+    fprintf fmt "%s" id;
+    let _ = match ty with
+      | Some ty -> fprintf fmt ": %t" (Type.pp ty)
+      | None -> ()
+    in
+    fprintf fmt " =@;<1 2>%t" (pp_expr expr)
+
+and pp_params res expr fmt = match expr with
+  | Abs (_, id, ty, res, expr) ->
+    fprintf fmt ", %s: %t" id (Type.pp ty);
+    pp_params res expr fmt
+  | _ -> res
+
+let pp_top_bind b fmt =
+  fprintf fmt "@[<hv>let %t@]" (pp_binding b)
+
+let pp_top_bind_rec bs fmt =
+  fprintf fmt "@[<hv>let rec %t" (pp_bindings bs)
 
 let pp_top top fmt = match top with
-  | TopLet (_, b) -> fprintf fmt "@[<hv>let %t@]" (pp_binding b)
-  | TopRec (_, bs) -> fprintf fmt "@[<hv>let rec %t" (pp_bindings bs)
+  | TopLet (_, b) -> pp_top_bind b fmt
+  | TopRec (_, bs) -> pp_top_bind_rec bs fmt
 
 let pp_file file fmt =
   let pp_sep fmt _ = fprintf fmt "@ @ " in

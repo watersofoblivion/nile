@@ -1,6 +1,6 @@
 open OUnit2
-open Common
-open Syntax
+open Nile.Common
+open Nile.Syntax
 open CommonTest
 
 let rec assert_expr_equal ~ctxt expected actual = match expected, actual with
