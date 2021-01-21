@@ -1,4 +1,3 @@
-module AstTest = AstTest
 module LocTest = LocTest
 module UnannotTest = UnannotTest
 module LexerTest = LexerTest

@@ -33,12 +33,7 @@ let rec assert_expr_equal ~ctxt expected actual = match expected, actual with
     LocTest.assert_loc_equal ~ctxt loc loc';
     assert_equal ~ctxt ~msg:"Parameter identifiers are not equal" id id';
     TypeTest.assert_type_equal ~ctxt ty ty';
-    let _ = match res, res' with
-      | Some res, Some res' -> TypeTest.assert_type_equal ~ctxt res res';
-      | Some res, None -> assert_failure "Expected has type annotation, actual does not"
-      | None, Some res -> assert_failure "Expected does not have a type annotation, actual does"
-      | None, None -> ()
-    in
+    assert_annotation_equal ~ctxt res res';
     assert_expr_equal ~ctxt expr expr'
   | Unannot.App (loc, f, x), Unannot.App (loc', f', x') ->
     LocTest.assert_loc_equal ~ctxt loc loc';
@@ -57,13 +52,13 @@ and assert_bindings_equal ~ctxt bs bs' = List.iter2 (assert_binding_equal ~ctxt)
 and assert_binding_equal ~ctxt (loc, id, ty, expr) (loc', id', ty', expr') =
   LocTest.assert_loc_equal ~ctxt loc loc';
   assert_equal ~ctxt ~printer:Fun.id ~msg:"Bound identifier are not equal" id id';
-  let _ = match ty, ty' with
-    | Some ty, Some ty' -> TypeTest.assert_type_equal ~ctxt ty ty';
-    | Some ty, None -> assert_failure "Expected has type annotation, actual does not"
-    | None, Some ty -> assert_failure "Expected does not have a type annotation, actual does"
-    | None, None -> ()
-  in
+  assert_annotation_equal ~ctxt ty ty';
   assert_expr_equal ~ctxt expr expr'
+and assert_annotation_equal ~ctxt annot annot' = match annot, annot' with
+  | Some ty, Some ty' -> TypeTest.assert_type_equal ~ctxt ty ty';
+  | Some _, None -> assert_failure "Expected has type annotation, actual does not"
+  | None, Some _ -> assert_failure "Expected does not have a type annotation, actual does"
+  | None, None -> ()
 
 let assert_top_equal ~ctxt expected actual = match expected, actual with
   | Unannot.TopLet (loc, b), Unannot.TopLet (loc', b') ->
@@ -132,7 +127,7 @@ let assert_un_op ~ctxt op =
       assert_expr_equal ~ctxt r r'
     | actual -> assert_constructor_failure ~ctxt expected actual
 
-let test_un_op ctxt = assert_un_op ~ctxt Op.un_not
+let test_un_op_not ctxt = assert_un_op ~ctxt Op.un_not
 
 let assert_bin_op ~ctxt op =
   let loc = LocTest.gen () in
@@ -147,19 +142,19 @@ let assert_bin_op ~ctxt op =
       assert_expr_equal ~ctxt r r'
     | actual -> assert_constructor_failure ~ctxt expected actual
 
-let test_add ctxt = assert_bin_op ~ctxt Op.bin_add
-let test_sub ctxt = assert_bin_op ~ctxt Op.bin_sub
-let test_mul ctxt = assert_bin_op ~ctxt Op.bin_mul
-let test_div ctxt = assert_bin_op ~ctxt Op.bin_div
-let test_mod ctxt = assert_bin_op ~ctxt Op.bin_mod
-let test_and ctxt = assert_bin_op ~ctxt Op.bin_and
-let test_or  ctxt = assert_bin_op ~ctxt Op.bin_or
-let test_eq  ctxt = assert_bin_op ~ctxt Op.bin_eq
-let test_neq ctxt = assert_bin_op ~ctxt Op.bin_neq
-let test_lte ctxt = assert_bin_op ~ctxt Op.bin_lte
-let test_lt  ctxt = assert_bin_op ~ctxt Op.bin_lt
-let test_gt  ctxt = assert_bin_op ~ctxt Op.bin_gt
-let test_gte ctxt = assert_bin_op ~ctxt Op.bin_gte
+let test_bin_op_add ctxt = assert_bin_op ~ctxt Op.bin_add
+let test_bin_op_sub ctxt = assert_bin_op ~ctxt Op.bin_sub
+let test_bin_op_mul ctxt = assert_bin_op ~ctxt Op.bin_mul
+let test_bin_op_div ctxt = assert_bin_op ~ctxt Op.bin_div
+let test_bin_op_mod ctxt = assert_bin_op ~ctxt Op.bin_mod
+let test_bin_op_and ctxt = assert_bin_op ~ctxt Op.bin_and
+let test_bin_op_or  ctxt = assert_bin_op ~ctxt Op.bin_or
+let test_bin_op_eq  ctxt = assert_bin_op ~ctxt Op.bin_eq
+let test_bin_op_neq ctxt = assert_bin_op ~ctxt Op.bin_neq
+let test_bin_op_lte ctxt = assert_bin_op ~ctxt Op.bin_lte
+let test_bin_op_lt  ctxt = assert_bin_op ~ctxt Op.bin_lt
+let test_bin_op_gt  ctxt = assert_bin_op ~ctxt Op.bin_gt
+let test_bin_op_gte ctxt = assert_bin_op ~ctxt Op.bin_gte
 
 let test_cond ctxt =
   let assert_cond c t f =
@@ -182,12 +177,10 @@ let test_cond ctxt =
 let id = "id-one"
 let ty = Type.int
 let x = Unannot.int LocTest.dummy 1
-let b = Unannot.binding LocTest.dummy id ty x
 
 let id' = "id-two"
 let ty' = Type.bool
 let x' = Unannot.bool LocTest.dummy true
-let b' = Unannot.binding LocTest.dummy id' ty' x'
 
 let test_bind ctxt =
   let assert_bind b rest =
@@ -201,6 +194,10 @@ let test_bind ctxt =
       | actual -> assert_constructor_failure ~ctxt expected actual
   in
 
+  let b = Unannot.binding LocTest.dummy id None x in
+  Unannot.var LocTest.dummy id
+    |> assert_bind b;
+  let b = Unannot.binding LocTest.dummy id (Some ty) x in
   Unannot.var LocTest.dummy id
     |> assert_bind b
 
@@ -218,6 +215,13 @@ let test_bind_rec ctxt =
 
   let l = Unannot.var LocTest.dummy id in
   let r = Unannot.var LocTest.dummy id' in
+
+  let b = Unannot.binding LocTest.dummy id None x in
+  let b' = Unannot.binding LocTest.dummy id' None x' in
+  Unannot.bin_op LocTest.dummy l Op.bin_eq r
+    |> assert_bind [b; b'];
+  let b = Unannot.binding LocTest.dummy id (Some ty) x in
+  let b' = Unannot.binding LocTest.dummy id' (Some ty') x' in
   Unannot.bin_op LocTest.dummy l Op.bin_eq r
     |> assert_bind [b; b']
 
@@ -230,14 +234,16 @@ let test_abs ctxt =
         LocTest.assert_loc_equal ~ctxt loc loc';
         assert_equal ~ctxt ~printer:Fun.id ~msg:"Bound function identifiers are not equal" id id';
         TypeTest.assert_type_equal ~ctxt ty ty';
-        TypeTest.assert_type_equal ~ctxt res res';
+        assert_annotation_equal ~ctxt res res';
         assert_expr_equal ~ctxt body body'
       | actual -> assert_constructor_failure ~ctxt expected actual
   in
 
   let var = Unannot.var LocTest.dummy id in
   Unannot.bin_op LocTest.dummy var Op.bin_eq var
-    |> assert_abs id ty ty'
+    |> assert_abs id ty None;
+  Unannot.bin_op LocTest.dummy var Op.bin_eq var
+    |> assert_abs id ty (Some ty')
 
 let test_app ctxt =
   let assert_app f x =
@@ -256,51 +262,85 @@ let test_app ctxt =
     |> assert_app f
 
 let test_top_bind ctxt =
-  let loc = LocTest.gen () in
-  let top = Unannot.top_bind loc b in
-  match top with
-    | Unannot.TopLet (loc', b') ->
-      LocTest.assert_loc_equal ~ctxt loc loc';
-      assert_binding_equal ~ctxt b b'
-    | top' -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Unannot.pp_top) ~msg:"Top-level bindings are not equal" top top'
+  let assert_top_bind b =
+    let loc = LocTest.gen () in
+    let top = Unannot.top_bind loc b in
+    match top with
+      | Unannot.TopLet (loc', b') ->
+        LocTest.assert_loc_equal ~ctxt loc loc';
+        assert_binding_equal ~ctxt b b'
+      | top' -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Unannot.pp_top) ~msg:"Top-level bindings are not equal" top top'
+  in
+
+  Unannot.binding LocTest.dummy id None x
+    |> assert_top_bind;
+  Unannot.binding LocTest.dummy id (Some ty) x
+    |> assert_top_bind
 
 let test_top_bind_rec ctxt =
-  let loc = LocTest.gen () in
-  let bs = [b; b'] in
-  let top = Unannot.top_bind_rec loc bs in
-  match top with
-    | Unannot.TopRec (loc', bs') ->
-      LocTest.assert_loc_equal ~ctxt loc loc';
-      assert_bindings_equal ~ctxt bs bs'
-    | top' -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Unannot.pp_top) ~msg:"Top-level bindings are not equal" top top'
+  let assert_top_bind_rec b b' =
+    let loc = LocTest.gen () in
+    let bs = [b; b'] in
+    let top = Unannot.top_bind_rec loc bs in
+    match top with
+      | Unannot.TopRec (loc', bs') ->
+        LocTest.assert_loc_equal ~ctxt loc loc';
+        assert_bindings_equal ~ctxt bs bs'
+      | top' -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Unannot.pp_top) ~msg:"Top-level bindings are not equal" top top'
+  in
+
+  let b = Unannot.binding LocTest.dummy id None x in
+  Unannot.binding LocTest.dummy id' None x'
+    |> assert_top_bind_rec b;
+  let b = Unannot.binding LocTest.dummy id (Some ty) x in
+  Unannot.binding LocTest.dummy id' (Some ty') x'
+    |> assert_top_bind_rec b
 
 let test_file ctxt =
-  let expected =
+  let assert_file tops =
+    let iter2 = assert_top_equal ~ctxt in
+    Unannot.file tops
+      |> List.iter2 iter2 tops
+  in
+
+  let unannotated =
+    let b =
+      Unannot.int LocTest.dummy 1
+        |> Unannot.binding LocTest.dummy "id-one" None
+    in
+    let b' =
+      Unannot.bool LocTest.dummy true
+        |> Unannot.binding LocTest.dummy "id-two" None
+    in
+    Unannot.top_bind_rec LocTest.dummy [b; b']
+  in
+  let unannotated' =
+    Unannot.bool LocTest.dummy true
+      |> Unannot.binding LocTest.dummy "id-two" None
+      |> Unannot.top_bind LocTest.dummy
+  in
+  assert_file [unannotated; unannotated'];
+
+  let annotated =
     let b =
       let ty = Type.int in
       Unannot.int LocTest.dummy 1
-        |> Unannot.binding LocTest.dummy "id-one" ty
+        |> Unannot.binding LocTest.dummy "id-one" (Some ty)
     in
     let b' =
       let ty = Type.bool in
       Unannot.bool LocTest.dummy true
-        |> Unannot.binding LocTest.dummy "id-two" ty
+        |> Unannot.binding LocTest.dummy "id-two" (Some ty)
     in
     Unannot.top_bind_rec LocTest.dummy [b; b']
   in
-  let expected' =
+  let annotated' =
     let ty = Type.bool in
     Unannot.bool LocTest.dummy true
-      |> Unannot.binding LocTest.dummy "id-two" ty
+      |> Unannot.binding LocTest.dummy "id-two" (Some ty)
       |> Unannot.top_bind LocTest.dummy
   in
-
-  let file = Unannot.file [expected; expected'] in
-  match file with
-      | actual :: actual' :: [] ->
-        assert_top_equal ~ctxt expected actual;
-        assert_top_equal ~ctxt expected' actual'
-      | actual -> assert_equal ~ctxt ~cmp:CommonTest.Util.never ~printer:(CommonTest.Util.printer Unannot.pp_file) ~msg:"Source files are not equal" file actual
+  assert_file [annotated; annotated']
 
 let test_constructor =
   "Constructors" >::: [
@@ -312,20 +352,22 @@ let test_constructor =
       ];
       "Operators" >::: [
         "Unary" >::: [
-          "Logical Not" >:: test_not;
+          "Logical Not" >:: test_un_op_not;
         ];
         "Binary" >::: [
-          "Addition"              >:: test_add;
-          "Subtraction"           >:: test_sub;
-          "Multiplication"        >:: test_mul;
-          "Division"              >:: test_div;
-          "Modulus"               >:: test_mod;
-          "Equality"              >:: test_eq;
-          "Inequality"            >:: test_neq;
-          "Less Than or Equal"    >:: test_lte;
-          "Less Than"             >:: test_lt;
-          "Greater Than"          >:: test_gt;
-          "Greater Than or Equal" >:: test_gte;
+          "Addition"              >:: test_bin_op_add;
+          "Subtraction"           >:: test_bin_op_sub;
+          "Multiplication"        >:: test_bin_op_mul;
+          "Division"              >:: test_bin_op_div;
+          "Modulus"               >:: test_bin_op_mod;
+          "Logical And"           >:: test_bin_op_and;
+          "Logical Or"            >:: test_bin_op_or;
+          "Equality"              >:: test_bin_op_eq;
+          "Inequality"            >:: test_bin_op_neq;
+          "Less Than or Equal"    >:: test_bin_op_lte;
+          "Less Than"             >:: test_bin_op_lt;
+          "Greater Than"          >:: test_bin_op_gt;
+          "Greater Than or Equal" >:: test_bin_op_gte;
         ]
       ];
       "Conditional"              >:: test_cond;
@@ -388,7 +430,14 @@ let test_loc_bind ctxt =
   let loc = LocTest.gen () in
   let b =
     Unannot.int LocTest.dummy 1
-      |> Unannot.binding LocTest.dummy "x" Type.int
+      |> Unannot.binding LocTest.dummy "x" None
+  in
+  Unannot.var LocTest.dummy "x"
+    |> Unannot.bind loc b
+    |> assert_loc_expr ~ctxt loc;
+  let b =
+    Unannot.int LocTest.dummy 1
+      |> Unannot.binding LocTest.dummy "x" (Some Type.int)
   in
   Unannot.var LocTest.dummy "x"
     |> Unannot.bind loc b
@@ -396,14 +445,24 @@ let test_loc_bind ctxt =
 
 let test_loc_bind_rec ctxt =
   let loc = LocTest.gen () in
-  let bs = [
-    Unannot.int LocTest.dummy 1
-      |> Unannot.binding LocTest.dummy "x" Type.int;
-    Unannot.int LocTest.dummy 2
-      |> Unannot.binding LocTest.dummy "y" Type.int
-  ] in
   let x = Unannot.var LocTest.dummy "x" in
   let y = Unannot.var LocTest.dummy "y" in
+
+  let bs = [
+    Unannot.int LocTest.dummy 1
+      |> Unannot.binding LocTest.dummy "x" None;
+    Unannot.int LocTest.dummy 2
+      |> Unannot.binding LocTest.dummy "y" None
+  ] in
+  Unannot.bin_op LocTest.dummy x Op.bin_eq y
+    |> Unannot.bind_rec loc bs
+    |> assert_loc_expr ~ctxt loc;
+  let bs = [
+    Unannot.int LocTest.dummy 1
+      |> Unannot.binding LocTest.dummy "x" (Some Type.int);
+    Unannot.int LocTest.dummy 2
+      |> Unannot.binding LocTest.dummy "y" (Some Type.int)
+  ] in
   Unannot.bin_op LocTest.dummy x Op.bin_eq y
     |> Unannot.bind_rec loc bs
     |> assert_loc_expr ~ctxt loc
@@ -411,7 +470,10 @@ let test_loc_bind_rec ctxt =
 let test_loc_abs ctxt =
   let loc = LocTest.gen () in
   Unannot.int LocTest.dummy 1
-    |> Unannot.abs loc "param" Type.int Type.int
+    |> Unannot.abs loc "param" Type.int None
+    |> assert_loc_expr ~ctxt loc;
+  Unannot.int LocTest.dummy 1
+    |> Unannot.abs loc "param" Type.int (Some Type.int)
     |> assert_loc_expr ~ctxt loc
 
 let test_loc_app ctxt =
@@ -423,13 +485,26 @@ let test_loc_app ctxt =
 
 let test_loc_top_bind ctxt =
   let loc = LocTest.gen () in
-  Unannot.top_bind loc b
+
+  Unannot.binding LocTest.dummy id None x
+    |> Unannot.top_bind loc
+    |> Unannot.loc_top
+    |> LocTest.assert_loc_equal ~ctxt loc;
+  Unannot.binding LocTest.dummy id (Some ty) x
+    |> Unannot.top_bind loc
     |> Unannot.loc_top
     |> LocTest.assert_loc_equal ~ctxt loc
 
 let test_loc_top_bind_rec ctxt =
   let loc = LocTest.gen () in
-  Unannot.top_bind_rec loc [b; b']
+  [Unannot.binding LocTest.dummy id None x;
+   Unannot.binding LocTest.dummy id' None x']
+    |> Unannot.top_bind_rec loc
+    |> Unannot.loc_top
+    |> LocTest.assert_loc_equal ~ctxt loc;
+  [Unannot.binding LocTest.dummy id (Some ty) x;
+   Unannot.binding LocTest.dummy id' (Some ty) x']
+    |> Unannot.top_bind_rec loc
     |> Unannot.loc_top
     |> LocTest.assert_loc_equal ~ctxt loc
 
@@ -481,11 +556,15 @@ let expr_temp_one = Unannot.bin_op LocTest.dummy var_w Op.bin_add var_x
 let expr_temp_two = Unannot.bin_op LocTest.dummy var_y Op.bin_add var_z
 let expr_result = Unannot.bin_op LocTest.dummy var_temp_one Op.bin_add var_temp_two
 
-let b_temp_one = Unannot.binding LocTest.dummy id_temp_one Type.int expr_temp_one
-let b_temp_two = Unannot.binding LocTest.dummy id_temp_two Type.int expr_temp_two
+let unannot_b_temp_one = Unannot.binding LocTest.dummy id_temp_one None expr_temp_one
+let unannot_b_temp_two = Unannot.binding LocTest.dummy id_temp_two None expr_temp_two
+let annot_b_temp_one = Unannot.binding LocTest.dummy id_temp_one (Some Type.int) expr_temp_one
+let annot_b_temp_two = Unannot.binding LocTest.dummy id_temp_two (Some Type.int) expr_temp_two
 
-let temp_two = Unannot.bind LocTest.dummy b_temp_two expr_result
-let temp_one = Unannot.bind LocTest.dummy b_temp_one temp_two
+let unannot_temp_two = Unannot.bind LocTest.dummy unannot_b_temp_two expr_result
+let unannot_temp_one = Unannot.bind LocTest.dummy unannot_b_temp_one unannot_temp_two
+let annot_temp_two = Unannot.bind LocTest.dummy annot_b_temp_two expr_result
+let annot_temp_one = Unannot.bind LocTest.dummy annot_b_temp_one annot_temp_two
 
 let test_pp_bool ctxt =
   Unannot.bool LocTest.dummy true
@@ -609,7 +688,13 @@ let test_pp_cond_full_spread ctxt =
        ]
 
 let test_pp_bind_simple_var ctxt =
-  let b = Unannot.binding LocTest.dummy id_x Type.int (Unannot.int LocTest.dummy 1) in
+  let b = Unannot.binding LocTest.dummy id_x None (Unannot.int LocTest.dummy 1) in
+  Unannot.bind LocTest.dummy b var_x
+    |> assert_pp_expr ~ctxt [
+         "let x = 1 in";
+         "x";
+       ];
+  let b = Unannot.binding LocTest.dummy id_x (Some Type.int) (Unannot.int LocTest.dummy 1) in
   Unannot.bind LocTest.dummy b var_x
     |> assert_pp_expr ~ctxt [
          "let x: Int = 1 in";
@@ -619,8 +704,18 @@ let test_pp_bind_simple_var ctxt =
 let test_pp_bind_compound_var ctxt =
   let id_final = "finalVariable" in
   let v_final = Unannot.var LocTest.dummy id_final in
-  let b_final = Unannot.binding LocTest.dummy id_final Type.int temp_one in
 
+  let b_final = Unannot.binding LocTest.dummy id_final None unannot_temp_one in
+  Unannot.bind LocTest.dummy b_final v_final
+    |> assert_pp_expr ~ctxt [
+         "let finalVariable =";
+         "  let temporaryVariableOne = w + x in";
+         "  let temporaryVariableTwo = y + z in";
+         "  temporaryVariableOne + temporaryVariableTwo";
+         "in";
+         "finalVariable";
+       ];
+  let b_final = Unannot.binding LocTest.dummy id_final (Some Type.int) annot_temp_one in
   Unannot.bind LocTest.dummy b_final v_final
     |> assert_pp_expr ~ctxt [
          "let finalVariable: Int =";
@@ -633,12 +728,21 @@ let test_pp_bind_compound_var ctxt =
 
 let test_pp_bind_simple_function ctxt =
   let fn =
-    Unannot.abs LocTest.dummy id_x Type.int Type.int expr_temp_one
-      |> Unannot.abs LocTest.dummy id_w Type.int (Type.func Type.int Type.int)
+    Unannot.abs LocTest.dummy id_x Type.int None expr_temp_one
+      |> Unannot.abs LocTest.dummy id_w Type.int None
+  in
+  let b = Unannot.binding LocTest.dummy id_f None fn in
+  Unannot.bind LocTest.dummy b var_f
+    |> assert_pp_expr ~ctxt [
+         "let f(w: Int, x: Int) = w + x in";
+         "f";
+       ];
+  let fn =
+    Unannot.abs LocTest.dummy id_x Type.int (Some Type.int) expr_temp_one
+      |> Unannot.abs LocTest.dummy id_w Type.int (Some (Type.func Type.int Type.int))
   in
   let ty = Type.func Type.int (Type.func Type.int Type.int) in
-  let b = Unannot.binding LocTest.dummy id_f ty fn in
-
+  let b = Unannot.binding LocTest.dummy id_f (Some ty) fn in
   Unannot.bind LocTest.dummy b var_f
     |> assert_pp_expr ~ctxt [
          "let f(w: Int, x: Int): Int = w + x in";
@@ -646,16 +750,32 @@ let test_pp_bind_simple_function ctxt =
        ]
 
 let test_pp_bind_compound_function ctxt =
-  let body = Unannot.bind LocTest.dummy b_temp_one temp_two in
+  let body = Unannot.bind LocTest.dummy unannot_b_temp_one unannot_temp_two in
   let fn =
-    Unannot.abs LocTest.dummy id_z Type.int Type.int body
-      |> Unannot.abs LocTest.dummy id_y Type.int (Type.func Type.int Type.int)
-      |> Unannot.abs LocTest.dummy id_x Type.int (Type.func Type.int (Type.func Type.int Type.int))
-      |> Unannot.abs LocTest.dummy id_w Type.int (Type.func Type.int (Type.func Type.int (Type.func Type.int Type.int)))
+    Unannot.abs LocTest.dummy id_z Type.int None body
+      |> Unannot.abs LocTest.dummy id_y Type.int None
+      |> Unannot.abs LocTest.dummy id_x Type.int None
+      |> Unannot.abs LocTest.dummy id_w Type.int None
+  in
+  let b = Unannot.binding LocTest.dummy id_f None fn in
+  Unannot.bind LocTest.dummy b var_f
+    |> assert_pp_expr ~ctxt [
+         "let f(w: Int, x: Int, y: Int, z: Int) =";
+         "  let temporaryVariableOne = w + x in";
+         "  let temporaryVariableTwo = y + z in";
+         "  temporaryVariableOne + temporaryVariableTwo";
+         "in";
+         "f";
+       ];
+  let body = Unannot.bind LocTest.dummy annot_b_temp_one annot_temp_two in
+  let fn =
+    Unannot.abs LocTest.dummy id_z Type.int (Some Type.int) body
+      |> Unannot.abs LocTest.dummy id_y Type.int (Some (Type.func Type.int Type.int))
+      |> Unannot.abs LocTest.dummy id_x Type.int (Some (Type.func Type.int (Type.func Type.int Type.int)))
+      |> Unannot.abs LocTest.dummy id_w Type.int (Some (Type.func Type.int (Type.func Type.int (Type.func Type.int Type.int))))
   in
   let ty = Type.func Type.int (Type.func Type.int (Type.func Type.int (Type.func Type.int Type.int))) in
-  let b = Unannot.binding LocTest.dummy id_f ty fn in
-
+  let b = Unannot.binding LocTest.dummy id_f (Some ty) fn in
   Unannot.bind LocTest.dummy b var_f
     |> assert_pp_expr ~ctxt [
          "let f(w: Int, x: Int, y: Int, z: Int): Int =";
@@ -667,9 +787,9 @@ let test_pp_bind_compound_function ctxt =
        ]
 
 let test_pp_bind_complex_result ctxt =
-  let fn = Unannot.abs LocTest.dummy id_w Type.int (Type.func Type.int Type.int) expr_temp_one in
+  let fn = Unannot.abs LocTest.dummy id_w Type.int (Some (Type.func Type.int Type.int)) expr_temp_one in
   let ty = Type.func Type.int (Type.func Type.int Type.int) in
-  let b = Unannot.binding LocTest.dummy id_f ty fn in
+  let b = Unannot.binding LocTest.dummy id_f (Some ty) fn in
 
   Unannot.bind LocTest.dummy b var_f
     |> assert_pp_expr ~ctxt [
@@ -678,10 +798,22 @@ let test_pp_bind_complex_result ctxt =
        ]
 
 let test_pp_bind_rec_simple_var ctxt =
-  let b_x = Unannot.binding LocTest.dummy id_x Type.int var_y in
-  let b_y = Unannot.binding LocTest.dummy id_y Type.int var_x in
+  let b_x = Unannot.binding LocTest.dummy id_x None var_y in
+  let b_y = Unannot.binding LocTest.dummy id_y None var_x in
   let res = Unannot.bin_op LocTest.dummy var_x Op.bin_add var_y in
-
+  Unannot.bind_rec LocTest.dummy [b_x] res
+    |> assert_pp_expr ~ctxt [
+         "let rec x = y in";
+         "x + y";
+       ];
+  Unannot.bind_rec LocTest.dummy [b_x; b_y] res
+    |> assert_pp_expr ~ctxt [
+         "let rec x = y and y = x in";
+         "x + y";
+       ];
+  let b_x = Unannot.binding LocTest.dummy id_x (Some Type.int) var_y in
+  let b_y = Unannot.binding LocTest.dummy id_y (Some Type.int) var_x in
+  let res = Unannot.bin_op LocTest.dummy var_x Op.bin_add var_y in
   Unannot.bind_rec LocTest.dummy [b_x] res
     |> assert_pp_expr ~ctxt [
          "let rec x: Int = y in";
@@ -696,8 +828,31 @@ let test_pp_bind_rec_simple_var ctxt =
 let test_pp_bind_rec_compound_var ctxt =
   let id_final = "finalVariable" in
   let v_final = Unannot.var LocTest.dummy id_final in
-  let b_final = Unannot.binding LocTest.dummy id_final Type.int temp_one in
 
+  let b_final = Unannot.binding LocTest.dummy id_final None unannot_temp_one in
+  Unannot.bind_rec LocTest.dummy [b_final] v_final
+    |> assert_pp_expr ~ctxt [
+         "let rec finalVariable =";
+         "  let temporaryVariableOne = w + x in";
+         "  let temporaryVariableTwo = y + z in";
+         "  temporaryVariableOne + temporaryVariableTwo";
+         "in";
+         "finalVariable";
+       ];
+  Unannot.bind_rec LocTest.dummy [b_final; b_final] v_final
+    |> assert_pp_expr ~ctxt [
+         "let rec finalVariable =";
+         "  let temporaryVariableOne = w + x in";
+         "  let temporaryVariableTwo = y + z in";
+         "  temporaryVariableOne + temporaryVariableTwo";
+         "and finalVariable =";
+         "  let temporaryVariableOne = w + x in";
+         "  let temporaryVariableTwo = y + z in";
+         "  temporaryVariableOne + temporaryVariableTwo";
+         "in";
+         "finalVariable";
+       ];
+  let b_final = Unannot.binding LocTest.dummy id_final (Some Type.int) annot_temp_one in
   Unannot.bind_rec LocTest.dummy [b_final] v_final
     |> assert_pp_expr ~ctxt [
          "let rec finalVariable: Int =";
@@ -723,12 +878,26 @@ let test_pp_bind_rec_compound_var ctxt =
 
 let test_pp_bind_rec_simple_function ctxt =
   let fn =
-    Unannot.abs LocTest.dummy id_x Type.int Type.int expr_temp_one
-      |> Unannot.abs LocTest.dummy id_w Type.int (Type.func Type.int Type.int)
+    Unannot.abs LocTest.dummy id_x Type.int None expr_temp_one
+      |> Unannot.abs LocTest.dummy id_w Type.int None
+  in
+  let b = Unannot.binding LocTest.dummy id_f None fn in
+  Unannot.bind_rec LocTest.dummy [b] var_f
+    |> assert_pp_expr ~ctxt [
+         "let rec f(w: Int, x: Int) = w + x in";
+         "f";
+       ];
+  Unannot.bind_rec LocTest.dummy [b; b] var_f
+    |> assert_pp_expr ~ctxt [
+         "let rec f(w: Int, x: Int) = w + x and f(w: Int, x: Int) = w + x in";
+         "f";
+       ];
+  let fn =
+    Unannot.abs LocTest.dummy id_x Type.int (Some Type.int) expr_temp_one
+      |> Unannot.abs LocTest.dummy id_w Type.int (Some (Type.func Type.int Type.int))
   in
   let ty = Type.func Type.int (Type.func Type.int Type.int) in
-  let b = Unannot.binding LocTest.dummy id_f ty fn in
-
+  let b = Unannot.binding LocTest.dummy id_f (Some ty) fn in
   Unannot.bind_rec LocTest.dummy [b] var_f
     |> assert_pp_expr ~ctxt [
          "let rec f(w: Int, x: Int): Int = w + x in";
@@ -741,16 +910,45 @@ let test_pp_bind_rec_simple_function ctxt =
        ]
 
 let test_pp_bind_rec_compound_function ctxt =
-  let body = Unannot.bind LocTest.dummy b_temp_one temp_two in
+  let body = Unannot.bind LocTest.dummy unannot_b_temp_one unannot_temp_two in
   let fn =
-    Unannot.abs LocTest.dummy id_z Type.int Type.int body
-      |> Unannot.abs LocTest.dummy id_y Type.int (Type.func Type.int Type.int)
-      |> Unannot.abs LocTest.dummy id_x Type.int (Type.func Type.int (Type.func Type.int Type.int))
-      |> Unannot.abs LocTest.dummy id_w Type.int (Type.func Type.int (Type.func Type.int (Type.func Type.int Type.int)))
+    Unannot.abs LocTest.dummy id_z Type.int None body
+      |> Unannot.abs LocTest.dummy id_y Type.int None
+      |> Unannot.abs LocTest.dummy id_x Type.int None
+      |> Unannot.abs LocTest.dummy id_w Type.int None
+  in
+  let b = Unannot.binding LocTest.dummy id_f None fn in
+  Unannot.bind_rec LocTest.dummy [b] var_f
+    |> assert_pp_expr ~ctxt [
+         "let rec f(w: Int, x: Int, y: Int, z: Int) =";
+         "  let temporaryVariableOne = w + x in";
+         "  let temporaryVariableTwo = y + z in";
+         "  temporaryVariableOne + temporaryVariableTwo";
+         "in";
+         "f";
+       ];
+  Unannot.bind_rec LocTest.dummy [b; b] var_f
+    |> assert_pp_expr ~ctxt [
+         "let rec f(w: Int, x: Int, y: Int, z: Int) =";
+         "  let temporaryVariableOne = w + x in";
+         "  let temporaryVariableTwo = y + z in";
+         "  temporaryVariableOne + temporaryVariableTwo";
+         "and f(w: Int, x: Int, y: Int, z: Int) =";
+         "  let temporaryVariableOne = w + x in";
+         "  let temporaryVariableTwo = y + z in";
+         "  temporaryVariableOne + temporaryVariableTwo";
+         "in";
+         "f";
+       ];
+  let body = Unannot.bind LocTest.dummy annot_b_temp_one annot_temp_two in
+  let fn =
+    Unannot.abs LocTest.dummy id_z Type.int (Some Type.int) body
+      |> Unannot.abs LocTest.dummy id_y Type.int (Some (Type.func Type.int Type.int))
+      |> Unannot.abs LocTest.dummy id_x Type.int (Some (Type.func Type.int (Type.func Type.int Type.int)))
+      |> Unannot.abs LocTest.dummy id_w Type.int (Some (Type.func Type.int (Type.func Type.int (Type.func Type.int Type.int))))
   in
   let ty = Type.func Type.int (Type.func Type.int (Type.func Type.int (Type.func Type.int Type.int))) in
-  let b = Unannot.binding LocTest.dummy id_f ty fn in
-
+  let b = Unannot.binding LocTest.dummy id_f (Some ty) fn in
   Unannot.bind_rec LocTest.dummy [b] var_f
     |> assert_pp_expr ~ctxt [
          "let rec f(w: Int, x: Int, y: Int, z: Int): Int =";
@@ -775,10 +973,9 @@ let test_pp_bind_rec_compound_function ctxt =
        ]
 
 let test_pp_bind_rec_complex_result ctxt =
-  let fn = Unannot.abs LocTest.dummy id_w Type.int (Type.func Type.int Type.int) expr_temp_one in
+  let fn = Unannot.abs LocTest.dummy id_w Type.int (Some (Type.func Type.int Type.int)) expr_temp_one in
   let ty = Type.func Type.int (Type.func Type.int Type.int) in
-  let b = Unannot.binding LocTest.dummy id_f ty fn in
-
+  let b = Unannot.binding LocTest.dummy id_f (Some ty) fn in
   Unannot.bind_rec LocTest.dummy [b] var_f
     |> assert_pp_expr ~ctxt [
          "let rec f(w: Int): Int -> Int = w + x in";
@@ -801,12 +998,21 @@ let test_pp_app_named ctxt =
 let test_pp_app_literal ctxt =
   let f =
     Unannot.bin_op LocTest.dummy var_x Op.bin_eq var_y
-      |> Unannot.abs LocTest.dummy id_y Type.int Type.bool
-      |> Unannot.abs LocTest.dummy id_x Type.int (Type.func Type.int Type.bool)
+      |> Unannot.abs LocTest.dummy id_y Type.int None
+      |> Unannot.abs LocTest.dummy id_x Type.int None
   in
   let x = Unannot.int LocTest.dummy 1 in
   let y = Unannot.bool LocTest.dummy true in
-
+  let app_one = Unannot.app LocTest.dummy f x in
+  Unannot.app LocTest.dummy app_one y
+    |> assert_pp_expr ~ctxt ["((x: Int, y: Int) => x == y) 1 true"];
+  let f =
+    Unannot.bin_op LocTest.dummy var_x Op.bin_eq var_y
+      |> Unannot.abs LocTest.dummy id_y Type.int (Some Type.bool)
+      |> Unannot.abs LocTest.dummy id_x Type.int (Some (Type.func Type.int Type.bool))
+  in
+  let x = Unannot.int LocTest.dummy 1 in
+  let y = Unannot.bool LocTest.dummy true in
   let app_one = Unannot.app LocTest.dummy f x in
   Unannot.app LocTest.dummy app_one y
     |> assert_pp_expr ~ctxt ["((x: Int, y: Int): Bool => x == y) 1 true"]
@@ -859,12 +1065,27 @@ let test_pp_app_wrap ctxt =
 let assert_pp_top = CommonTest.Util.assert_pp Unannot.pp_top
 
 let test_pp_top_bind ctxt =
-  Unannot.top_bind LocTest.dummy b
+  Unannot.binding LocTest.dummy id None x
+    |> Unannot.top_bind LocTest.dummy
+    |> assert_pp_top ~ctxt [
+         "let id-one = 1";
+       ];
+  Unannot.binding LocTest.dummy id (Some Type.int) x
+    |> Unannot.top_bind LocTest.dummy
     |> assert_pp_top ~ctxt [
          "let id-one: Int = 1";
        ]
 
 let test_pp_top_bind_rec ctxt =
+  let b = Unannot.binding LocTest.dummy id None x in
+  let b' = Unannot.binding LocTest.dummy id' None x' in
+  Unannot.top_bind_rec LocTest.dummy [b; b']
+    |> assert_pp_top ~ctxt [
+         "let rec id-one = 1";
+         "and id-two = true"
+       ];
+  let b = Unannot.binding LocTest.dummy id (Some Type.int) x in
+  let b' = Unannot.binding LocTest.dummy id' (Some Type.bool) x' in
   Unannot.top_bind_rec LocTest.dummy [b; b']
     |> assert_pp_top ~ctxt [
          "let rec id-one: Int = 1";
@@ -876,24 +1097,46 @@ let assert_pp_file = CommonTest.Util.assert_pp Unannot.pp_file
 let test_pp_file ctxt =
   let expected =
     let b =
+      Unannot.int LocTest.dummy 1
+        |> Unannot.binding LocTest.dummy "id-one" None
+    in
+    let b' =
+      Unannot.bool LocTest.dummy true
+        |> Unannot.binding LocTest.dummy "id-two" None
+    in
+    Unannot.top_bind_rec LocTest.dummy [b; b']
+  in
+  let expected' =
+    Unannot.bool LocTest.dummy true
+      |> Unannot.binding LocTest.dummy "id-two" None
+      |> Unannot.top_bind LocTest.dummy
+  in
+  Unannot.file [expected; expected']
+    |> assert_pp_file ~ctxt [
+         "let rec id-one = 1";
+         "and id-two = true";
+         "";
+         "let id-two = true";
+       ];
+  let expected =
+    let b =
       let ty = Type.int in
       Unannot.int LocTest.dummy 1
-        |> Unannot.binding LocTest.dummy "id-one" ty
+        |> Unannot.binding LocTest.dummy "id-one" (Some ty)
     in
     let b' =
       let ty = Type.bool in
       Unannot.bool LocTest.dummy true
-        |> Unannot.binding LocTest.dummy "id-two" ty
+        |> Unannot.binding LocTest.dummy "id-two" (Some ty)
     in
     Unannot.top_bind_rec LocTest.dummy [b; b']
   in
   let expected' =
     let ty = Type.bool in
     Unannot.bool LocTest.dummy true
-      |> Unannot.binding LocTest.dummy "id-two" ty
+      |> Unannot.binding LocTest.dummy "id-two" (Some ty)
       |> Unannot.top_bind LocTest.dummy
   in
-
   Unannot.file [expected; expected']
     |> assert_pp_file ~ctxt [
          "let rec id-one: Int = 1";
