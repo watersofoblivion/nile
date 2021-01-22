@@ -6,8 +6,8 @@ open CommonTest
 open SyntaxTest
 
 let assert_normalize ~ctxt ?alpha:(alpha = 0) ?aenv:(aenv = []) ?tenv:(tenv = []) idx ty expected ast =
-Format.printf "Source AST:\n\n%t\n" (Syntax.Pretty.expr ast);
-Format.printf "Expected ANF:\n\n%t\n" (Ir.Pretty.block expected);
+  Format.printf "Source AST:\n\n%t\n" (Syntax.Pretty.expr ast);
+  Format.printf "Expected ANF:\n\n%t\n" (Ir.Pretty.block expected);
   let (idx', ty', actual) = Normalize.ast alpha aenv tenv None ast in
   try
     AnfTest.assert_block_equal ~ctxt expected actual;

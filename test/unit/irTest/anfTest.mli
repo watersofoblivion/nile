@@ -19,3 +19,11 @@ val assert_expr_equal : ctxt:test_ctxt -> Anf.expr -> Anf.expr -> unit
 val assert_block_equal : ctxt:test_ctxt -> Anf.block -> Anf.block -> unit
 (** [assert_block_equal ~ctxt expected actual] asserts that the ANF block
     [actual] is equal to the ANF block [expected]. *)
+
+val assert_top_equal : ctxt:test_ctxt -> Anf.top -> Anf.top -> unit
+(** [assert_block_equal ~ctxt expected actual] asserts that the ANF top-level
+    statement [actual] is equal to the ANF top-level statement [expected]. *)
+
+val assert_file_equal : ctxt:test_ctxt -> Anf.file -> Anf.file -> unit
+(** [assert_block_equal ~ctxt expected actual] asserts that the ANF top-level
+    statement [actual] is equal to the ANF top-level statement [expected]. *)

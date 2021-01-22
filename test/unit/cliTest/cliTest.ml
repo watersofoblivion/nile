@@ -1,5 +1,6 @@
 open Cmdliner
 open OUnit2
+open Nile
 
 let suite =
   let name = "unit-test" in
