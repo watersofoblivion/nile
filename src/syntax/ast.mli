@@ -3,22 +3,43 @@ open Common
 
 (** {1 Unannotated Abstract Syntax} *)
 
+(** {2 Symbolization} *)
+
+type sym
+(** A symbol *)
+
+type tbl
+(** A symbol table *)
+
+val tbl : tbl
+(** [tbl] returns an empty symbol table *)
+
+val symbolize : string -> tbl -> (sym * tbl)
+(** [symbolize str tbl] converts [str] into a symbol from the table [tbl].  If
+    [str] has already been symbolized, the same symbol and an unaltered table
+    are returned.  Otherwise, a new symbol is generated and returned along with
+    a copy of the table with the symbol bound. *)
+
+val name_of : sym -> tbl -> string
+(** [name_of sym tbl] looks up the string representation of the symbol [sym] in
+    the table [tbl].  Raises {!Not_found} if [sym] does not exist in [tbl]. *)
+
 (** {2 Syntax} *)
 
 type expr = private
-  | Bool of Loc.t * bool                                  (** Boolean *)
-  | Int of Loc.t * int                                    (** Integer *)
-  | Var of Loc.t * string                                 (** Variable Identifier *)
-  | UnOp of Loc.t * Op.un * expr                          (** Unary Operation *)
-  | BinOp of Loc.t * expr * Op.bin * expr                 (** Binary Operation *)
-  | If of Loc.t * expr * expr * expr                      (** Conditional *)
-  | Let of Loc.t * binding * expr                         (** Value Binding *)
-  | LetRec of Loc.t * binding list * expr                 (** Recursive Value Bindings *)
-  | Abs of Loc.t * string * Type.t * Type.t option * expr (** Function Abstraction *)
-  | App of Loc.t * expr * expr                            (** Function Application *)
+  | Bool of Loc.t * bool                               (** Boolean *)
+  | Int of Loc.t * int                                 (** Integer *)
+  | Var of Loc.t * sym                                 (** Variable Identifier *)
+  | UnOp of Loc.t * Op.un * expr                       (** Unary Operation *)
+  | BinOp of Loc.t * expr * Op.bin * expr              (** Binary Operation *)
+  | If of Loc.t * expr * expr * expr                   (** Conditional *)
+  | Let of Loc.t * binding * expr                      (** Value Binding *)
+  | LetRec of Loc.t * binding list * expr              (** Recursive Value Bindings *)
+  | Abs of Loc.t * sym * Type.t * Type.t option * expr (** Function Abstraction *)
+  | App of Loc.t * expr * expr                         (** Function Application *)
 (** An expression *)
 
-and binding = Loc.t * string * Type.t option * expr
+and binding = Loc.t * sym * Type.t option * expr
 (** A value Binding *)
 
 type top = private
@@ -41,7 +62,7 @@ val int : Loc.t -> int -> expr
 (** [int loc i] constructs an integer literal with the value [i] at location
     [loc]. *)
 
-val var : Loc.t -> string -> expr
+val var : Loc.t -> sym -> expr
 (** [var loc id] constructs a variable identifier expression at location [loc]
     referencing the value bound to the identifier [id]. *)
 
@@ -72,7 +93,7 @@ val bind_rec : Loc.t -> binding list -> expr -> expr
     other and [rest].  The location should span from the initial "let" keyword
     to the end of the [rest] expression. *)
 
-val abs : Loc.t -> string -> Type.t -> Type.t option -> expr -> expr
+val abs : Loc.t -> sym -> Type.t -> Type.t option -> expr -> expr
 (** [abs loc id ty res expr] constructs a function abstraction expression at
     location [loc] binding the parameter named [id] with type [ty] within the
     scope of the function body [expr] with the result type [res].  The location
@@ -84,7 +105,7 @@ val app : Loc.t -> expr -> expr -> expr
     applying the function [f] to the value [x].  The location should span from
     [f] to [x]. *)
 
-val binding : Loc.t -> string -> Type.t option -> expr -> binding
+val binding : Loc.t -> sym -> Type.t option -> expr -> binding
 (** [binding loc id ty expr] constructs a value binding expression at location
     [loc] binding the value [expr] of type [ty] to variable identifier [id].
     The location should span from [id] to [expr].  If not provided, the type
@@ -123,13 +144,14 @@ val loc_top : top -> Loc.t
 
 (** {2 Pretty Printing} *)
 
-val pp_expr : expr -> formatter -> unit
-(** [pp_expr expr fmt] pretty-prints the expression [expr] to the formatter
-    [fmt]. *)
+val pp_expr : tbl -> expr -> formatter -> unit
+(** [pp_expr tbl expr fmt] pretty-prints the expression [expr] to the formatter
+    [fmt] converting symbols to strings using [tbl]. *)
 
-val pp_top : top -> formatter -> unit
+val pp_top : tbl -> top -> formatter -> unit
 (** [pp_top top fmt] pretty-prints the top-level binding [top] to the formatter
-    [fmt]. *)
+    [fmt] converting symbols to strings using [tbl]. *)
 
-val pp_file : file -> formatter -> unit
-(** [pp_file file fmt] pretty-prints the file [file] to the formatter [fmt]. *)
+val pp_file : tbl -> file -> formatter -> unit
+(** [pp_file file fmt] pretty-prints the file [file] to the formatter [fmt]
+     converting symbols to strings using [tbl]. *)

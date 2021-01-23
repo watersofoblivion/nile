@@ -10,8 +10,7 @@ module Args =
     module DumpArgs =
       struct
         type conf = {
-          unannot_ast : bool;
-          annot_ast   : bool;
+          ast         : bool;
           unopt_ir    : bool;
           opt_ir      : bool;
           clos        : bool;
@@ -19,19 +18,17 @@ module Args =
           opt_llvm    : bool;
         }
 
-        let conf unannot_ast annot_ast unopt_ir opt_ir clos unopt_llvm opt_llvm all =
+        let conf ast unopt_ir opt_ir clos unopt_llvm opt_llvm all =
           if all
           then
-            { unannot_ast = true;
-              annot_ast   = true;
+            { ast         = true;
               unopt_ir    = true;
               opt_ir      = true;
               clos        = true;
               unopt_llvm  = true;
               opt_llvm    = true; }
           else
-            { unannot_ast = unannot_ast;
-              annot_ast   = annot_ast;
+            { ast         = ast;
               unopt_ir    = unopt_ir;
               opt_ir      = opt_ir;
               clos        = clos;
@@ -40,13 +37,9 @@ module Args =
 
         let docs = "OPTIONS: DUMP INTERNAL REPRESENTATIONS"
 
-        let unannot_ast =
-          let doc = "Print the un-annotated abstract syntax tree to STDERR" in
-          Arg.(value & flag & info ["dump-unannot-ast"] ~doc ~docs)
-
-        let annot_ast =
-          let doc = "Print the annotated abstract syntax tree to STDERR" in
-          Arg.(value & flag & info ["dump-annot-ast"] ~doc ~docs)
+        let ast =
+          let doc = "Print the abstract syntax tree to STDERR" in
+          Arg.(value & flag & info ["dump-ast"] ~doc ~docs)
 
         let unopt_ir =
           let doc = "Print the unoptimized intermediate representation (ANF) to STDERR" in
@@ -72,7 +65,7 @@ module Args =
           let doc = "Print all of the intermediate forms to STDERR" in
           Arg.(value & flag & info ["dump-all"] ~doc ~docs)
 
-        let term = Term.(const conf $ unannot_ast $ annot_ast $ unopt_ir $ opt_ir $ clos $ unopt_llvm $ opt_llvm $ all)
+        let term = Term.(const conf $ ast $ unopt_ir $ opt_ir $ clos $ unopt_llvm $ opt_llvm $ all)
       end
 
     (* Top-level configuration *)
@@ -141,15 +134,15 @@ module Cmds =
         let compile src exe config =
           let _ = exe in
 
-          let unannot =
+          let ast =
             src
               |> Syntax.Lexer.from_file
               |> Syntax.Parser.file Syntax.Lexer.lex
           in
 
           let _ =
-            if config.Args.CompilerArgs.dump.unannot_ast
-            then dump_with_title "Unannotated Abstract Syntax Tree" Syntax.Unannot.pp_file unannot err_formatter
+            if config.Args.CompilerArgs.dump.ast
+            then dump_with_title "Abstract Syntax Tree" Syntax.Ast.pp_file ast err_formatter
             else ()
           in
 

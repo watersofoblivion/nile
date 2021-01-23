@@ -1,87 +1,56 @@
-module type M =
-  sig
-    type id
+module IdMap = Map.Make (struct
+  type t = int
+  let compare = compare
+end)
 
-    type env
-    val env : env
-    val bind : id -> Type.t -> env -> env
-    val lookup : id -> env -> Type.t
+type env = Type.t IdMap.t
 
-    exception DeclarationMismatch of id * Type.t * Type.t
-    exception ResultMismatch of Type.t * Type.t
-    exception UnboundIdentifier of id
-    exception CannotApply of Type.t
-    exception TooManyArgs of Type.t * int
-    exception InvalidArgs of Type.t * Type.t
-    exception InvalidCondition of Type.t
-    exception ConditionalBranchMismatch of Type.t * Type.t
-    exception AnnotationRequired of id
+let env = IdMap.empty
+let bind = IdMap.add
+let lookup = IdMap.find
 
-    val declaration_mismatch : id -> Type.t -> Type.t -> 'a
-    val result_mismatch : Type.t -> Type.t -> 'a
-    val unbound_identifier : id -> 'a
-    val cannot_apply : Type.t -> 'a
-    val invalid_args : Type.t -> Type.t -> 'a
-    val invalid_condition : Type.t -> 'a
-    val conditional_branch_mismatch : Type.t -> Type.t -> 'a
-    val annotation_required : id -> 'a
-  end
+exception DeclarationMismatch of int * Type.t * Type.t
+exception ResultMismatch of Type.t * Type.t
+exception UnboundIdentifier of int
+exception CannotApply of Type.t
+exception TooManyArgs of Type.t * int
+exception InvalidArgs of Type.t * Type.t
+exception InvalidCondition of Type.t
+exception ConditionalBranchMismatch of Type.t * Type.t
+exception AnnotationRequired of int
 
-module Make = functor (Id: Map.OrderedType) ->
-  struct
-    type id = Id.t
+let declaration_mismatch id expected actual =
+  DeclarationMismatch (id, expected, actual)
+    |> raise
 
-    module IdMap = Map.Make (Id)
+let result_mismatch expected actual =
+  ResultMismatch (expected, actual)
+    |> raise
 
-    type env = Type.t IdMap.t
+let unbound_identifier id =
+  UnboundIdentifier id
+    |> raise
 
-    let env = IdMap.empty
-    let bind = IdMap.add
-    let lookup = IdMap.find
+let cannot_apply ty =
+  CannotApply ty
+    |> raise
+(*
+let too_many_args ty num =
+  TooManyArgs (ty, num)
+    |> raise *)
 
-    exception DeclarationMismatch of id * Type.t * Type.t
-    exception ResultMismatch of Type.t * Type.t
-    exception UnboundIdentifier of id
-    exception CannotApply of Type.t
-    exception TooManyArgs of Type.t * int
-    exception InvalidArgs of Type.t * Type.t
-    exception InvalidCondition of Type.t
-    exception ConditionalBranchMismatch of Type.t * Type.t
-    exception AnnotationRequired of id
+let invalid_args expected actual =
+  InvalidArgs (expected, actual)
+    |> raise
 
-    let declaration_mismatch id expected actual =
-      DeclarationMismatch (id, expected, actual)
-        |> raise
+let invalid_condition ty =
+  InvalidCondition ty
+    |> raise
 
-    let result_mismatch expected actual =
-      ResultMismatch (expected, actual)
-        |> raise
+let conditional_branch_mismatch t f =
+  ConditionalBranchMismatch (t, f)
+    |> raise
 
-    let unbound_identifier id =
-      UnboundIdentifier id
-        |> raise
-
-    let cannot_apply ty =
-      CannotApply ty
-        |> raise
-    (*
-    let too_many_args ty num =
-      TooManyArgs (ty, num)
-        |> raise *)
-
-    let invalid_args expected actual =
-      InvalidArgs (expected, actual)
-        |> raise
-
-    let invalid_condition ty =
-      InvalidCondition ty
-        |> raise
-
-    let conditional_branch_mismatch t f =
-      ConditionalBranchMismatch (t, f)
-        |> raise
-
-    let annotation_required id =
-      AnnotationRequired id
-        |> raise
-  end
+let annotation_required id =
+  AnnotationRequired id
+    |> raise

@@ -112,49 +112,6 @@ val file : top list -> file
 (** [file tops] constructs a source file consisting of the list of top-level
     bindings [tops]. *)
 
-(** {2 Normalization} *)
-
-val builtin_idx : int
-(** [builtin_idx] is the alpha index after binding builtin functions. *)
-
-val builtin_aenv : (string * int) list
-(** [builtin_aenv] is the alpha environment with the builtin functions bound. *)
-
-val builtin_tenv : (int * Type.t) list
-(** [builtin_tenv] is the type environment with the builtin functions bound. *)
-
-val of_expr : int -> (string * int) list -> (int * Type.t) list -> (int * Type.t) option -> Annot.expr -> (int * Type.t * block)
-(** [of_expr idx aenv tenv join expr] normalizes the annotated abstract syntax
-    tree expression [expr] into administrative normal form.
-
-    All bound identifiers are alpha renamed to indicies, starting with [idx].
-    Previously bound names are mapped in [aenv], and the types of bound values
-    are mapped in [tenv].
-
-    The value [join] represents an optional join point for the normalization to
-    call, consisting of the index of the variable the join point is bound to and
-    the result type of the join point.
-
-    The function results in a triple of the next alpha renaming index, the type
-    of the normalized expression, and the normalized expression itself.  All
-    normalized expression are packed into a block expression by wrapping them
-    with {!Anf.Expr} and/or {!Anf.Atom} nodes. *)
-
-val of_top : int -> (string * int) list -> (int * Type.t) list -> Annot.top -> (int * (string * int) list * (int * Type.t) list * top list)
-(** [of_top idx aenv tenv top] normalizes the annotated abstract syntax tree
-    top-level expression [expr] into administrative normal form.  (See
-    {!of_expr} for details.)
-
-    Returns a quadruple of the next alpha renaming index, an alpha and a type
-    environment with the top-level values bound, and a list of normalized
-    top-level expressions.  The expressions are returned in dependency order. *)
-
-val of_file : int -> (string * int) list -> (int * Type.t) list -> Annot.file -> (int * file)
-(** [of_file idx aenv tenv file] normalizes the annotated abstract syntax tree
-    file [file] into administrative normal form.  (See {!of_expr} for details.)
-
-    Returns a pair of the next alpha renaming index and a normalized file. *)
-
 (** {2 Pretty Printing} *)
 
 val pp_atom : atom -> formatter -> unit
@@ -179,35 +136,29 @@ val pp_file : file -> formatter -> unit
 
 (** {2 Type Checking} *)
 
-type env
-(** A type-checking environment *)
-
-val env : env
-(** [env] returns an empty type-checking environment *)
-
-val builtin : env
+val builtin : Check.env
 (** [builtin] returns a type-checking environment with the builtin functions
     bound. *)
 
-val type_of_atom : env -> atom -> Type.t
+val type_of_atom : Check.env -> atom -> Type.t
 (** [type_of_atom env atom] type checks the atomic value [atom] in the type
     environment [env] and results in the type of the atomic value. *)
 
-val type_of_expr : env -> expr -> Type.t
+val type_of_expr : Check.env -> expr -> Type.t
 (** [type_of_expr env expr] type checks the primitive expression [expr] in the
     type environment [env] and results in the type of the primitive expression.
     *)
 
-val type_of_block : env -> block -> Type.t
+val type_of_block : Check.env -> block -> Type.t
 (** [type_of_block env block] type checks the block expression [block] in the
     type environment [env] and results in the type of the block expression. *)
 
-val type_of_top : env -> top -> env
+val type_of_top : Check.env -> top -> Check.env
 (** [type_of_top env top] type checks the top-level expression [top] in the
     type environment [env] and results in a type environment with the top-level
     identifiers bound to their types. *)
 
-val type_of_file : env -> file -> env
+val type_of_file : Check.env -> file -> Check.env
 (** [type_of_file env file] type checks the source file [file] in the type
     environment [env] and returns a type environment with all top-level
     identifiers bound to their types. *)

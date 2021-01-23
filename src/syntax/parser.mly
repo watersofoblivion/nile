@@ -2,11 +2,11 @@
   open Format
 
   let make_bind kwd_loc b rest =
-    let loc = Loc.span kwd_loc (Unannot.loc_expr rest) in
-    Unannot.bind loc b rest
+    let loc = Loc.span kwd_loc (Ast.loc_expr rest) in
+    Ast.bind loc b rest
   let make_bind_rec kwd_loc bs rest =
-    let loc = Loc.span kwd_loc (Unannot.loc_expr rest) in
-    Unannot.bind_rec loc bs rest
+    let loc = Loc.span kwd_loc (Ast.loc_expr rest) in
+    Ast.bind_rec loc bs rest
 
   let make_binding (loc, id) _ ty expr =
     (*
@@ -15,23 +15,23 @@
       | param :: params -> ()
     in
     *)
-    let loc = Loc.span loc (Unannot.loc_expr expr) in
-    Unannot.binding loc id (Some ty) expr
+    let loc = Loc.span loc (Ast.loc_expr expr) in
+    Ast.binding loc id (Some ty) expr
 
   let make_cond kwd_loc c t f =
-    let loc = Loc.span kwd_loc (Unannot.loc_expr f) in
-    Unannot.cond loc c t f
+    let loc = Loc.span kwd_loc (Ast.loc_expr f) in
+    Ast.cond loc c t f
 
   let make_un_op loc op r =
-    let loc = Loc.span loc (Unannot.loc_expr r) in
-    Unannot.un_op loc op r
+    let loc = Loc.span loc (Ast.loc_expr r) in
+    Ast.un_op loc op r
   let make_bin_op l op r =
-    let loc = Loc.span (Unannot.loc_expr l) (Unannot.loc_expr r) in
-    Unannot.bin_op loc l op r
+    let loc = Loc.span (Ast.loc_expr l) (Ast.loc_expr r) in
+    Ast.bin_op loc l op r
 
-  let make_bool (loc, b) = Unannot.bool loc b
-  let make_int (loc, i) = Unannot.int loc i
-  let make_var (loc, id) = Unannot.var loc id
+  let make_bool (loc, b) = Ast.bool loc b
+  let make_int (loc, i) = Ast.int loc i
+  let make_var (loc, id) = Ast.var loc id
 
   let make_prim_ty (_, id) = match id with
     | "Int" -> Common.Type.int
@@ -63,8 +63,8 @@
 %right LNOT
 %right ARROW
 
-%type <Unannot.file> file
-%type <Unannot.expr> unit_test
+%type <Ast.file> file
+%type <Ast.expr> unit_test
 
 %start file
 %start unit_test
@@ -72,12 +72,12 @@
 %%
 
 file:
-  top EOF { Unannot.file $1 }
+  top EOF { Ast.file $1 }
 ;
 
 top:
-  LET binding top      { (Unannot.top_bind $1 $2) :: $3 }
-| LET REC bindings top { (Unannot.top_bind_rec $1 $3) :: $4 }
+  LET binding top      { (Ast.top_bind $1 $2) :: $3 }
+| LET REC bindings top { (Ast.top_bind_rec $1 $3) :: $4 }
 |                      { [] }
 ;
 

@@ -50,208 +50,6 @@ let top_bind_rec bs = TopRec bs
 
 let file tops = tops
 
-(* Type Checking Environment *)
-
-module Checker = Check.Make (struct
-  type t = int
-  let compare = compare
-end)
-
-type env = Checker.env
-let env = Checker.env
-let (builtin_idx, builtin, builtin_aenv, builtin_tenv) =
-  let fold (idx, env, aenv, tenv) (id, ty) =
-    let env = Checker.bind idx ty env in
-    let aenv = (id, idx) :: aenv in
-    let tenv = (idx, ty) :: tenv in
-    (idx + 1, env, aenv, tenv)
-  in
-  List.fold_left fold (0, Checker.env, [], []) Builtin.builtins
-
-(* Normalization *)
-
-let to_expr = function
-  | Expr c -> c
-  | _ -> failwith "Not an expression"
-
-let to_atom = function
-  | Expr (Atom a) -> a
-  | _ -> failwith "Not an atom"
-
-let rec tail_branch = function
-  | Annot.If _ -> true
-  | Annot.Let (_, _, rest) -> tail_branch rest
-  | _ -> false
-
-let rec of_expr idx aenv tenv join ast =
-  normalize idx aenv tenv join ast (fun idx ty anf -> (idx, ty, anf))
-
-and normalize idx aenv tenv join ast kontinue = match ast with
-  | Annot.Bool (_, b) -> normalize_bool idx b kontinue
-  | Annot.Int (_, i) -> normalize_int idx i kontinue
-  | Annot.Var (_, id) -> normalize_var idx aenv tenv id kontinue
-  | Annot.UnOp (_, op, r) -> normalize_un_op idx aenv tenv join op r kontinue
-  | Annot.BinOp (_, l, op, r) -> normalize_bin_op idx aenv tenv join l op r kontinue
-  | Annot.If (_, c, t, f) ->
-    if tail_branch c
-    then normalize_cond_with_join idx aenv tenv join c t f kontinue
-    else normalize_cond idx aenv tenv join c t f kontinue
-  | Annot.Let (_, (_, id, ty, expr), rest) ->
-    if tail_branch expr
-    then normalize_bind_with_join idx aenv tenv join id ty expr rest kontinue
-    else normalize_bind idx aenv tenv join id ty expr rest kontinue
-  | Annot.LetRec (_, bs, rest) -> let _ = (bs, rest) in failwith "TODO"
-  | Annot.Abs (_, id, arg, res, body) -> normalize_abs idx aenv tenv join id arg res body kontinue
-  | Annot.App (_, f, x) -> normalize_app idx aenv tenv join f x kontinue
-
-and normalize_bool idx b kontinue =
-  bool b
-    |> atom
-    |> expr
-    |> kontinue idx Type.bool
-
-and normalize_int idx i kontinue =
-  int i
-    |> atom
-    |> expr
-    |> kontinue idx Type.int
-
-and normalize_var idx aenv tenv id kontinue =
-  let alpha = List.assoc id aenv in
-  let ty = List.assoc alpha tenv in
-  var alpha
-    |> atom
-    |> expr
-    |> kontinue idx ty
-
-and normalize_un_op idx aenv tenv join op r kontinue =
-  normalize_and_bind idx aenv tenv join r (fun idx _ r ->
-    let ty = match op with
-      | Op.Not -> Type.bool
-    in
-    un_op op (to_atom r)
-      |> expr
-      |> kontinue idx ty
-  )
-
-and normalize_bin_op idx aenv tenv join l op r kontinue =
-  normalize_and_bind idx aenv tenv join l (fun idx _ l ->
-    normalize_and_bind idx aenv tenv join r (fun idx _ r ->
-      let ty = match op with
-        | Op.Add | Op.Sub | Op.Mul | Op.Div | Op.Mod -> Type.int
-        | _ -> Type.bool
-      in
-      bin_op (to_atom l) op (to_atom r)
-        |> expr
-        |> kontinue idx ty
-    )
-  )
-
-and normalize_cond_with_join idx aenv tenv join c t f kontinue =
-  let (idx, ty, t, f) = normalize_tf idx aenv tenv join t f in
-  let join =
-    cond (var idx) t f
-      |> abs idx Type.bool ty
-      |> atom
-      |> binding (idx + 1) (Type.func Type.bool ty)
-  in
-  let (idx, _, c) = normalize (idx + 2) aenv tenv (Some ((idx + 1), ty)) c kontinue in
-  (idx, ty, bind join c)
-
-and normalize_cond idx aenv tenv join c t f kontinue =
-  normalize_and_bind idx aenv tenv join c (fun idx _ c ->
-    let (idx, ty, t, f) = normalize_tf idx aenv tenv join t f in
-    cond (to_atom c) t f
-      |> kontinue idx ty
-  )
-
-and normalize_tf idx aenv tenv join t f = match join with
-  | Some (idx_j, ty_j) ->
-    let (idx, _, t) = normalize_and_join idx aenv tenv join idx_j ty_j t in
-    let (idx, _, f) = normalize_and_join idx aenv tenv join idx_j ty_j f in
-    (idx, ty_j, t, f)
-  | None ->
-    let (idx, ty, t) = of_expr idx aenv tenv None t in
-    let (idx, _, f) = of_expr idx aenv tenv None f in
-    (idx, ty, t, f)
-
-(* and normalize_bind_with_join idx aenv tenv join id ty expr rest kontinue = *)
-and normalize_bind_with_join _ _ _ _ _ _ _ _ _ =
-  failwith "TODO"
-
-and normalize_bind idx aenv tenv join id ty expr rest kontinue =
-  normalize idx aenv tenv join expr (fun idx _ expr ->
-    let b =
-      expr
-        |> to_expr
-        |> binding idx ty
-    in
-    let aenv = (id, idx) :: aenv in
-    let tenv = (idx, ty) :: tenv in
-    let idx = idx + 1 in
-    let (idx, ty, rest) = normalize idx aenv tenv join rest kontinue in
-    (idx, ty, bind b rest)
-  )
-
-and normalize_abs idx aenv tenv join id arg res body kontinue =
-  let aenv = (id, idx) :: aenv in
-  let tenv = (idx, arg) :: tenv in
-  let (idx', _, body) = of_expr (idx + 1) aenv tenv join body in
-  let ty = Type.func arg res in
-  abs idx arg res body
-    |> atom
-    |> expr
-    |> kontinue idx' ty
-
-and normalize_app idx aenv tenv join f x kontinue =
-  normalize_and_bind idx aenv tenv join x (fun idx _ x ->
-    normalize_and_bind idx aenv tenv join f (fun idx ty f ->
-      let ty = match ty with
-        | Type.Fun (_, ty) -> ty
-        | _ -> failwith "Not a function, cannot apply"
-      in
-      app (to_atom f) (to_atom x)
-        |> expr
-        |> kontinue idx ty
-    )
-  )
-
-and normalize_and_join idx aenv tenv join idx_j ty_j ast =
-  normalize_and_bind idx aenv tenv join ast (fun idx _ x ->
-    let j = var idx_j in
-    let x =
-      to_atom x
-        |> app j
-        |> expr
-    in
-    (idx, ty_j, x)
-  )
-
-and normalize_and_bind idx aenv tenv join ast kontinue =
-  normalize idx aenv tenv join ast (fun idx ty anf ->
-    match anf with
-      | Expr (Atom _) -> kontinue idx ty anf
-      | Expr e ->
-        let b = binding idx ty e in
-        let (idx, ty, rest) =
-          var idx
-            |> atom
-            |> expr
-            |> kontinue (idx + 1) ty
-        in
-        (idx, ty, bind b rest)
-      | _ -> failwith "Not an atom or expression"
-    )
-
-let of_top _ _ _ _ = failwith "TODO"
-
-let rec of_file idx aenv tenv = function
-  | [] -> (idx, [])
-  | top :: file ->
-    let (idx, aenv, tenv, tops) = of_top idx aenv tenv top in
-    let (idx, file) = of_file idx aenv tenv file in
-    (idx, List.rev_append tops file)
-
 (* Pretty-Printing *)
 
 let rec pp_atom atom fmt = match atom with
@@ -314,6 +112,15 @@ let pp_file file fmt =
 
 (* Type Checking *)
 
+let (builtin_idx, builtin, builtin_aenv, builtin_tenv) =
+  let fold (idx, env, aenv, tenv) (id, ty) =
+    let env = Check.bind idx ty env in
+    let aenv = (id, idx) :: aenv in
+    let tenv = (idx, ty) :: tenv in
+    (idx + 1, env, aenv, tenv)
+  in
+  List.fold_left fold (0, Check.env, [], []) Builtin.builtins
+
 let rec type_of_atom env = function
   | Bool _ -> Type.bool
   | Int _ -> Type.int
@@ -321,15 +128,15 @@ let rec type_of_atom env = function
   | Abs (idx, ty, res, body) -> type_of_abs env idx ty res body
 
 and type_of_var env idx =
-  try Checker.lookup idx env
-  with Not_found -> Checker.unbound_identifier idx
+  try Check.lookup idx env
+  with Not_found -> Check.unbound_identifier idx
 
 and type_of_abs env idx ty res body =
-  let env = Checker.bind idx ty env in
+  let env = Check.bind idx ty env in
   let res' = type_of_block env body in
   if Type.equal res res'
   then res
-  else Checker.declaration_mismatch idx res res'
+  else Check.declaration_mismatch idx res res'
 
 and type_of_expr env = function
   | UnOp (op, r) -> type_of_un_op env op r
@@ -352,8 +159,8 @@ and type_of_app env f x =
     | Type.Fun (arg, res) ->
       if Type.equal arg x
       then res
-      else Checker.invalid_args arg x
-    | ty -> Checker.cannot_apply ty
+      else Check.invalid_args arg x
+    | ty -> Check.cannot_apply ty
 
 and type_of_block env = function
   | Let ((idx, ty, expr), rest) -> type_of_bind env idx ty expr rest
@@ -365,19 +172,19 @@ and type_of_bind env idx ty expr rest =
   let expr = type_of_expr env expr in
   if Type.equal ty expr
   then
-    let env = Checker.bind idx ty env in
+    let env = Check.bind idx ty env in
     type_of_block env rest
-  else Checker.declaration_mismatch idx ty expr
+  else Check.declaration_mismatch idx ty expr
 
 and type_of_bind_rec env bs rest =
-  let fold env (idx, ty, _) = Checker.bind idx ty env in
+  let fold env (idx, ty, _) = Check.bind idx ty env in
   let env = List.fold_left fold env bs in
   let _ =
     let iter (idx, ty, expr) =
       let expr = type_of_expr env expr in
       if Type.equal ty expr
       then ()
-      else Checker.declaration_mismatch idx ty expr
+      else Check.declaration_mismatch idx ty expr
     in
     List.iter iter bs
   in
@@ -389,24 +196,24 @@ and type_of_cond env c t f = match type_of_atom env c with
     let f = type_of_block env f in
     if Type.equal t f
     then t
-    else Checker.conditional_branch_mismatch t f
-  | ty -> Checker.invalid_condition ty
+    else Check.conditional_branch_mismatch t f
+  | ty -> Check.invalid_condition ty
 
 let type_of_top_bind env idx ty expr =
   let expr = type_of_expr env expr in
   if Type.equal ty expr
-  then Checker.bind idx ty env
-  else Checker.declaration_mismatch idx ty expr
+  then Check.bind idx ty env
+  else Check.declaration_mismatch idx ty expr
 
 let type_of_top_bind_rec env bs =
-  let fold env (idx, ty, _) = Checker.bind idx ty env in
+  let fold env (idx, ty, _) = Check.bind idx ty env in
   let env = List.fold_left fold env bs in
   let _ =
     let iter (idx, ty, expr) =
       let expr = type_of_expr env expr in
       if Type.equal ty expr
       then ()
-      else Checker.declaration_mismatch idx ty expr
+      else Check.declaration_mismatch idx ty expr
     in
     List.iter iter bs
   in

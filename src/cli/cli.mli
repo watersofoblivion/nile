@@ -7,26 +7,22 @@ module Args :
     module DumpArgs :
       sig
         type conf = private {
-          unannot_ast : bool; (** Un-annotated AST *)
-          annot_ast   : bool; (** Annotated AST *)
-          unopt_ir    : bool; (** Unoptimized Intermediate Representation (ANF) *)
-          opt_ir      : bool; (** Optimized Intermediate Representation (ANF) *)
-          clos        : bool; (** Closure converted program *)
-          unopt_llvm  : bool; (** Unoptimized LLVM assembly *)
-          opt_llvm    : bool; (** Optimized LLVM assembly *)
+          ast:        bool; (** Abstract Syntax Tree *)
+          unopt_ir:   bool; (** Unoptimized Intermediate Representation (ANF) *)
+          opt_ir:     bool; (** Optimized Intermediate Representation (ANF) *)
+          clos:       bool; (** Closure converted program *)
+          unopt_llvm: bool; (** Unoptimized LLVM assembly *)
+          opt_llvm:   bool; (** Optimized LLVM assembly *)
         }
         (** Dump options *)
 
-        val conf : bool -> bool -> bool -> bool -> bool -> bool -> bool -> bool -> conf
-        (** [conf unannot_ast annot_ast unopt_ir opt_ir clos unopt_llvm opt_llvm all]
+        val conf : bool -> bool -> bool -> bool -> bool -> bool -> bool -> conf
+        (** [conf ast unopt_ir opt_ir clos unopt_llvm opt_llvm all]
             constructs a dump configuration. *)
 
-        val unannot_ast : bool Term.t
-        (** [unannot_ast] dumps the un-annotated abstract syntax tree to STDERR.
+        val ast : bool Term.t
+        (** [ast] dumps the abstract syntax tree to STDERR.
             *)
-
-        val annot_ast : bool Term.t
-        (** [annot_ast] dumps the annotated abstract syntax tree to STDERR. *)
 
         val unopt_ir : bool Term.t
         (** [unopt_ir] dumps the unoptimized intermediate representation (ANF)
