@@ -6,10 +6,10 @@ open Common
 (** {2 Syntax} *)
 
 type atom = private
-  | Bool of bool                         (** Boolean *)
-  | Int of int                           (** Integer *)
-  | Var of int                           (** Variable *)
-  | Abs of int * Type.t * Type.t * block (** Function Abstraction *)
+  | Bool of bool                           (** Boolean *)
+  | Int of int                             (** Integer *)
+  | Var of Sym.s                           (** Variable *)
+  | Abs of Sym.s * Type.t * Type.t * block (** Function Abstraction *)
 (** Atomic Values *)
 
 and expr = private
@@ -26,7 +26,7 @@ and block = private
   | Expr of expr                   (** Primitive Expression *)
 (** Block Expressions *)
 
-and binding = int * Type.t * expr
+and binding = Sym.s * Type.t * expr
 (** Bound Value *)
 
 type top = private
@@ -47,12 +47,12 @@ val bool : bool -> atom
 val int : int -> atom
 (** [int i] constructs an atomic integer literal with the value [i]. *)
 
-val var : int -> atom
-(** [var idx] constructs an atomic variable referencing the bound value [idx]. *)
+val var : Sym.sym -> atom
+(** [var idx] constructs an atomic variable referencing the bound value [sym]. *)
 
-val abs : int -> Type.t -> Type.t -> block -> atom
-(** [abs idx ty res body] constructs an atomic function abstraction binding the
-    variable [idx] of type [ty] within [body] and resulting in values of type
+val abs : Sym.sym -> Type.t -> Type.t -> block -> atom
+(** [abs sym ty res body] constructs an atomic function abstraction binding the
+    variable [sym] of type [ty] within [body] and resulting in values of type
     [res]. *)
 
 (** {3 Primitive Expressions} *)
@@ -93,9 +93,9 @@ val expr : expr -> block
 
 (** {3 Variable Bindings} *)
 
-val binding : int -> Type.t -> expr -> binding
-(** [binding idx ty expr] constructs a variable binding which binds the variable
-    [idx] of type [ty] to the value of [expr]. *)
+val binding : Sym.sym -> Type.t -> expr -> binding
+(** [binding sym ty expr] constructs a variable binding which binds the variable
+    [sym] of type [ty] to the value of [expr]. *)
 
 (** {3 Top-Level Statements} *)
 
@@ -114,25 +114,25 @@ val file : top list -> file
 
 (** {2 Pretty Printing} *)
 
-val pp_atom : atom -> formatter -> unit
-(** [pp_atom atom fmt] pretty-prints the atomic value [atom] to the formatter
-    [fmt]. *)
+val pp_atom : Sym.names -> atom -> formatter -> unit
+(** [pp_atom names atom fmt] pretty-prints the atomic value [atom] to the
+    formatter [fmt] using the names from the symbol table [names]. *)
 
-val pp_expr : expr -> formatter -> unit
-(** [pp_expr expr fmt] pretty-prints the primitive expression [expr] to the
-    formatter [fmt]. *)
+val pp_expr : Sym.names -> expr -> formatter -> unit
+(** [pp_expr names expr fmt] pretty-prints the primitive expression [expr] to
+    the formatter [fmt] using the names from the symbol table [names]. *)
 
-val pp_block : block -> formatter -> unit
-(** [pp_block block fmt] pretty-prints the block expression [block] to the
-    formatter [fmt]. *)
+val pp_block : Sym.names -> block -> formatter -> unit
+(** [pp_block names block fmt] pretty-prints the block expression [block] to the
+    formatter [fmt] using the names from the symbol table [names]. *)
 
-val pp_top : top -> formatter -> unit
-(** [pp_top top fmt] pretty-prints the top-level expression [top] to the
-    formatter [fmt]. *)
+val pp_top : Sym.names -> top -> formatter -> unit
+(** [pp_top names top fmt] pretty-prints the top-level expression [top] to the
+    formatter [fmt] using the names from the symbol table [names]. *)
 
-val pp_file : file -> formatter -> unit
-(** [pp_file file fmt] pretty-prints the source file [file] to the formatter
-    [fmt]. *)
+val pp_file : Sym.names -> file -> formatter -> unit
+(** [pp_file names file fmt] pretty-prints the source file [file] to the
+    formatter [fmt] using the names from the symbol table [names]. *)
 
 (** {2 Type Checking} *)
 

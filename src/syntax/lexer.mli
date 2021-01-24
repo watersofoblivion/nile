@@ -47,6 +47,9 @@ val punc_colon : lexbuf -> Parser.token
 val punc_arrow : lexbuf -> Parser.token
 (** [punc_arrow lexbuf] constructs a token for the [->] punctuation mark. *)
 
+val punc_darrow : lexbuf -> Parser.token
+(** [punc_darrow lexbuf] constructs a token for the [=>] punctuation mark. *)
+
 val punc_bind : lexbuf -> Parser.token
 (** [punc_bind lexbuf] constructs a token for the [=] punctuation mark. *)
 

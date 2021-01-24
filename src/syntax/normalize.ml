@@ -1,4 +1,21 @@
+open Common
+open Ir
+
 (* Type Checking Environment *)
+
+type env =
+  { idx: Sym.s;
+    syms: Sym.t;
+    aenv: (Sym.s * Sym.s) list;
+    tenv: Check.env }
+
+let env tbl =
+  { idx  = 0;
+    syms = tbl;
+    aenv = [];
+    tenv = Check.env }
+
+let bind id ty env = env
 
 let (builtin_idx, builtin, builtin_aenv, builtin_tenv) =
   let fold (idx, env, aenv, tenv) (id, ty) =

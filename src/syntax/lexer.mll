@@ -35,6 +35,9 @@
   let punc_arrow lexbuf =
     let loc = Loc.loc lexbuf in
     ARROW loc
+  let punc_darrow lexbuf =
+    let loc = Loc.loc lexbuf in
+    DARROW loc
   let punc_bind lexbuf =
     let loc = Loc.loc lexbuf in
     BIND loc
@@ -137,6 +140,7 @@ rule lex = parse
 | '('   { punc_lparen lexbuf }
 | ')'   { punc_rparen lexbuf }
 | "->"  { punc_arrow lexbuf }
+| "=>"  { punc_darrow lexbuf }
 | ':'   { punc_colon lexbuf }
 | '='   { punc_bind lexbuf }
 | ','   { punc_comma lexbuf }

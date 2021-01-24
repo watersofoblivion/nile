@@ -1,28 +1,30 @@
 open Format
 
-(** {1 Unary Operators} *)
+(** {1 Operators} *)
+
+(** {2 Unary} *)
 
 type un = private
   | Not (** Boolean negation *)
 (** Unary Operators *)
 
-(** {2 Constructors} *)
+(** {3 Constructors} *)
 
 val un_not : un
 (** [un_not] constructs a unary boolean negation operator. *)
 
-(** {2 Operations} *)
+(** {3 Operations} *)
 
 val un_precedence : un -> int
 (** [un_precedence op] returns the operator precedence of the unary operator
     [op]. *)
 
-(** {2 Pretty Printing} *)
+(** {3 Pretty Printing} *)
 
 val pp_un : un -> formatter -> unit
 (** [pp_un op fmt] pretty-prints [op] to the formatter [fmt]. *)
 
-(** {2 Type Checking} *)
+(** {3 Type Checking} *)
 
 exception InvalidUnaryOperand of Type.t * un * Type.t
 (** Raised when the type of a unary operand is invalid.  Contains the expected
@@ -33,7 +35,7 @@ val type_of_un : un -> Type.t -> Type.t
     applied to an argument of type [r].  Raises {!InvalidUnaryOperand} if [op]
     cannot be applied to an argument of type [r]. *)
 
-(** {1 Binary Operators} *)
+(** {2 Binary Operators} *)
 
 type bin = private
   | Add (** Addition *)
@@ -51,7 +53,7 @@ type bin = private
   | Gte (** Greater Than or Equal *)
 (** Binary Operators *)
 
-(** {2 Constructors} *)
+(** {3 Constructors} *)
 
 val bin_add : bin
 (** [bin_add] constructs a binary addition operator. *)
@@ -92,18 +94,18 @@ val bin_gt : bin
 val bin_gte : bin
 (** [bin_lte] constructs a binary greater than or equal operator. *)
 
-(** {2 Operations} *)
+(** {3 Operations} *)
 
 val bin_precedence : bin -> int
 (** [bin_precedence op] returns the operator precedence of the binary operator
     [op]. *)
 
-(** {2 Pretty Printing} *)
+(** {3 Pretty Printing} *)
 
 val pp_bin : bin -> formatter -> unit
 (** [pp_bin op fmt] pretty-prints [op] to the formatter [fmt]. *)
 
-(** {2 Type Checking} *)
+(** {3 Type Checking} *)
 
 exception InvalidBinaryOperands of Type.t * Type.t * bin * Type.t
 (** Raised when the types of a binary operand is invalid.  Contains the expected

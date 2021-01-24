@@ -1,57 +1,20 @@
 open Format
 open Common
 
-(* Symbolization *)
-
-type sym = int
-
-module StringMap = Map.Make (struct
-  type t = string
-  let compare = compare
-end)
-
-module SymMap = Map.Make (struct
-  type t = sym
-  let compare = compare
-end)
-
-type tbl = {
-  idx:   sym;
-  syms:  sym StringMap.t;
-  names: string SymMap.t
-}
-
-let tbl =
-  { idx   = 0;
-    syms  = StringMap.empty;
-    names = SymMap.empty }
-
-let symbolize str tbl =
-  try (StringMap.find str tbl.syms, tbl)
-  with Not_found ->
-    let tbl' =
-      { idx   = tbl.idx + 1;
-        syms  = StringMap.add str tbl.idx tbl.syms;
-        names = SymMap.add tbl.idx str tbl.names }
-    in
-    (tbl.idx, tbl')
-
-let name_of sym tbl = SymMap.find sym tbl.names
-
 (* Syntax *)
 
 type expr =
   | Bool of Loc.t * bool
   | Int of Loc.t * int
-  | Var of Loc.t * sym
+  | Var of Loc.t * Sym.sym
   | UnOp of Loc.t * Op.un * expr
   | BinOp of Loc.t * expr * Op.bin * expr
   | If of Loc.t * expr * expr * expr
   | Let of Loc.t * binding * expr
   | LetRec of Loc.t * binding list * expr
-  | Abs of Loc.t * sym * Type.t * Type.t option * expr
+  | Abs of Loc.t * Sym.sym * Type.t * Type.t option * expr
   | App of Loc.t * expr * expr
-and binding = Loc.t * sym * Type.t option * expr
+and binding = Loc.t * Sym.sym * Type.t option * expr
 
 type top =
   | TopLet of Loc.t * binding
@@ -107,17 +70,17 @@ let loc_top = function
 
 (* Pretty Printing *)
 
-let rec pp_expr tbl expr fmt = match expr with
+let rec pp_expr names expr fmt = match expr with
   | Bool (_, b) -> pp_bool b fmt
   | Int (_, i) -> pp_int i fmt
-  | Var (_, id) -> pp_var tbl id fmt
-  | UnOp (_, op, r) -> pp_un_op tbl op r fmt
-  | BinOp (_, l, op, r) -> pp_bin_op tbl l op r fmt
-  | Let (_, b, rest) -> pp_bind tbl b rest fmt
-  | LetRec (_, bs, rest) -> pp_bind_rec tbl bs rest fmt
-  | Abs (_, id, ty, res, expr) -> pp_abs tbl id ty res expr fmt
-  | App (_, f, x) -> pp_app tbl f x fmt
-  | If (_, c, t, f) -> pp_cond tbl c t f fmt
+  | Var (_, id) -> pp_var names id fmt
+  | UnOp (_, op, r) -> pp_un_op names op r fmt
+  | BinOp (_, l, op, r) -> pp_bin_op names l op r fmt
+  | Let (_, b, rest) -> pp_bind names b rest fmt
+  | LetRec (_, bs, rest) -> pp_bind_rec names bs rest fmt
+  | Abs (_, id, ty, res, expr) -> pp_abs names id ty res expr fmt
+  | App (_, f, x) -> pp_app names f x fmt
+  | If (_, c, t, f) -> pp_cond names c t f fmt
 
 and pp_bool b fmt =
   fprintf fmt "%b" b
@@ -125,91 +88,91 @@ and pp_bool b fmt =
 and pp_int i fmt =
   fprintf fmt "%d" i
 
-and pp_var tbl id fmt =
-  name_of id tbl
+and pp_var names id fmt =
+  Sym.name_of id names
     |> fprintf fmt "%s"
 
-and pp_un_op tbl op r fmt =
+and pp_un_op names op r fmt =
   let prec = Op.un_precedence op in
-  fprintf fmt "%t%t" (Op.pp_un op) (print_precedence tbl prec r);
+  fprintf fmt "%t%t" (Op.pp_un op) (print_precedence names prec r);
 
-and pp_bin_op tbl l op r fmt =
+and pp_bin_op names l op r fmt =
   let prec = Op.bin_precedence op in
-  fprintf fmt "@[<hov 2>%t@ %t@ %t@]" (print_precedence tbl prec l) (Op.pp_bin op) (print_precedence tbl prec r)
+  fprintf fmt "@[<hov 2>%t@ %t@ %t@]" (print_precedence names prec l) (Op.pp_bin op) (print_precedence names prec r)
 
-and pp_bind tbl b rest fmt =
-  fprintf fmt "@[<v>@[<hv>let %t@ in@]@ %t@]" (pp_binding tbl b) (pp_expr tbl rest)
+and pp_bind names b rest fmt =
+  fprintf fmt "@[<v>@[<hv>let %t@ in@]@ %t@]" (pp_binding names b) (pp_expr names rest)
 
-and pp_bind_rec tbl bs rest fmt =
-  fprintf fmt "@[<v>@[<hv>@[<hv>let rec %t@ in@]@ %t@]" (pp_bindings tbl bs) (pp_expr tbl rest)
+and pp_bind_rec names bs rest fmt =
+  fprintf fmt "@[<v>@[<hv>@[<hv>let rec %t@ in@]@ %t@]" (pp_bindings names bs) (pp_expr names rest)
 
-and pp_abs tbl id ty res expr fmt =
-  let id = name_of id tbl in
+and pp_abs names id ty res expr fmt =
+  let id = Sym.name_of id names in
   fprintf fmt "(%s: %t" id (Type.pp ty);
-  let res = pp_params res expr fmt in
+  let res = pp_params names res expr fmt in
   let _ = match res with
     | Some res -> fprintf fmt "): %t" (Type.pp res)
     | None -> fprintf fmt ")"
   in
-  fprintf fmt " => %t" (pp_expr tbl expr)
+  fprintf fmt " => %t" (pp_expr names expr)
 
-and pp_app tbl f x fmt =
-  fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence tbl 0 f) (pp_expr tbl x)
+and pp_app names f x fmt =
+  fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence names 0 f) (pp_expr names x)
 
-and pp_cond tbl c t f fmt =
-  fprintf fmt "@[<hv>@[<hv>if@;<1 2>%t@]@ @[<hv>then@;<1 2>%t@]@ @[<hv>else@;<1 2>%t@]@]" (pp_expr tbl c) (pp_expr tbl t) (pp_expr tbl f)
+and pp_cond names c t f fmt =
+  fprintf fmt "@[<hv>@[<hv>if@;<1 2>%t@]@ @[<hv>then@;<1 2>%t@]@ @[<hv>else@;<1 2>%t@]@]" (pp_expr names c) (pp_expr names t) (pp_expr names f)
 
-and print_precedence tbl prec expr fmt =
+and print_precedence names prec expr fmt =
   if prec < precedence expr
-  then fprintf fmt "(%t)" (pp_expr tbl expr)
-  else fprintf fmt "%t" (pp_expr tbl expr)
+  then fprintf fmt "(%t)" (pp_expr names expr)
+  else fprintf fmt "%t" (pp_expr names expr)
 
-and pp_bindings tbl bs fmt =
+and pp_bindings names bs fmt =
   let pp_sep fmt _ = fprintf fmt "@ @[<hv>and " in
-  let pp_b fmt b = fprintf fmt "%t@]" (pp_binding tbl b) in
+  let pp_b fmt b = fprintf fmt "%t@]" (pp_binding names b) in
   pp_print_list ~pp_sep pp_b fmt bs
 
-and pp_binding tbl (_, id, ty, expr) fmt =
-  let id = name_of id tbl in
+and pp_binding names (_, id, ty, expr) fmt =
+  let id = Sym.name_of id names in
   match expr with
     | Abs (_, id', ty, res, expr) ->
-      let id' = name_of id' tbl in
+      let id' = Sym.name_of id' names in
       fprintf fmt "%s(%s: %t" id id' (Type.pp ty);
-      let res = pp_params res expr fmt in
+      let res = pp_params names res expr fmt in
       fprintf fmt ")";
       let _ = match res with
         | Some res -> fprintf fmt ": %t" (Type.pp res)
         | None -> ()
       in
-      fprintf fmt " =@;<1 2>%t" (pp_expr tbl expr)
+      fprintf fmt " =@;<1 2>%t" (pp_expr names expr)
     | expr ->
       fprintf fmt "%s" id;
       let _ = match ty with
         | Some ty -> fprintf fmt ": %t" (Type.pp ty)
         | None -> ()
       in
-      fprintf fmt " =@;<1 2>%t" (pp_expr tbl expr)
+      fprintf fmt " =@;<1 2>%t" (pp_expr names expr)
 
-and pp_params tbl res expr fmt = match expr with
+and pp_params names res expr fmt = match expr with
   | Abs (_, id, ty, res, expr) ->
-    let id = name_of id tbl in
+    let id = Sym.name_of id names in
     fprintf fmt ", %s: %t" id (Type.pp ty);
-    pp_params tbl res expr fmt
+    pp_params names res expr fmt
   | _ -> res
 
-let pp_top_bind tbl b fmt =
-  fprintf fmt "@[<hv>let %t@]" (pp_binding tbl b)
+let pp_top_bind names b fmt =
+  fprintf fmt "@[<hv>let %t@]" (pp_binding names b)
 
-let pp_top_bind_rec tbl bs fmt =
-  fprintf fmt "@[<hv>let rec %t" (pp_bindings tbl bs)
+let pp_top_bind_rec names bs fmt =
+  fprintf fmt "@[<hv>let rec %t" (pp_bindings names bs)
 
-let pp_top tbl top fmt = match top with
-  | TopLet (_, b) -> pp_top_bind tbl b fmt
-  | TopRec (_, bs) -> pp_top_bind_rec tbl bs fmt
+let pp_top names top fmt = match top with
+  | TopLet (_, b) -> pp_top_bind names b fmt
+  | TopRec (_, bs) -> pp_top_bind_rec names bs fmt
 
-let pp_file tbl file fmt =
+let pp_file names file fmt =
   let pp_sep fmt _ = fprintf fmt "@ @ " in
-  let pp_top fmt top = pp_top tbl top fmt in
+  let pp_top fmt top = pp_top names top fmt in
   fprintf fmt "@[<v>";
   pp_print_list ~pp_sep pp_top fmt file;
   fprintf fmt "@]"

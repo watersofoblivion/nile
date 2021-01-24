@@ -1,6 +1,22 @@
+open Common
 open Ir
 
-(** {1 A-Normalization} *)
+(** {1 Type Checking and A-Normalization} *)
+
+(** {2 Environment} *)
+
+type env
+(** A type checking and normalization environment *)
+
+val env : Sym.names -> env
+(** [env names] constructs a type checking and normalization environment.  The
+    names of variables are based on the names in the symbol table [tbl]. *)
+
+val bind : Sym.sym -> Type.t -> env -> env
+(** [bind id ty env] binds the symbol [id] to the type [ty] in the environment
+    [env]. *)
+
+(** {2 Type Checking and A-Normalization} *)
 
 val builtin_idx : int
 (** [builtin_idx] is the alpha index after binding builtin functions. *)
@@ -12,8 +28,8 @@ val builtin_tenv : (int * Type.t) list
 (** [builtin_tenv] is the type environment with the builtin functions bound. *)
 
 val of_expr : int -> (int * int) list -> (int * Type.t) list -> (int * Type.t) option -> Ast.expr -> (int * Type.t * Anf.block)
-(** [of_expr idx aenv tenv join expr] normalizes the annotated abstract syntax
-    tree expression [expr] into administrative normal form.
+(** [of_expr idx aenv tenv join expr] type-checks and normalizes the abstract
+    syntax tree expression [expr] into administrative normal form.
 
     All bound identifiers are alpha renamed to indicies, starting with [idx].
     Previously bound names are mapped in [aenv], and the types of bound values

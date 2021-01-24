@@ -1,5 +1,5 @@
 module IdMap = Map.Make (struct
-  type t = int
+  type t = Sym.t
   let compare = compare
 end)
 
@@ -9,15 +9,15 @@ let env = IdMap.empty
 let bind = IdMap.add
 let lookup = IdMap.find
 
-exception DeclarationMismatch of int * Type.t * Type.t
+exception DeclarationMismatch of Sym.t * Type.t * Type.t
 exception ResultMismatch of Type.t * Type.t
-exception UnboundIdentifier of int
+exception UnboundIdentifier of Sym.t
 exception CannotApply of Type.t
 exception TooManyArgs of Type.t * int
 exception InvalidArgs of Type.t * Type.t
 exception InvalidCondition of Type.t
 exception ConditionalBranchMismatch of Type.t * Type.t
-exception AnnotationRequired of int
+exception AnnotationRequired of Sym.t
 
 let declaration_mismatch id expected actual =
   DeclarationMismatch (id, expected, actual)

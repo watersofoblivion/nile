@@ -10,6 +10,7 @@ let assert_lexes ~ctxt expected str =
     | Parser.RPAREN _, Parser.RPAREN loc
     | Parser.COLON _, Parser.COLON loc
     | Parser.ARROW _, Parser.ARROW loc
+    | Parser.DARROW _, Parser.DARROW loc
     | Parser.BIND _, Parser.BIND loc
     | Parser.COMMA _, Parser.COMMA loc
     | Parser.LET _, Parser.LET loc
@@ -131,6 +132,10 @@ let test_punc_colon ctxt =
 let test_punc_arrow ctxt =
   "->"
     |> assert_lexes ~ctxt (Parser.ARROW LocTest.dummy)
+
+let test_punc_darrow ctxt =
+  "=>"
+    |> assert_lexes ~ctxt (Parser.DARROW LocTest.dummy)
 
 let test_punc_bind ctxt =
   "="
@@ -258,7 +263,8 @@ let test_tokens =
       "Left Parenthesis"  >:: test_punc_lparen;
       "Right Parenthesis" >:: test_punc_rparen;
       "Colon"             >:: test_punc_colon;
-      "Arrow"             >:: test_punc_arrow;
+      "Single Arrow"      >:: test_punc_arrow;
+      "Double Arrow"      >:: test_punc_arrow;
       "Bind"              >:: test_punc_bind;
       "Comma"             >:: test_punc_comma;
     ];

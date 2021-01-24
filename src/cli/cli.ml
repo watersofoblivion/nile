@@ -134,15 +134,18 @@ module Cmds =
         let compile src exe config =
           let _ = exe in
 
-          let ast =
-            src
-              |> Syntax.Lexer.from_file
-              |> Syntax.Parser.file Syntax.Lexer.lex
+          let (tbl, ast) =
+            let file =
+              src
+                |> Syntax.Lexer.from_file
+                |> Syntax.Parser.file Syntax.Lexer.lex
+            in
+            file Ast.tbl (fun tbl file -> (tbl, file))
           in
 
           let _ =
             if config.Args.CompilerArgs.dump.ast
-            then dump_with_title "Abstract Syntax Tree" Syntax.Ast.pp_file ast err_formatter
+            then dump_with_title "Abstract Syntax Tree" (Syntax.Ast.pp_file tbl) ast err_formatter
             else ()
           in
 
