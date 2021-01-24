@@ -44,6 +44,12 @@
   let punc_comma lexbuf =
     let loc = Loc.loc lexbuf in
     COMMA loc
+  let punc_ground lexbuf =
+    let loc = Loc.loc lexbuf in
+    GROUND loc
+  let punc_pipe lexbuf =
+    let loc = Loc.loc lexbuf in
+    PIPE loc
 
   let kwd_let lexbuf =
     let loc = Loc.loc lexbuf in
@@ -66,6 +72,15 @@
   let kwd_else lexbuf =
     let loc = Loc.loc lexbuf in
     ELSE loc
+  let kwd_case lexbuf =
+    let loc = Loc.loc lexbuf in
+    CASE loc
+  let kwd_of lexbuf =
+    let loc = Loc.loc lexbuf in
+    OF loc
+  let kwd_end lexbuf =
+    let loc = Loc.loc lexbuf in
+    END loc
 
   let op_add lexbuf =
     let loc = Loc.loc lexbuf in
@@ -144,6 +159,8 @@ rule lex = parse
 | ':'   { punc_colon lexbuf }
 | '='   { punc_bind lexbuf }
 | ','   { punc_comma lexbuf }
+| '_'   { punc_ground lexbuf }
+| '|'   { punc_pipe lexbuf }
 
 | "let"  { kwd_let lexbuf }
 | "rec"  { kwd_rec lexbuf }
@@ -152,6 +169,9 @@ rule lex = parse
 | "if"   { kwd_if lexbuf }
 | "then" { kwd_then lexbuf }
 | "else" { kwd_else lexbuf }
+| "case" { kwd_case lexbuf }
+| "of"   { kwd_of lexbuf }
+| "end"  { kwd_end lexbuf }
 
 | '+'  { op_add lexbuf }
 | '-'  { op_sub lexbuf }

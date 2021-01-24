@@ -5,6 +5,7 @@
   (* Types *)
 
   let make_prim_ty (_, id) tbl kontinue = match id with
+    | "Unit" -> kontinue tbl Common.Type.unit
     | "Int" -> kontinue tbl Common.Type.int
     | "Bool" -> kontinue tbl Common.Type.bool
     | ty -> failwith (sprintf "Unknown type %S" ty)
@@ -15,7 +16,30 @@
         Common.Type.func a b
           |> kontinue tbl))
 
+  (* Patterns *)
+
+  let make_ground_patt tbl kontinue =
+    Patt.ground
+      |> kontinue tbl
+
+  let make_bool_patt (_, b) tbl kontinue =
+    Patt.bool b
+      |> kontinue tbl
+
+  let make_int_patt (_, i) tbl kontinue =
+    Patt.int i
+      |> kontinue tbl
+
+  let make_var_patt (_, id) tbl kontinue =
+    let (sym, tbl) = Sym.symbolize id tbl in
+    Patt.var id
+      |> kontinue tbl
+
   (* Atoms *)
+
+  let make_unit loc tbl kontinue =
+    Ast.unit loc
+      |> kontinue tbl
 
   let make_bool (loc, b) tbl kontinue =
     Ast.bool loc b
@@ -114,14 +138,16 @@
     | top :: tops -> top tbl (fun tbl top -> make_file tops tbl kontinue)
 %}
 
-%token <Loc.t> LPAREN RPAREN COLON ARROW DARROW BIND COMMA
+%token <Loc.t> LPAREN RPAREN COLON ARROW DARROW BIND COMMA GROUND PIPE
 %token <Loc.t> LET REC AND IN
 %token <Loc.t> IF THEN ELSE
+%token <Loc.t> CASE OF END
 %token <Loc.t> ADD SUB MUL DIV MOD
 %token <Loc.t> LAND LOR LNOT
 %token <Loc.t> EQ NEQ
 %token <Loc.t> LTE LT GT GTE
 %token <Loc.t> EOF
+%token <Loc.t> UNIT
 %token <Loc.t * int> INT
 %token <Loc.t * bool> BOOL
 %token <Loc.t * string> LIDENT UIDENT
@@ -195,6 +221,36 @@ binding:
   LIDENT opt_params_list opt_annotation BIND term { make_binding $1 $2 $3 $5 }
 ;
 
+/***************
+ * Match Cases *
+ ***************/
+
+cases:
+| PIPE case_list { $2 }
+| case_list      { $1 }
+|                { [] }
+;
+
+case_list:
+| case PIPE case_list { $1 :: $3 }
+|                     { [] }
+;
+
+case:
+| pattern DARROW term { ($1, $3) }
+;
+
+/************
+ * Patterns *
+ ************/
+
+pattern:
+| GROUND { make_ground_patt }
+| INT    { make_int_patt $1 }
+| BOOL   { make_bool_patt $1 }
+| LIDENT { make_var_patt $1 }
+;
+
 /*************
  * Top-Level *
  *************/
@@ -219,11 +275,12 @@ unit_test:
 ;
 
 term:
-  app                                                 { $1 }
-| LET binding IN term                                 { make_bind $1 $2 $4 }
-| LET REC bindings IN term                            { make_bind_rec $1 $3 $5 }
-| IF term THEN term ELSE term                         { make_cond $1 $2 $4 $6 }
-| LPAREN params_list RPAREN opt_annotation DARROW app { make_abs $2 $4 $6 }
+  app                                                  { $1 }
+| LET binding IN term                                  { make_bind $1 $2 $4 }
+| LET REC bindings IN term                             { make_bind_rec $1 $3 $5 }
+| IF app THEN term ELSE term                           { make_cond $1 $2 $4 $6 }
+| CASE app OF cases END                                { make_case_of $2 $4 }
+| LPAREN params_list RPAREN opt_annotation DARROW term { make_abs $2 $4 $6 }
 ;
 
 app:
@@ -246,7 +303,8 @@ app:
 ;
 
 atom:
-  BOOL               { make_bool $1 }
+  UNIT               { make_unit $1 }
+| BOOL               { make_bool $1 }
 | INT                { make_int $1 }
 | LIDENT             { make_var $1 }
 | LPAREN term RPAREN { $2 }

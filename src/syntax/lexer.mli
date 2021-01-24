@@ -56,6 +56,12 @@ val punc_bind : lexbuf -> Parser.token
 val punc_comma : lexbuf -> Parser.token
 (** [punc_comma lexbuf] constructs a token for the [,] punctuation mark. *)
 
+val punc_ground : lexbuf -> Parser.token
+(** [punc_ground lexbuf] constructs a token for the [_] punctuation mark. *)
+
+val punc_pipe : lexbuf -> Parser.token
+(** [punc_pipe lexbuf] constructs a token for the [|] punctuation mark. *)
+
 (** {3 Keywords} *)
 
 val kwd_let : lexbuf -> Parser.token
@@ -78,6 +84,15 @@ val kwd_then : lexbuf -> Parser.token
 
 val kwd_else : lexbuf -> Parser.token
 (** [kwd_else lexbuf] constructs a token for the [else] keyword. *)
+
+val kwd_case : lexbuf -> Parser.token
+(** [kwd_case lexbuf] constructs a token for the [case] keyword. *)
+
+val kwd_of : lexbuf -> Parser.token
+(** [kwd_of lexbuf] constructs a token for the [of] keyword. *)
+
+val kwd_end : lexbuf -> Parser.token
+(** [kwd_end lexbuf] constructs a token for the [end] keyword. *)
 
 (** {3 Operators} *)
 
@@ -124,6 +139,9 @@ val op_gte : lexbuf -> Parser.token
 (** [op_gte lexbuf] constructs a token for the [>=] operator. *)
 
 (** {3 Literals} *)
+
+val lit_unit : lexbuf -> Parser.token
+(** [lit_unit lexbuf] constructs a token for a literal [()] value. *)
 
 val lit_true : lexbuf -> Parser.token
 (** [lit_true lexbuf] constructs a token for a literal [true] value. *)

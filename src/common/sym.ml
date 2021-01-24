@@ -4,6 +4,17 @@
 
 type sym = int
 
+module SymMap = Map.Make (struct
+  type t = sym
+  let compare = compare
+end)
+
+type 'a map = 'a SymMap.t
+
+let empty = SymMap.empty
+let bind = SymMap.add
+let lookup = SymMap.find
+
 (* Name-to-Symbol Tables *)
 
 module NameMap = Map.Make (struct
@@ -31,15 +42,10 @@ let symbolize str tbl =
 
 (* Symbol-to-Name Mapping *)
 
-module SymMap = Map.Make (struct
-  type t = sym
-  let compare = compare
-end)
-
 type names = string SymMap.t
 
 let names tbl =
-  let fold name sym mapping = SymMap.add sym name mapping in
-  NameMap.fold fold SymMap.empty tbl.syms
+  let fold name sym map = SymMap.add sym name map in
+  NameMap.fold fold tbl.syms SymMap.empty
 
 let name_of = SymMap.find

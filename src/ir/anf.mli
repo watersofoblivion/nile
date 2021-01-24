@@ -6,10 +6,11 @@ open Common
 (** {2 Syntax} *)
 
 type atom = private
-  | Bool of bool                           (** Boolean *)
-  | Int of int                             (** Integer *)
-  | Var of Sym.s                           (** Variable *)
-  | Abs of Sym.s * Type.t * Type.t * block (** Function Abstraction *)
+  | Unit                                    (** Unit *)
+  | Bool of bool                            (** Boolean *)
+  | Int of int                              (** Integer *)
+  | Var of Sym.sym                          (** Variable *)
+  | Abs of Patt.t * Type.t * Type.t * block (** Function Abstraction *)
 (** Atomic Values *)
 
 and expr = private
@@ -22,12 +23,15 @@ and expr = private
 and block = private
   | Let of binding * block         (** Value Binding *)
   | LetRec of binding list * block (** Recursive Value Bindings *)
-  | If of atom * block * block     (** Conditional *)
+  | Case of atom * case list       (** Case *)
   | Expr of expr                   (** Primitive Expression *)
 (** Block Expressions *)
 
-and binding = Sym.s * Type.t * expr
+and binding = Patt.t * Type.t * expr
 (** Bound Value *)
+
+and case = Patt.t * block
+(** Match Case *)
 
 type top = private
   | TopLet of binding      (** Value binding *)
@@ -41,6 +45,9 @@ type file = top list
 
 (** {3 Atomic Values} *)
 
+val unit : atom
+(** [unit] constructs an atomic unit literal. *)
+
 val bool : bool -> atom
 (** [bool b] constructs an atomic boolean literal with the value [b]. *)
 
@@ -48,11 +55,11 @@ val int : int -> atom
 (** [int i] constructs an atomic integer literal with the value [i]. *)
 
 val var : Sym.sym -> atom
-(** [var idx] constructs an atomic variable referencing the bound value [sym]. *)
+(** [var sym] constructs an atomic variable referencing the bound value [sym]. *)
 
-val abs : Sym.sym -> Type.t -> Type.t -> block -> atom
-(** [abs sym ty res body] constructs an atomic function abstraction binding the
-    variable [sym] of type [ty] within [body] and resulting in values of type
+val abs : Patt.t -> Type.t -> Type.t -> block -> atom
+(** [abs patt ty res body] constructs an atomic function abstraction binding the
+    pattern [patt] of type [ty] within [body] and resulting in values of type
     [res]. *)
 
 (** {3 Primitive Expressions} *)
@@ -83,9 +90,9 @@ val bind_rec : binding list -> block -> block
 (** [bind_rec bs rest] constructs a recursive variable binding expression
     binding all of [bs] within each other and within [rest]. *)
 
-val cond : atom -> block -> block -> block
-(** [cond c t f] constructs a conditional expression branching to either [t] or
-    [f] depending on the value of the atomic expression [c]. *)
+val case_of : atom -> case list -> block
+(** [case_of scrut cases] constructs a case of expression branching depending on
+    the value of the atomic expression [scrut]. *)
 
 val expr : expr -> block
 (** [expr e] constructs a block expression representing the primitive expression
@@ -93,9 +100,15 @@ val expr : expr -> block
 
 (** {3 Variable Bindings} *)
 
-val binding : Sym.sym -> Type.t -> expr -> binding
-(** [binding sym ty expr] constructs a variable binding which binds the variable
-    [sym] of type [ty] to the value of [expr]. *)
+val binding : Patt.t -> Type.t -> expr -> binding
+(** [binding patt ty expr] constructs a variable binding which binds the pattern
+    [patt] of type [ty] to the value of [expr]. *)
+
+(** {3 Match Cases} *)
+
+val case : Patt.t -> block -> case
+(** [case patt body] constructs a pattern matching case which binds the pattern
+    [patt] in [body]. *)
 
 (** {3 Top-Level Statements} *)
 

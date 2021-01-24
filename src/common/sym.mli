@@ -5,6 +5,12 @@
 type sym
 (** A symbol *)
 
+type 'a map
+
+val empty : 'a map
+val bind : sym -> 'a -> 'a map -> 'a map
+val lookup : sym -> 'a map -> 'a
+
 (** {2 Name-to-Symbol Tables} *)
 
 type tbl
@@ -28,6 +34,6 @@ val names : tbl -> names
 (** [names tbl] constructs a mapping from symbols to names by reversing the
     table [tbl]. *)
 
-val name_of : sym -> tbl -> string
+val name_of : sym -> names -> string
 (** [name_of sym tbl] looks up the string representation of the symbol [sym] in
     the table [tbl].  Raises {!Not_found} if [sym] does not exist in [tbl]. *)

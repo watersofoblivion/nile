@@ -4,10 +4,11 @@ open Common
 (* Syntax *)
 
 type atom =
+  | Unit
   | Bool of bool
   | Int of int
-  | Var of Sym.s
-  | Abs of Sym.s * Type.t * Type.t * block
+  | Var of Sym.sym
+  | Abs of Patt.t * Type.t * Type.t * block
 and expr =
   | UnOp of Op.un * atom
   | BinOp of atom * Op.bin * atom
@@ -16,9 +17,10 @@ and expr =
 and block =
   | Let of binding * block
   | LetRec of binding list * block
-  | If of atom * block * block
+  | Case of atom * case list
   | Expr of expr
-and binding = Sym.s * Type.t * expr
+and binding = Patt.t * Type.t * expr
+and case = Patt.t * block
 
 type top =
   | TopLet of binding
@@ -28,10 +30,11 @@ type file = top list
 
 (* Constructors *)
 
+let unit = Unit
 let bool b = Bool b
 let int i = Int i
 let var sym = Var sym
-let abs sym arg res body = Abs (sym, arg, res, body)
+let abs patt arg res body = Abs (patt, arg, res, body)
 
 let un_op op r = UnOp (op, r)
 let bin_op l op r = BinOp (l, op, r)
@@ -40,10 +43,11 @@ let atom a = Atom a
 
 let bind b rest = Let (b, rest)
 let bind_rec bs rest = LetRec (bs, rest)
-let cond c t f = If (c, t, f)
+let case_of scrut cases = Case (scrut, cases)
 let expr c = Expr c
 
-let binding sym ty expr = (sym, ty, expr)
+let binding patt ty expr = (patt, ty, expr)
+let case patt body = (patt, body)
 
 let top_bind b = TopLet b
 let top_bind_rec bs = TopRec bs
@@ -52,11 +56,15 @@ let file tops = tops
 
 (* Pretty-Printing *)
 
-let rec pp_atom tbl atom fmt = match atom with
+let rec pp_atom names atom fmt = match atom with
+  | Unit -> pp_unit fmt
   | Bool b -> pp_bool b fmt
   | Int i -> pp_int i fmt
-  | Var sym -> pp_var tbl sym fmt
-  | Abs (id, arg, res, body) -> pp_abs tbl id arg res body fmt
+  | Var sym -> pp_var names sym fmt
+  | Abs (id, arg, res, body) -> pp_abs names id arg res body fmt
+
+and pp_unit fmt =
+  fprintf fmt "()"
 
 and pp_bool b fmt =
   fprintf fmt "%b" b
@@ -64,60 +72,58 @@ and pp_bool b fmt =
 and pp_int i fmt =
   fprintf fmt "%d" i
 
-and pp_var tbl sym fmt =
-  Sym.name_of sym tbl
+and pp_var names sym fmt =
+  Sym.name_of sym names
     |> fprintf fmt "%s"
 
-and pp_abs tbl sym arg res body fmt =
-  let id = Sym.name_of sym tbl in
-  fprintf fmt "@[<hv>(%s: %t): %t =>@;<1 2>%t@]" id (Type.pp arg) (Type.pp res) (pp_block tbl body)
+and pp_abs names patt arg res body fmt =
+  fprintf fmt "@[<hv>(%t: %t): %t =>@;<1 2>%t@]" (Patt.pp names patt) (Type.pp arg) (Type.pp res) (pp_block names body)
 
-and pp_expr tbl expr fmt = match expr with
-  | UnOp (op, r) -> pp_un_op tbl op r fmt
-  | BinOp (l, op, r) -> pp_bin_op tbl l op r fmt
-  | App (f, x) -> pp_app tbl f x fmt
-  | Atom atom -> pp_atom tbl atom fmt
+and pp_expr names expr fmt = match expr with
+  | UnOp (op, r) -> pp_un_op names op r fmt
+  | BinOp (l, op, r) -> pp_bin_op names l op r fmt
+  | App (f, x) -> pp_app names f x fmt
+  | Atom atom -> pp_atom names atom fmt
 
-and pp_un_op tbl op r fmt =
-  fprintf fmt "%t%t" (Op.pp_un op) (pp_atom tbl r)
+and pp_un_op names op r fmt =
+  fprintf fmt "%t%t" (Op.pp_un op) (pp_atom names r)
 
-and pp_bin_op tbl l op r fmt =
-  fprintf fmt "%t %t %t" (pp_atom tbl l) (Op.pp_bin op) (pp_atom tbl r)
+and pp_bin_op names l op r fmt =
+  fprintf fmt "%t %t %t" (pp_atom names l) (Op.pp_bin op) (pp_atom names r)
 
-and pp_app tbl f x fmt =
-  fprintf fmt "%t %t" (pp_atom tbl f) (pp_atom tbl x)
+and pp_app names f x fmt =
+  fprintf fmt "%t %t" (pp_atom names f) (pp_atom names x)
 
-and pp_block tbl block fmt = match block with
-  | Let (b, rest) -> pp_bind tbl b rest fmt
-  | LetRec (bs, rest) -> pp_bind_rec tbl bs rest fmt
-  | If (c, t, f) ->  pp_cond tbl c t f fmt
-  | Expr expr -> pp_expr tbl expr fmt
+and pp_block names block fmt = match block with
+  | Let (b, rest) -> pp_bind names b rest fmt
+  | LetRec (bs, rest) -> pp_bind_rec names bs rest fmt
+  | Case (scrut, cases) ->  pp_case_of names scrut cases fmt
+  | Expr expr -> pp_expr names expr fmt
 
-and pp_bind tbl b rest fmt =
-  fprintf fmt "@[<v>let %t in@ %t@]" (pp_binding tbl b) (pp_block tbl rest)
+and pp_bind names b rest fmt =
+  fprintf fmt "@[<v>let %t in@ %t@]" (pp_binding names b) (pp_block names rest)
 
-and pp_bind_rec tbl bs rest fmt =
-  fprintf fmt "@[<v>let rec %t in@ %t@]" (pp_bindings tbl bs) (pp_block tbl rest)
+and pp_bind_rec names bs rest fmt =
+  fprintf fmt "@[<v>let rec %t in@ %t@]" (pp_bindings names bs) (pp_block names rest)
 
-and pp_cond tbl c t f fmt =
-  fprintf fmt "@[<v>if %t@ then %t@ else %t@]" (pp_atom tbl c) (pp_block tbl t) (pp_block tbl f)
+and pp_case_of names scrut cases fmt =
 
-and pp_bindings tbl bs fmt =
+and pp_bindings names bs fmt =
   let pp_sep fmt _ = fprintf fmt " " in
-  let pp_b b fmt = pp_binding tbl fmt b in
+  let pp_b b fmt = pp_binding names fmt b in
   pp_print_list ~pp_sep pp_b fmt bs
 
-and pp_binding tbl (sym, ty, e) fmt =
-  let id = Sym.name_of sym tbl in
-  fprintf fmt "%s: %t = %t" id (Type.pp ty) (pp_expr tbl e)
+and pp_binding names (sym, ty, e) fmt =
+  let id = Sym.name_of sym names in
+  fprintf fmt "%s: %t = %t" id (Type.pp ty) (pp_expr names e)
 
-let pp_top tbl top fmt = match top with
-  | TopLet b -> fprintf fmt "@[<v>let %t@]" (pp_binding tbl b)
-  | TopRec bs -> fprintf fmt "@[<v>let rec %t" (pp_bindings tbl bs)
+let pp_top names top fmt = match top with
+  | TopLet b -> fprintf fmt "@[<v>let %t@]" (pp_binding names b)
+  | TopRec bs -> fprintf fmt "@[<v>let rec %t" (pp_bindings names bs)
 
-let pp_file tbl file fmt =
+let pp_file names file fmt =
   let pp_sep fmt _ = fprintf fmt "@ @ " in
-  let pp_top fmt top = pp_top tbl top fmt in
+  let pp_top fmt top = pp_top names top fmt in
   fprintf fmt "@[<v>";
   pp_print_list ~pp_sep pp_top fmt file;
   fprintf fmt "@]"
@@ -134,6 +140,7 @@ let (builtin_idx, builtin, builtin_aenv, builtin_tenv) =
   List.fold_left fold (0, Check.env, [], []) Builtin.builtins
 
 let rec type_of_atom env = function
+  | Unit -> Type.unit
   | Bool _ -> Type.bool
   | Int _ -> Type.int
   | Var sym -> type_of_var env sym
