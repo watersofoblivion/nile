@@ -1,7 +1,7 @@
 open Format
 open Common
 
-(** {1 Abstract Syntax} *)
+(** {1 Annotated Abstract Syntax} *)
 
 (** {2 Syntax} *)
 
@@ -12,7 +12,7 @@ type expr = private
   | Var of Sym.sym                         (** Variable Identifier *)
   | UnOp of Op.un * expr                   (** Unary Operation *)
   | BinOp of expr * Op.bin * expr          (** Binary Operation *)
-  | Case of case list                      (** Case *)
+  | Case of expr * clause list * Type.t    (** Case Of *)
   | Let of binding * expr                  (** Value Binding *)
   | LetRec of binding list * expr          (** Recursive Value Bindings *)
   | Abs of Patt.t * Type.t * Type.t * expr (** Function Abstraction *)
@@ -22,8 +22,8 @@ type expr = private
 and binding = Patt.t * Type.t * expr
 (** A value Binding *)
 
-and case = Patt.t * expr
-(** A pattern matching case *)
+and clause = Patt.t * expr
+(** A pattern matching clause *)
 
 type top = private
   | TopLet of binding      (** Value binding *)
@@ -58,9 +58,9 @@ val bin_op : expr -> Op.bin -> expr -> expr
 (** [bin_op l op r] constructs a binary operator expression with the operator
     [op] operating on [l] and [r]. *)
 
-val case_of : expr -> case list -> expr
-(** [case_of scrut cases] constructs a case expression scrutinizing [scrut] and
-    branching to one of [cases]. *)
+val case : expr -> clause list -> Type.t -> expr
+(** [case scrut clauses res] constructs a case expression scrutinizing [scrut],
+    branching to one of [clauses], and resulting in a value of type [res]. *)
 
 val bind : binding -> expr -> expr
 (** [bind b rest] constructs a value binding expression binding [b] within the
@@ -83,8 +83,8 @@ val binding : Patt.t -> Type.t -> expr -> binding
 (** [binding patt ty expr] constructs a value binding expression binding the
     value [expr] of type [ty] to pattern [patt]. *)
 
-val case : Patt.t -> expr -> case
-(** [case patt expr] constructs a pattern matching case that executes [expr]
+val clause : Patt.t -> expr -> clause
+(** [clause patt expr] constructs a pattern matching clause that executes [expr]
     when [patt] is matched. *)
 
 (** {3 Top-Level Statements} *)
@@ -104,17 +104,17 @@ val file : top list -> file
 
 (** {2 Annotation} *)
 
-val annotate_expr : Check.env -> Ast.expr -> expr
+val annotate_expr : Type.env -> Ast.expr -> expr
 (** [annotate_expr env expr] type-checks the abstract syntax expression [expr]
     in the type environment [env] and returns an annotated syntax expression. *)
 
-val annotate_top : Check.env -> Ast.top -> (Check.env * top)
+val annotate_top : Type.env -> Ast.top -> (Type.env * top)
 (** [annotate_top env top] type-checks the abstract syntax top-level statement
     [top] in the type environment [env] and returns an annotated syntax
     top-level statement along with a type environment with the top-level
     statement bound. *)
 
-val annotate_file : Check.env -> Ast.file -> (Check.env * file)
+val annotate_file : Type.env -> Ast.file -> (Type.env * file)
 (** [annotate_file env file] type-checks the abstract syntax file [file] in the
     type environment [env] and returns an annotated syntax file along with a
     type environment with all of the top-level statements in the file bound. *)
@@ -140,15 +140,15 @@ val pp_file : Sym.names -> file -> formatter -> unit
 
 (** {2 Type Checking} *)
 
-val type_of_expr : Check.env -> expr -> Type.t
+val type_of_expr : Type.env -> expr -> Type.t
 (** [type_of_expr env expr] type checks the expression [expr] in the type
     environment [env] and returns its type. *)
 
-val type_of_top : Check.env -> top -> (Check.env * Type.t)
+val type_of_top : Type.env -> top -> Type.env
 (** [type_of_top env top] type checks the top-level expression [top] in the type
     environment [env] and returns its type along with a type environment with
     the top-level value bound. *)
 
-val type_of_file : Check.env -> file -> Check.env
+val type_of_file : Type.env -> file -> Type.env
 (** [type_of_file] type checks the file [file] in the type environment [env] and
     returns a type environment with all of the top-level values bound. *)

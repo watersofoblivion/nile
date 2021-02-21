@@ -21,17 +21,17 @@ and expr = private
 (** Primitive Expressions *)
 
 and block = private
-  | Let of binding * block         (** Value Binding *)
-  | LetRec of binding list * block (** Recursive Value Bindings *)
-  | Case of atom * case list       (** Case *)
-  | Expr of expr                   (** Primitive Expression *)
+  | Let of binding * block              (** Value Binding *)
+  | LetRec of binding list * block      (** Recursive Value Bindings *)
+  | Case of atom * clause list * Type.t (** Case *)
+  | Expr of expr                        (** Primitive Expression *)
 (** Block Expressions *)
 
 and binding = Patt.t * Type.t * expr
 (** Bound Value *)
 
-and case = Patt.t * block
-(** Match Case *)
+and clause = Patt.t * block
+(** Match Clause *)
 
 type top = private
   | TopLet of binding      (** Value binding *)
@@ -90,9 +90,10 @@ val bind_rec : binding list -> block -> block
 (** [bind_rec bs rest] constructs a recursive variable binding expression
     binding all of [bs] within each other and within [rest]. *)
 
-val case_of : atom -> case list -> block
-(** [case_of scrut cases] constructs a case of expression branching depending on
-    the value of the atomic expression [scrut]. *)
+val case : atom -> clause list -> Type.t -> block
+(** [case scrut clauses res] constructs a case expression branching depending on
+    the value of the atomic expression [scrut] and resulting in a value of type
+    [res]. *)
 
 val expr : expr -> block
 (** [expr e] constructs a block expression representing the primitive expression
@@ -104,11 +105,11 @@ val binding : Patt.t -> Type.t -> expr -> binding
 (** [binding patt ty expr] constructs a variable binding which binds the pattern
     [patt] of type [ty] to the value of [expr]. *)
 
-(** {3 Match Cases} *)
+(** {3 Match Clauses} *)
 
-val case : Patt.t -> block -> case
-(** [case patt body] constructs a pattern matching case which binds the pattern
-    [patt] in [body]. *)
+val clause : Patt.t -> block -> clause
+(** [clause patt body] constructs a pattern matching clause which binds the
+    pattern [patt] in [body]. *)
 
 (** {3 Top-Level Statements} *)
 
@@ -149,29 +150,29 @@ val pp_file : Sym.names -> file -> formatter -> unit
 
 (** {2 Type Checking} *)
 
-val builtin : Check.env
+val builtin : Type.env
 (** [builtin] returns a type-checking environment with the builtin functions
     bound. *)
 
-val type_of_atom : Check.env -> atom -> Type.t
+val type_of_atom : Type.env -> atom -> Type.t
 (** [type_of_atom env atom] type checks the atomic value [atom] in the type
     environment [env] and results in the type of the atomic value. *)
 
-val type_of_expr : Check.env -> expr -> Type.t
+val type_of_expr : Type.env -> expr -> Type.t
 (** [type_of_expr env expr] type checks the primitive expression [expr] in the
     type environment [env] and results in the type of the primitive expression.
     *)
 
-val type_of_block : Check.env -> block -> Type.t
+val type_of_block : Type.env -> block -> Type.t
 (** [type_of_block env block] type checks the block expression [block] in the
     type environment [env] and results in the type of the block expression. *)
 
-val type_of_top : Check.env -> top -> Check.env
+val type_of_top : Type.env -> top -> Type.env
 (** [type_of_top env top] type checks the top-level expression [top] in the
     type environment [env] and results in a type environment with the top-level
     identifiers bound to their types. *)
 
-val type_of_file : Check.env -> file -> Check.env
+val type_of_file : Type.env -> file -> Type.env
 (** [type_of_file env file] type checks the source file [file] in the type
     environment [env] and returns a type environment with all top-level
     identifiers bound to their types. *)

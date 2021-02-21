@@ -4,6 +4,7 @@ open Format
 
 type t =
   | Ground         (** Ground *)
+  | Unit           (** Unit *)
   | Bool of bool   (** Boolean *)
   | Int of int     (** Integer *)
   | Var of Sym.sym (** Variable *)
@@ -13,6 +14,9 @@ type t =
 
 val ground : t
 (** [ground] constructs a ground pattern *)
+
+val unit : t
+(** [unit] constructs a unit pattern. *)
 
 val bool : bool -> t
 (** [bool b] constructs a boolean pattern matching [b]. *)
@@ -29,3 +33,10 @@ val var : Sym.sym -> t
 val pp : Sym.names -> t -> formatter -> unit
 (** [pp names patt fmt] pretty-prints the pattern [patt] to the formatter [fmt]
     using [names] to resolve symbol names. *)
+
+(** {2 Type Checking} *)
+
+val irrefutable : t -> bool
+(** [irrefutable patt] tests whether or not the pattern [patt] is irrefutable.
+    That is, whether it will match all values of a type [ty] for which
+    [matches_type patt ty] returns [true]. *)

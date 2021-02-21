@@ -7,24 +7,24 @@ type env =
   { idx: Sym.sym;
     names: Sym.names;
     aenv: (Sym.sym * Sym.sym) list;
-    tenv: Check.env }
+    tenv: Type.env }
 
 let env tbl =
   { idx   = 0;
     names = Sym.names tbl;
     aenv  = [];
-    tenv  = Check.env }
+    tenv  = Type.env }
 
 let bind id ty env = env
 
 let (builtin_idx, builtin, builtin_aenv, builtin_tenv) =
   let fold (idx, env, aenv, tenv) (id, ty) =
-    let env = Check.bind idx ty env in
+    let env = Type.bind idx ty env in
     let aenv = (id, idx) :: aenv in
     let tenv = (idx, ty) :: tenv in
     (idx + 1, env, aenv, tenv)
   in
-  List.fold_left fold (0, Check.env, [], []) Builtin.builtins
+  List.fold_left fold (0, Type.env, [], []) Builtin.builtins
 
 (* Normalization *)
 

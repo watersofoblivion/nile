@@ -13,7 +13,7 @@ type expr = private
   | UnOp of Loc.t * Op.un * expr                          (** Unary Operation *)
   | BinOp of Loc.t * expr * Op.bin * expr                 (** Binary Operation *)
   | If of Loc.t * expr * expr * expr                      (** Conditional *)
-  | Case of Loc.t * case list                             (** Case *)
+  | CaseOf of Loc.t * expr * clause list                    (** Case Of *)
   | Let of Loc.t * binding * expr                         (** Value Binding *)
   | LetRec of Loc.t * binding list * expr                 (** Recursive Value Bindings *)
   | Abs of Loc.t * Patt.t * Type.t * Type.t option * expr (** Function Abstraction *)
@@ -23,8 +23,8 @@ type expr = private
 and binding = Loc.t * Patt.t * Type.t option * expr
 (** A value Binding *)
 
-and case = Loc.t * Patt.t * expr
-(** A pattern matching case *)
+and clause = Loc.t * Patt.t * expr
+(** A pattern matching clause *)
 
 type top = private
   | TopLet of Loc.t * binding      (** Value binding *)
@@ -69,10 +69,10 @@ val cond : Loc.t -> expr -> expr -> expr -> expr
     expression [t] is evaluated.  Otherwise, the expression [f] is evaluated.
     The location should span from the initial "if" keyword to the end of [f]. *)
 
-val case_of : Loc.t -> expr -> case list -> expr
-(** [case_of loc scrut cases] constructs a case expression at location [loc]
-    scrutinizing [scrut] and branching to one of [cases].  The location should
-    span from the initial "case" keyword to the end of the last case. *)
+val case : Loc.t -> expr -> clause list -> expr
+(** [case loc scrut clauses] constructs a case expression at location [loc]
+    scrutinizing [scrut] and branching to one of [clauses].  The location should
+    span from the initial "case" keyword to the end of the last clause. *)
 
 val bind : Loc.t -> binding -> expr -> expr
 (** [bind loc b rest] constructs a value binding expression at location [loc]
@@ -103,10 +103,10 @@ val binding : Loc.t -> Patt.t -> Type.t option -> expr -> binding
     should span from [id] to [expr].  If not provided, the type [ty] will be
     inferred. *)
 
-val case : Loc.t -> Patt.t -> expr -> case
-(** [case loc patt expr] constructs a pattern matching case at location [loc]
-    that executes [expr] when [patt] is matched.  The location should span from
-    the beginning of [patt] to the end of [expr]. *)
+val clause : Loc.t -> Patt.t -> expr -> clause
+(** [clause loc patt expr] constructs a pattern matching clause at location
+    [loc] that executes [expr] when [patt] is matched.  The location should span
+    from the beginning of [patt] to the end of [expr]. *)
 
 (** {3 Top-Level Statements} *)
 

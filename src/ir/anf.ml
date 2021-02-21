@@ -17,10 +17,10 @@ and expr =
 and block =
   | Let of binding * block
   | LetRec of binding list * block
-  | Case of atom * case list
+  | Case of atom * clause list * Type.t
   | Expr of expr
 and binding = Patt.t * Type.t * expr
-and case = Patt.t * block
+and clause = Patt.t * block
 
 type top =
   | TopLet of binding
@@ -43,11 +43,11 @@ let atom a = Atom a
 
 let bind b rest = Let (b, rest)
 let bind_rec bs rest = LetRec (bs, rest)
-let case_of scrut cases = Case (scrut, cases)
+let case scrut clauses res = Case (scrut, clauses, res)
 let expr c = Expr c
 
 let binding patt ty expr = (patt, ty, expr)
-let case patt body = (patt, body)
+let clause patt body = (patt, body)
 
 let top_bind b = TopLet b
 let top_bind_rec bs = TopRec bs
@@ -97,7 +97,7 @@ and pp_app names f x fmt =
 and pp_block names block fmt = match block with
   | Let (b, rest) -> pp_bind names b rest fmt
   | LetRec (bs, rest) -> pp_bind_rec names bs rest fmt
-  | Case (scrut, cases) ->  pp_case_of names scrut cases fmt
+  | Case (scrut, clauses, _) ->  pp_case names scrut clauses fmt
   | Expr expr -> pp_expr names expr fmt
 
 and pp_bind names b rest fmt =
@@ -106,7 +106,7 @@ and pp_bind names b rest fmt =
 and pp_bind_rec names bs rest fmt =
   fprintf fmt "@[<v>let rec %t in@ %t@]" (pp_bindings names bs) (pp_block names rest)
 
-and pp_case_of names scrut cases fmt =
+and pp_case names scrut clauses fmt =
 
 and pp_bindings names bs fmt =
   let pp_sep fmt _ = fprintf fmt " " in
@@ -132,12 +132,12 @@ let pp_file names file fmt =
 
 let (builtin_idx, builtin, builtin_aenv, builtin_tenv) =
   let fold (idx, env, aenv, tenv) (id, ty) =
-    let env = Check.bind idx ty env in
+    let env = Type.bind idx ty env in
     let aenv = (id, idx) :: aenv in
     let tenv = (idx, ty) :: tenv in
     (idx + 1, env, aenv, tenv)
   in
-  List.fold_left fold (0, Check.env, [], []) Builtin.builtins
+  List.fold_left fold (0, Type.env, [], []) Builtin.builtins
 
 let rec type_of_atom env = function
   | Unit -> Type.unit
@@ -147,15 +147,15 @@ let rec type_of_atom env = function
   | Abs (sym, ty, res, body) -> type_of_abs env sym ty res body
 
 and type_of_var env sym =
-  try Check.lookup sym env
-  with Not_found -> Check.unbound_identifier sym
+  try Type.lookup sym env
+  with Not_found -> Type.unbound_identifier sym
 
 and type_of_abs env sym ty res body =
-  let env = Check.bind sym ty env in
+  let env = Type.bind sym ty env in
   let res' = type_of_block env body in
   if Type.equal res res'
-  then res
-  else Check.declaration_mismatch sym res res'
+  then Type.func ty res
+  else Type.declaration_mismatch sym res res'
 
 and type_of_expr env = function
   | UnOp (op, r) -> type_of_un_op env op r
@@ -178,61 +178,61 @@ and type_of_app env f x =
     | Type.Fun (arg, res) ->
       if Type.equal arg x
       then res
-      else Check.invalid_args arg x
-    | ty -> Check.cannot_apply ty
+      else Type.invalid_args arg x
+    | ty -> Type.cannot_apply ty
 
 and type_of_block env = function
   | Let ((sym, ty, expr), rest) -> type_of_bind env sym ty expr rest
   | LetRec (bs, rest) -> type_of_bind_rec env bs rest
-  | If (c, t, f) -> type_of_cond env c t f
+  | Case (scrut, clauses, res) -> type_of_case env scrut clauses res
   | Expr expr -> type_of_expr env expr
 
 and type_of_bind env sym ty expr rest =
   let expr = type_of_expr env expr in
   if Type.equal ty expr
   then
-    let env = Check.bind sym ty env in
+    let env = Type.bind sym ty env in
     type_of_block env rest
-  else Check.declaration_mismatch sym ty expr
+  else Type.declaration_mismatch sym ty expr
 
 and type_of_bind_rec env bs rest =
-  let fold env (sym, ty, _) = Check.bind sym ty env in
+  let fold env (sym, ty, _) = Type.bind sym ty env in
   let env = List.fold_left fold env bs in
   let _ =
     let iter (sym, ty, expr) =
       let expr = type_of_expr env expr in
       if Type.equal ty expr
       then ()
-      else Check.declaration_mismatch sym ty expr
+      else Type.declaration_mismatch sym ty expr
     in
     List.iter iter bs
   in
   type_of_block env rest
 
-and type_of_cond env c t f = match type_of_atom env c with
+and type_of_case env scrut clauses res = match type_of_atom env c with
   | Type.Bool ->
     let t = type_of_block env t in
     let f = type_of_block env f in
     if Type.equal t f
     then t
-    else Check.conditional_branch_mismatch t f
-  | ty -> Check.invalid_condition ty
+    else Type.conditional_branch_mismatch t f
+  | ty -> Type.invalid_condition ty
 
 let type_of_top_bind env sym ty expr =
   let expr = type_of_expr env expr in
   if Type.equal ty expr
-  then Check.bind sym ty env
-  else Check.declaration_mismatch sym ty expr
+  then Type.bind sym ty env
+  else Type.declaration_mismatch sym ty expr
 
 let type_of_top_bind_rec env bs =
-  let fold env (sym, ty, _) = Check.bind sym ty env in
+  let fold env (sym, ty, _) = Type.bind sym ty env in
   let env = List.fold_left fold env bs in
   let _ =
     let iter (sym, ty, expr) =
       let expr = type_of_expr env expr in
       if Type.equal ty expr
       then ()
-      else Check.declaration_mismatch sym ty expr
+      else Type.declaration_mismatch sym ty expr
     in
     List.iter iter bs
   in

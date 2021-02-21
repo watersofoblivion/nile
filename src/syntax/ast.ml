@@ -11,13 +11,13 @@ type expr =
   | UnOp of Loc.t * Op.un * expr
   | BinOp of Loc.t * expr * Op.bin * expr
   | If of Loc.t * expr * expr * expr
-  | Case of Loc.t * expr * case list
+  | Case of Loc.t * expr * clause list
   | Let of Loc.t * binding * expr
   | LetRec of Loc.t * binding list * expr
   | Abs of Loc.t * Patt.t * Type.t * Type.t option * expr
   | App of Loc.t * expr * expr
 and binding = Loc.t * Patt.t * Type.t option * expr
-and case = Loc.t * Patt.t * expr
+and clause = Loc.t * Patt.t * expr
 
 type top =
   | TopLet of Loc.t * binding
@@ -34,7 +34,7 @@ let var loc id = Var (loc, id)
 let un_op loc op r = UnOp (loc, op, r)
 let bin_op loc l op r = BinOp (loc, l, op, r)
 let cond loc c t f = If (loc, c, t, f)
-let case_of loc scrut cases = Case (loc, scrut, cases)
+let case loc scrut clauses = Case (loc, scrut, clauses)
 let bind loc b rest = Let (loc, b, rest)
 let bind_rec loc bs rest = LetRec (loc, bs, rest)
 let abs loc patt ty res expr = Abs (loc, patt, ty, res, expr)
@@ -85,7 +85,7 @@ let rec pp_expr names expr fmt = match expr with
   | UnOp (_, op, r) -> pp_un_op names op r fmt
   | BinOp (_, l, op, r) -> pp_bin_op names l op r fmt
   | If (_, c, t, f) -> pp_cond names c t f fmt
-  | Case (_, scrut, cases) -> pp_case_of names scrut cases fmt
+  | Case (_, scrut, clauses) -> pp_case names scrut clauses fmt
   | Let (_, b, rest) -> pp_bind names b rest fmt
   | LetRec (_, bs, rest) -> pp_bind_rec names bs rest fmt
   | Abs (_, patt, ty, res, expr) -> pp_abs names patt ty res expr fmt
@@ -115,7 +115,7 @@ and pp_bin_op names l op r fmt =
 and pp_cond names c t f fmt =
   fprintf fmt "@[<hv>@[<hv>if@;<1 2>%t@]@ @[<hv>then@;<1 2>%t@]@ @[<hv>else@;<1 2>%t@]@]" (pp_expr names c) (pp_expr names t) (pp_expr names f)
 
-and pp_case_of names scrut cases fmt =
+and pp_case names scrut clauses fmt =
 
 and pp_bind names b rest fmt =
   fprintf fmt "@[<v>@[<hv>let %t@ in@]@ %t@]" (pp_binding names b) (pp_expr names rest)
@@ -171,7 +171,7 @@ and pp_params names res expr fmt = match expr with
     pp_params names res expr fmt
   | _ -> res
 
-and pp_case names patt expr fmt =
+and pp_clause names patt expr fmt =
 
 let pp_top_bind names b fmt =
   fprintf fmt "@[<hv>let %t@]" (pp_binding names b)
