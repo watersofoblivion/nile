@@ -3,11 +3,14 @@ open Format
 (** {1 Types} *)
 
 type t = private
-  | Unit                  (** Unit *)
-  | Bool                  (** Booleans *)
-  | Int                   (** Integers *)
-  | Fun of t * t          (** Functions *)
-  | Tuple of int * t list (** Tuple *)
+  | Unit                             (** Unit *)
+  | Bool                             (** Booleans *)
+  | Int                              (** Integers *)
+  | Float                            (** Floating-point *)
+  | String                           (** Strings *)
+  | Fun of t list * t                (** Functions *)
+  | Tuple of int * t list            (** Tuple *)
+  | Package of t Sym.map * t Sym.map (** Package *)
 (** Types *)
 
 (** {2 Constructors} *)
@@ -21,12 +24,22 @@ val bool : t
 val int : t
 (** [int] constructs an integer type *)
 
-val func : t -> t -> t
-(** [func a b] constructs a function type mapping values of type [a] to values
-    of type [b]. *)
+val float : t
+(** [float] constructs an floating-point type *)
+
+val string : t
+(** [float] constructs an string type *)
+
+val func : t list -> t -> t
+(** [func args ret] constructs a function type mapping argument values of types
+    [args] to values of type [ret]. *)
 
 val tuple : t list -> t
 (** [tuple tys] constructs a tuple type with element types [tys]. *)
+
+val pkg : t Sym.map -> t Sym.map -> t
+(** [pkg tys fns] constructs a package containing types [tys] and functions
+    [fns]. *)
 
 (** {2 Operations} *)
 

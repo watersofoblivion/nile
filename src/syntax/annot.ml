@@ -8,14 +8,18 @@ type expr =
   | Unit
   | Bool of bool
   | Int of int
+  | Float of float
+  | String of int * string
+  | Tuple of expr list
   | Var of Sym.sym
-  | UnOp of Op.un * expr
-  | BinOp of expr * Op.bin * expr
   | Case of expr * clause list * Type.t
   | Let of binding * expr
   | LetRec of binding list * expr
-  | Abs of Patt.t * Type.t * Type.t * expr
-  | App of expr * expr
+  | Proj of expr * int
+  | Abs of int * param list * Type.t * expr
+  | App of int * expr * expr list
+  | Builtin of Sym.sym * expr list
+and param = Patt.t * Type.t
 and binding = Patt.t * Type.t * expr
 and clause = Patt.t * expr
 
@@ -23,28 +27,32 @@ type top =
   | TopLet of binding
   | TopRec of binding list
 
-type file = top list
+type pkg = Sym.sym * top list
 
 (* Constructors *)
 
 let unit = Unit
 let bool b = Bool b
 let int i = Int i
+let float f = Float f
+let string len s = String (len, s)
+let tuple exprs = Tuple exprs
 let var sym = Var sym
-let un_op op r = UnOp (op, r)
-let bin_op l op r = BinOp (l, op, r)
 let case scrut clauses res = Case (scrut, clauses, res)
 let bind b rest = Let (b, rest)
 let bind_rec bs rest = LetRec (bs, rest)
-let abs patt ty res expr = Abs (patt, ty, res, expr)
-let app f xs = App (f, xs)
+let proj expr n = Proj (expr, n)
+let abs arity params res expr = Abs (arity, params, res, expr)
+let app arity f xs = App (arity, f, xs)
+let builtin f xs = Builtin (f, xs)
+let param patt ty = (patt, ty)
 let binding patt ty expr = (patt, ty, expr)
 let clause patt expr = (patt, expr)
 
 let top_bind b = TopLet b
 let top_bind_rec bs = TopRec bs
 
-let file tops = tops
+let pkg name tops = (name, tops)
 
 (* Annotation *)
 
@@ -63,6 +71,10 @@ let rec annotate_expr env expr kontinue = match expr with
   | Ast.Unit _ -> annotate_unit kontinue
   | Ast.Bool (_, b) -> annotate_bool b kontinue
   | Ast.Int (_, i) -> annotate_int i kontinue
+  | Ast.Float (_, f) -> annotate_float f kontinue
+  | Ast.String (_, len, s) -> annotate_float len s kontinue
+  | Ast.Tuple (_, exprs) -> annotate_tuple env exprs kontinue
+  | Ast.Record (_, constr, fields) -> annotate_record env constr fields kontinue
   | Ast.Var (_, sym) -> annotate_var env sym kontinue
   | Ast.UnOp (_, op, r) -> annotate_un_op env op r kontinue
   | Ast.BinOp (_, l, op, r) -> annotate_bin_op env l op r kontinue
@@ -85,6 +97,18 @@ and annotate_int i kontinue =
   int i
     |> kontinue Type.int
 
+and annotate_float f kontinue =
+  float f
+    |> kontinue Type.float
+
+and annotate_string len s kontinue =
+  string len s
+    |> kontinue Type.string
+
+and annotate_tuple env exprs kontinue =
+
+and annotate_record env constr fields kontinue =
+
 and annotate_var env sym kontinue =
   try
     let ty = Type.lookup sym env in
@@ -101,21 +125,34 @@ and annotate_un_op env op r kontinue =
 and annotate_bin_op env l op r kontinue =
   annotate_expr env l (fun l_ty l ->
     annotate_expr env r (fun r_ty r ->
-      let (ty, expr) = match op with
-        | Op.And ->
+      let (ty, expr) = match l_ty, op, r_ty with
+        | Type.Bool, Op.And, Type.Bool ->
           case l [
-            bool false
-              |> clause (Patt.bool false);
-            clause Patt.ground r]
-          Type.bool
-        | Op.Or ->
-          case l [
-            bool true
-              |> clause (Patt.bool true);
-            clause Patt.ground r]
+            clause (Patt.bool false) (bool false);
+            clause Patt.ground r;
           ] Type.bool
-        | op ->
-          bin_op l op r
+        | Type.Bool, Op.Or, Type.Bool ->
+          case l [
+            clause (Patt.bool true) (bool true);
+            clause Patt.ground r;
+          ] Type.bool
+        | _ ->
+          match l_ty, op, r_ty with
+            | Type.Int, Op.Add, Type.Int ->
+            | Type.Int, Op.Sub, Type.Int ->
+            | Type.Int, Op.Mul, Type.Int ->
+            | Type.Int, Op.Div, Type.Int ->
+            | Type.Int, Op.Mod, Type.Int ->
+            | Type.Int, Op.Eq, Type.Int ->
+            | Type.Bool, Op.Eq, Type.Bool ->
+            | Type.Int, Op.Neq, Type.Int ->
+            | Type.Bool, Op.Neq, Type.Bool ->
+            | Type.Int, Op.Lte, Type.Int ->
+            | Type.Int, Op.Lt, Type.Int ->
+            | Type.Int, Op.Gt, Type.Int ->
+            | Type.Int, Op.Gte, Type.Int ->
+          in
+          builtin fn [l; r]
       in
       let ty = Op.type_of_bin l_ty op r_ty in
       kontinue ty expr))
@@ -230,13 +267,13 @@ let annotate_file env file = annotate_file env file (fun env file -> (env, file)
 let annotate_top env top = annotate_top env top (fun env top -> (env, top))
 let annotate_expr env expr = annotate_expr env expr (fun _ expr -> expr)
 
+let annotate env files = (env, unit)
+
 (* Operations *)
 
 let precedence = function
-  | Unit | Bool _ | Int _ | Var _ -> 0
-  | App _ -> 1
-  | UnOp (op, _) -> Op.un_precedence op
-  | BinOp (_, op, _) -> Op.bin_precedence op
+  | Unit | Bool _ | Int _ | Float _ | String _ | Var _ -> 0
+  | App _ | Builtin _ -> 1
   | Case _ -> 13
   | Abs _ -> 14
   | Let _ | LetRec _ -> 15
@@ -247,14 +284,17 @@ let rec pp_expr names expr fmt = match expr with
   | Unit -> pp_unit fmt
   | Bool b -> pp_bool b fmt
   | Int i -> pp_int i fmt
+  | Float f -> pp_float f fmt
+  | String (_, s) -> pp_string s fmt
+  | Tuple exprs -> pp_tuple names exprs fmt
   | Var sym -> pp_var names sym fmt
-  | UnOp (op, r) -> pp_un_op names op r fmt
-  | BinOp (l, op, r) -> pp_bin_op names l op r fmt
   | Case (scrut, clauses, _) -> pp_case names scrut clauses fmt
   | Let (b, rest) -> pp_bind names b rest fmt
   | LetRec (bs, rest) -> pp_bind_rec names bs rest fmt
-  | Abs (patt, ty, res, expr) -> pp_abs names patt ty res expr fmt
-  | App (f, x) -> pp_app names f x fmt
+  | Proj (expr, n) -> pp_proj names expr n fmt
+  | Abs (_, params, res, expr) -> pp_abs names params res expr fmt
+  | App (_, f, xs) -> pp_app names f xs fmt
+  | Builtin (f, xs) -> pp_builtin f xs fmt
 
 and pp_unit fmt =
   fprintf fmt "()"
@@ -265,17 +305,17 @@ and pp_bool b fmt =
 and pp_int i fmt =
   fprintf fmt "%d" i
 
+and pp_float f fmt =
+  fprintf fmt "%f" f
+
+and pp_string s fmt =
+  fprintf fmt "%S" s
+
+and pp_tuple names exprs fmt =
+
 and pp_var names sym fmt =
   Sym.name_of sym names
     |> fprintf fmt "%s"
-
-and pp_un_op names op r fmt =
-  let prec = Op.un_precedence op in
-  fprintf fmt "%t%t" (Op.pp_un op) (print_precedence names prec r);
-
-and pp_bin_op names l op r fmt =
-  let prec = Op.bin_precedence op in
-  fprintf fmt "@[<hov 2>%t@ %t@ %t@]" (print_precedence names prec l) (Op.pp_bin op) (print_precedence names prec r)
 
 (* and pp_case names scrut clauses fmt = *)
 and pp_case _ _ _ _ = failwith "TODO"
@@ -286,14 +326,21 @@ and pp_bind names b rest fmt =
 and pp_bind_rec names bs rest fmt =
   fprintf fmt "@[<v>@[<hv>@[<hv>let rec %t@ in@]@ %t@]" (pp_bindings names bs) (pp_expr names rest)
 
-and pp_abs names patt ty res expr fmt =
+and pp_proj names expr n fmt =
+
+and pp_abs names params res expr fmt =
   let id = Sym.name_of id names in
   fprintf fmt "(%t: %t" (Patt.pp names patt) (Type.pp ty);
   let res = pp_params names res expr fmt in
   fprintf fmt "): %t => %t" (Type.pp res) (pp_expr names expr)
 
-and pp_app names f x fmt =
+and pp_app names f xs fmt =
   fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence names 0 f) (pp_expr names x)
+
+and pp_builtin names f xs fmt =
+  fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence names 0 f) (pp_expr names x)
+
+and pp_builtin names f x fmt =
 
 and print_precedence names prec expr fmt =
   if prec < precedence expr
@@ -346,31 +393,25 @@ let rec type_of_expr env expr kontinue = match expr with
   | Unit -> kontinue Type.unit
   | Bool _ -> kontinue Type.bool
   | Int _ -> kontinue Type.int
+  | Float _ -> kontinue Type.float
+  | String _ -> kontinue Type.string
+  | Tuple exprs -> type_of_tuple env exprs kontinue
   | Var sym -> type_of_var env sym kontinue
-  | UnOp (op, r) -> type_of_un_op env op r kontinue
-  | BinOp (l, op, r) -> type_of_bin_op env l op r kontinue
   | Case (scrut, clauses) -> type_of_case env scrut clauses kontinue
   | Let (b, rest) -> type_of_bind env b rest kontinue
   | LetRec (bs, rest) -> type_of_bind_rec env bs rest kontinue
-  | Abs (patt, ty, res, expr) -> type_of_abs env patt ty res expr kontinue
-  | App (f, x) -> type_of_app env f x kontinue
+  | Proj (expr, n) -> type_of_proj env expr n kontinue
+  | Abs (arity, params, res, expr) -> type_of_abs env arity params res expr kontinue
+  | App (arity, f, xs) -> type_of_app env arity f xs kontinue
+  | Builtin (f, xs) -> type_of_builtin env f xs kontinue
+
+and type_of_tuple env exprs kontinue =
 
 and type_of_var env sym kontinue =
   try
     Type.lookup sym env
       |> kontinue
   with Not_found -> Type.unbound_identifier sym
-
-and type_of_un_op env op r kontinue =
-  type_of_expr env r
-    |> Op.type_of_un op
-    |> kontinue
-
-and type_of_bin_op env l op r kontinue =
-  let l = type_of_expr env l in
-  type_of_expr env r
-    |> Op.type_of_bin l op
-    |> kontinue
 
 and type_of_case env scrut clauses kontinue =
   let scrut = type_of_expr env scrut in
@@ -419,7 +460,9 @@ and type_of_bind_rec env bs rest kontinue =
   in
   type_of_expr env rest
 
-and type_of_abs env patt ty res expr kontinue =
+and type_of_proj env expr n kontinue =
+
+and type_of_abs env arity params res expr kontinue =
   let env' = Type.bind patt ty env in
   type_of_expr env expr (fun res' ->
     if Type.equal res res'
@@ -428,7 +471,7 @@ and type_of_abs env patt ty res expr kontinue =
         |> kontinue
     else Type.declaration_mismatch patt res res')
 
-and type_of_app env f x kontinue =
+and type_of_app env arity f xs kontinue =
   type_of_expr env x (fun x ->
     match type_of_expr env f with
       | Type.Fun (arg, res) ->
@@ -436,6 +479,8 @@ and type_of_app env f x kontinue =
         then kontinue res
         else Type.invalid_args arg x
       | f -> Type.cannot_apply f)
+
+and type_of_builtin env f xs kontinue =
 
 let type_of_top_bind env (patt, ty, expr) kontinue =
   type_of_expr env expr (fun expr ->

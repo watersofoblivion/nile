@@ -113,12 +113,12 @@
 
   (* Top-Level Bindings *)
 
-  let make_top_bind kwd_loc b tbl kontinue =
+  let make_top_let kwd_loc b tbl kontinue =
     b tbl (fun tbl b ->
       Ast.top_bind kwd_loc b
         |> kontinue tbl)
 
-  let make_top_bind_rec kwd_loc bs tbl kontinue =
+  let make_top_let_rec kwd_loc bs tbl kontinue =
     let fold (tbl, bs) b =
     in
     let (tbl, bs) = List.fold_left fold (tbl, []) bs in
@@ -138,18 +138,24 @@
     | top :: tops -> top tbl (fun tbl top -> make_file tops tbl kontinue)
 %}
 
-%token <Loc.t> LPAREN RPAREN COLON ARROW DARROW BIND COMMA GROUND PIPE
-%token <Loc.t> LET REC AND IN
+%token <Loc.t> LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON ARROW DARROW BIND COMMA GROUND PIPE ELIPSIS
+%token <Loc.t> PACKAGE IMPORT FROM
+%token <Loc.t> TYPE VAL DEF LET REC AND IN
 %token <Loc.t> IF THEN ELSE
 %token <Loc.t> CASE OF END
+%token <Loc.t> AS
 %token <Loc.t> ADD SUB MUL DIV MOD
 %token <Loc.t> LAND LOR LNOT
 %token <Loc.t> EQ NEQ
 %token <Loc.t> LTE LT GT GTE
+%token <Loc.t> DOT
+%token <Loc.t> CONS
 %token <Loc.t> EOF
 %token <Loc.t> UNIT
 %token <Loc.t * int> INT
 %token <Loc.t * bool> BOOL
+%token <Loc.t * float> FLOAT
+%token <Loc.t * string> STRING
 %token <Loc.t * string> LIDENT UIDENT
 
 %left  IN
@@ -158,11 +164,15 @@
 %left  LAND
 %left  EQ NEQ
 %left  LTE LT GT GTE
+%right CONS
 %left  ADD SUB
 %left  MUL DIV MOD
 %right LNOT
+%left  DOT
 %right ARROW
 
+%type <Sym.t -> (Sym.t -> Ast.file -> (Sym.t -> Ast.file)) -> (Sym.t * Ast.file)> package_only
+%type <Sym.t -> (Sym.t -> Ast.file -> (Sym.t -> Ast.file)) -> (Sym.t * Ast.file)> imports_only
 %type <Sym.t -> (Sym.t -> Ast.file -> (Sym.t -> Ast.file)) -> (Sym.t * Ast.file)> file
 %type <Sym.t -> (Sym.t -> Ast.expr -> (Sym.t * Ast.expr)) -> (Sym.t * Ast.expr)> unit_test
 
@@ -213,8 +223,12 @@ param:
  ************/
 
 bindings:
-  binding AND bindings { $1 :: $3 }
-| binding              { [$1] }
+  rec_binding AND bindings { $1 :: $3 }
+| rec_binding              { [$1] }
+;
+
+rec_binding:
+  LIDENT LPAREN params_list RPAREN annotation BIND term { make_binding $1 $2 (Some $3) $5 }
 ;
 
 binding:
@@ -251,18 +265,66 @@ pattern:
 | LIDENT { make_var_patt $1 }
 ;
 
+/***************
+ * Identifiers *
+ ***************/
+
+ident:
+  simple_ident { $1 }
+| ident DOT simple_ident { ($1, $3) }
+;
+
+simple_ident:
+  LIDENT { $1 }
+| UIDENT { $1 }
+;
+
 /*************
  * Top-Level *
  *************/
 
+package_only:
+  package { make_file $1 [] [] }
+;
+
+imports_only:
+  package import_list { make_file $1 $2 [] }
+;
+
 file:
-  top EOF { make_file $1 }
+  package import_list top_list EOF { make_file $1 $2 $3 }
+;
+
+package:
+  PACKAGE LIDENT { make_pkg $1 $2 }
+;
+
+import_list:
+  import_stmt import_list { $1 :: $2 }
+|                         { [] }
+;
+
+import_stmt:
+  from IMPORT import_clauses { make_import $1 $3 }
+;
+
+from:
+  FROM { Some }
+|      { None }
+;
+
+top_list:
+  top top_list { $1 :: $2 }
+|              { [] }
 ;
 
 top:
-  LET binding top      { (make_top_bind $1 $2) :: $3 }
-| LET REC bindings top { (make_top_bind_rec $1 $3) :: $4 }
-|                      { [] }
+  TYPE simple_ident BIND ty top                                           { (make_top_val $1 $2) :: $3 }
+| VAL simple_ident opt_annotation BIND term top                           { (make_top_val $1 $2) :: $3 }
+| DEF simple_ident LPAREN params_list RPAREN opt_annotation BIND term top { (make_top_def $1 $2) :: $3 }
+| LET binding top                                                         { (make_top_let $1 $2) :: $3 }
+| LET REC bindings top                                                    { (make_top_let_rec $1 $3) :: $4 }
+|                                                                         { [] }
 ;
 
 /***************
@@ -285,20 +347,22 @@ term:
 
 app:
   app atom     { make_app $1 $2 }
-| app LOR app  { make_bin_op $1 Common.Op.bin_or  $3 }
-| app LAND app { make_bin_op $1 Common.Op.bin_and $3 }
-| app EQ app   { make_bin_op $1 Common.Op.bin_eq  $3 }
-| app NEQ app  { make_bin_op $1 Common.Op.bin_neq $3 }
-| app LTE app  { make_bin_op $1 Common.Op.bin_lte $3 }
-| app LT app   { make_bin_op $1 Common.Op.bin_lt  $3 }
-| app GT app   { make_bin_op $1 Common.Op.bin_gt  $3 }
-| app GTE app  { make_bin_op $1 Common.Op.bin_gte $3 }
-| app ADD app  { make_bin_op $1 Common.Op.bin_add $3 }
-| app SUB app  { make_bin_op $1 Common.Op.bin_sub $3 }
-| app MUL app  { make_bin_op $1 Common.Op.bin_mul $3 }
-| app DIV app  { make_bin_op $1 Common.Op.bin_div $3 }
-| app MOD app  { make_bin_op $1 Common.Op.bin_mod $3 }
-| LNOT app     { make_un_op  $1 Common.Op.un_not  $2 }
+| app LOR app  { make_bin_op $1 Op.bin_or   $3 }
+| app LAND app { make_bin_op $1 Op.bin_and  $3 }
+| app EQ app   { make_bin_op $1 Op.bin_eq   $3 }
+| app NEQ app  { make_bin_op $1 Op.bin_neq  $3 }
+| app LTE app  { make_bin_op $1 Op.bin_lte  $3 }
+| app LT app   { make_bin_op $1 Op.bin_lt   $3 }
+| app GT app   { make_bin_op $1 Op.bin_gt   $3 }
+| app GTE app  { make_bin_op $1 Op.bin_gte  $3 }
+| app CONS app { make_bin_op $1 Op.bin_cons $3 }
+| app ADD app  { make_bin_op $1 Op.bin_add  $3 }
+| app SUB app  { make_bin_op $1 Op.bin_sub  $3 }
+| app MUL app  { make_bin_op $1 Op.bin_mul  $3 }
+| app DIV app  { make_bin_op $1 Op.bin_div  $3 }
+| app MOD app  { make_bin_op $1 Op.bin_mod  $3 }
+| LNOT app     { make_un_op  $1 Op.un_not   $2 }
+| app DOT app  { make_bin_op $1 Op.bin_dot  $3}
 | atom         { $1 }
 ;
 
@@ -306,6 +370,8 @@ atom:
   UNIT               { make_unit $1 }
 | BOOL               { make_bool $1 }
 | INT                { make_int $1 }
+| FLOAT              { make_float $1 }
+| STRING             { make_string $1 }
 | LIDENT             { make_var $1 }
 | LPAREN term RPAREN { $2 }
 ;

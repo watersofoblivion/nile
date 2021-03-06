@@ -7,11 +7,11 @@ let _ =
         CommonTest.SymTest.suite;
         CommonTest.PattTest.suite;
         CommonTest.TypeTest.suite;
-        CommonTest.OpTest.suite;
         CommonTest.BuiltinTest.suite;
       ];
       "Syntax" >::: [
         SyntaxTest.LocTest.suite;
+        SyntaxTest.OpTest.suite;
         SyntaxTest.LexerTest.suite;
         SyntaxTest.ParserTest.suite;
         SyntaxTest.AstTest.suite;

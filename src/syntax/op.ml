@@ -35,6 +35,8 @@ type bin =
   | Lt
   | Gt
   | Gte
+  | Dot
+  | Cons
 
 let bin_add = Add
 let bin_sub = Sub
@@ -49,6 +51,8 @@ let bin_lte = Lte
 let bin_lt = Lt
 let bin_gt = Gt
 let bin_gte = Gte
+let bin_dot = Dot
+let bin_cons = Cons
 
 let pp_bin op fmt = match op with
   | Add -> fprintf fmt "+"
@@ -64,8 +68,11 @@ let pp_bin op fmt = match op with
   | Lt -> fprintf fmt "<"
   | Gt -> fprintf fmt ">"
   | Gte -> fprintf fmt ">="
+  | Dot -> fprintf fmt "."
+  | Cons -> fprintf fmt "::"
 
 let bin_precedence = function
+  | Dot | Cons -> 2
   | Mul | Div | Mod -> 3
   | Add | Sub -> 4
   | Lte | Lt | Gt | Gte -> 6

@@ -4,21 +4,35 @@ type t =
   | Unit
   | Bool
   | Int
-  | Fun of t * t
+  | Float
+  | String
+  | Fun of t list * t
   | Tuple of int * t list
+  | Package of t Sym.map * t Sym.map
 
 let unit = Unit
 let bool = Bool
 let int = Int
-let func a b = Fun (a, b)
+let float = Float
+let string = String
+let func args ret = Fun (args, ret)
 let tuple tys = Tuple (List.length tys, tys)
+let pkg tys fns = Package (tys, fns)
 
 let rec pp ty fmt = match ty with
   | Unit -> fprintf fmt "Unit"
   | Bool -> fprintf fmt "Bool"
   | Int -> fprintf fmt "Int"
-  | Fun ((Fun _ as a), b) -> fprintf fmt "(%t) -> %t" (pp a) (pp b)
-  | Fun (a, b) -> fprintf fmt "%t -> %t" (pp a) (pp b)
+  | Float -> fprintf fmt "Float"
+  | String -> fprintf fmt "String"
+  | Fun (args, ret) ->
+    let pp_arg fmt = function
+      | Fun _ as f -> fprintf fmt "(%t)" (pp f)
+      | arg -> pp arg fmt
+    in
+    let pp_sep fmt _ = fprintf fmt " -> " in
+    pp_print_list ~pp_sep pp_arg fmt args;
+    fprintf fmt " -> %t" (pp ret)
   | Tuple (_, tys) ->
     fprintf fmt "(@[<hv 2>";
     let pp_sep fmt _ = fprintf fmt ",@ " in
@@ -29,29 +43,35 @@ let rec pp ty fmt = match ty with
 let rec equal x y = match x, y with
   | Unit, Unit
   | Bool, Bool
-  | Int, Int -> true
-  | Fun (a, b), Fun (a', b') -> equal a a' && equal b b'
+  | Int, Int
+  | Float, Float
+  | String, String -> true
+  | Fun (args, ret), Fun (args', ret') ->
+    List.for_all2 equal args args'
+      && equal ret ret'
   | Tuple (len, tys), Tuple (len', tys') ->
-    let fold_left b ty ty' = b && equal ty ty' in
-    len = len' && List.fold_left2 fold_left true tys tys'
+    len = len' && List.for_all2 equal tys tys'
   | _ -> false
-  module IdMap = Map.Make (struct
-    type t = Sym.sym
-    let compare = compare
-  end)
 
-type env = t IdMap.t
+module IdMap = Map.Make (struct
+  type t = Sym.sym
+  let compare = compare
+end)
 
-let env = IdMap.empty
+type env = t Sym.map
+
+let env = Sym.empty
 let bind patt ty env = match patt with
-  | Patt.Var sym -> IdMap.add sym ty env
+  | Patt.Var sym -> Sym.bind sym ty env
   | _ -> env
-let lookup = IdMap.find
+let lookup = Sym.lookup
 
 let of_pattern patt ty = match patt, ty with
   | Patt.Unit, Unit
   | Patt.Int _, Int
   | Patt.Bool _, Bool
+  | Patt.Float _, Float
+  | Patt.String _, String
   | Patt.Var _, _
   | Patt.Ground, _ -> true
   | _ -> false

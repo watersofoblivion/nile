@@ -38,19 +38,21 @@ val type_of_un : un -> Type.t -> Type.t
 (** {2 Binary Operators} *)
 
 type bin = private
-  | Add (** Addition *)
-  | Sub (** Subtraction *)
-  | Mul (** Multiplication *)
-  | Div (** Integer Division *)
-  | Mod (** Modulus *)
-  | And (** Logical And *)
-  | Or  (** Logical Or *)
-  | Eq  (** Equality *)
-  | Neq (** Inequality *)
-  | Lte (** Less Than or Equal *)
-  | Lt  (** Less Than *)
-  | Gt  (** Greater Than *)
-  | Gte (** Greater Than or Equal *)
+  | Add  (** Addition *)
+  | Sub  (** Subtraction *)
+  | Mul  (** Multiplication *)
+  | Div  (** Integer Division *)
+  | Mod  (** Modulus *)
+  | And  (** Logical And *)
+  | Or   (** Logical Or *)
+  | Eq   (** Equality *)
+  | Neq  (** Inequality *)
+  | Lte  (** Less Than or Equal *)
+  | Lt   (** Less Than *)
+  | Gt   (** Greater Than *)
+  | Gte  (** Greater Than or Equal *)
+  | Dot  (** Dot (Projection) *)
+  | Cons (** Cons *)
 (** Binary Operators *)
 
 (** {3 Constructors} *)
@@ -86,13 +88,19 @@ val bin_lte : bin
 (** [bin_lte] constructs a binary less than or equal operator. *)
 
 val bin_lt : bin
-(** [bin_lte] constructs a binary less than operator. *)
+(** [bin_lt] constructs a binary less than operator. *)
 
 val bin_gt : bin
-(** [bin_lte] constructs a binary greater than operator. *)
+(** [bin_gt] constructs a binary greater than operator. *)
 
 val bin_gte : bin
-(** [bin_lte] constructs a binary greater than or equal operator. *)
+(** [bin_gte] constructs a binary greater than or equal operator. *)
+
+val bin_dot : bin
+(** [bin_dot] constructs a binary dot (projection) operator. *)
+
+val bin_cons : bin
+(** [bin_cons] constructs a binary cons operator. *)
 
 (** {3 Operations} *)
 

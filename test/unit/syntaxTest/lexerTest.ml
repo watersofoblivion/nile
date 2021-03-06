@@ -13,6 +13,12 @@ let assert_lexes ~ctxt expected str =
     | Parser.DARROW _, Parser.DARROW loc
     | Parser.BIND _, Parser.BIND loc
     | Parser.COMMA _, Parser.COMMA loc
+    | Parser.GROUND _, Parser.GROUND loc
+    | Parser.PIPE _, Parser.PIPE loc
+    | Parser.ELIPSIS _, Parser.ELIPSIS loc
+    | Parser.TYPE _, Parser.TYPE loc
+    | Parser.VAL _, Parser.VAL loc
+    | Parser.DEF _, Parser.DEF loc
     | Parser.LET _, Parser.LET loc
     | Parser.REC _, Parser.REC loc
     | Parser.AND _, Parser.AND loc
@@ -20,6 +26,13 @@ let assert_lexes ~ctxt expected str =
     | Parser.IF _, Parser.IF loc
     | Parser.THEN _, Parser.THEN loc
     | Parser.ELSE _, Parser.ELSE loc
+    | Parser.CASE _, Parser.CASE loc
+    | Parser.OF _, Parser.OF loc
+    | Parser.END _, Parser.END loc
+    | Parser.FROM _, Parser.FROM loc
+    | Parser.IMPORT _, Parser.IMPORT loc
+    | Parser.PACKAGE _, Parser.PACKAGE loc
+    | Parser.AS _, Parser.AS loc
     | Parser.ADD _, Parser.ADD loc
     | Parser.SUB _, Parser.SUB loc
     | Parser.MUL _, Parser.MUL loc
@@ -33,13 +46,21 @@ let assert_lexes ~ctxt expected str =
     | Parser.LTE _, Parser.LTE loc
     | Parser.LT _, Parser.LT loc
     | Parser.GT _, Parser.GT loc
-    | Parser.GTE _, Parser.GTE loc -> LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc
+    | Parser.GTE _, Parser.GTE loc
+    | Parser.DOT _, Parser.DOT loc
+    | Parser.CONS _, Parser.CONS loc -> LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc
     | Parser.BOOL (_, b), Parser.BOOL (loc, b') ->
       LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
       assert_equal ~ctxt ~printer:string_of_bool b b' ~msg:"Token values are not equal"
     | Parser.INT (_, i), Parser.INT (loc, i') ->
       LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
       assert_equal ~ctxt ~printer:string_of_int i i' ~msg:"Token values are not equal"
+    | Parser.FLOAT (_, f), Parser.FLOAT (loc, f') ->
+      LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
+      assert_equal ~ctxt ~printer:string_of_float f f' ~msg:"Token values are not equal"
+    | Parser.STRING (_, s), Parser.STRING (loc, s') ->
+      LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
+      assert_equal ~ctxt s s' ~msg:"Token values are not equal"
     | Parser.UIDENT (_, id), Parser.UIDENT (loc, id')
     | Parser.LIDENT (_, id), Parser.LIDENT (loc, id') ->
       LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
@@ -104,6 +125,8 @@ let test_constructor =
 
 (* Tokens *)
 
+(* Non-printable *)
+
 let test_eof ctxt =
   ""
     |> assert_lexes ~ctxt (Parser.EOF LocTest.dummy)
@@ -117,6 +140,8 @@ let test_newline ctxt =
       assert_equal ~ctxt ~printer:Fun.id expected id ~msg:"Token values are not equal"
     | _ -> assert_failure "Mismatched tokens"
 
+(* Punctuation *)
+
 let test_punc_lparen ctxt =
   "("
     |> assert_lexes ~ctxt (Parser.LPAREN LocTest.dummy)
@@ -124,6 +149,22 @@ let test_punc_lparen ctxt =
 let test_punc_rparen ctxt =
   ")"
     |> assert_lexes ~ctxt (Parser.RPAREN LocTest.dummy)
+
+let test_punc_lbracket ctxt =
+  "["
+    |> assert_lexes ~ctxt (Parser.LBRACKET LocTest.dummy)
+
+let test_punc_rbracket ctxt =
+  "]"
+    |> assert_lexes ~ctxt (Parser.RBRACKET LocTest.dummy)
+
+let test_punc_lbrace ctxt =
+  "{"
+    |> assert_lexes ~ctxt (Parser.LBRACE LocTest.dummy)
+
+let test_punc_rbrace ctxt =
+  "}"
+    |> assert_lexes ~ctxt (Parser.RBRACE LocTest.dummy)
 
 let test_punc_colon ctxt =
   ":"
@@ -144,6 +185,32 @@ let test_punc_bind ctxt =
 let test_punc_comma ctxt =
   ","
     |> assert_lexes ~ctxt (Parser.COMMA LocTest.dummy)
+
+let test_punc_ground ctxt =
+  "_"
+    |> assert_lexes ~ctxt (Parser.GROUND LocTest.dummy)
+
+let test_punc_pipe ctxt =
+  "|"
+    |> assert_lexes ~ctxt (Parser.PIPE LocTest.dummy)
+
+let test_punc_elipsis ctxt =
+  "..."
+    |> assert_lexes ~ctxt (Parser.ELIPSIS LocTest.dummy)
+
+(* Keywords *)
+
+let test_kwd_type ctxt =
+  "type"
+    |> assert_lexes ~ctxt (Parser.TYPE LocTest.dummy)
+
+let test_kwd_val ctxt =
+  "val"
+    |> assert_lexes ~ctxt (Parser.VAL LocTest.dummy)
+
+let test_kwd_def ctxt =
+  "def"
+    |> assert_lexes ~ctxt (Parser.DEF LocTest.dummy)
 
 let test_kwd_let ctxt =
   "let"
@@ -172,6 +239,36 @@ let test_kwd_then ctxt =
 let test_kwd_else ctxt =
   "else"
     |> assert_lexes ~ctxt (Parser.ELSE LocTest.dummy)
+
+let test_kwd_case ctxt =
+  "case"
+    |> assert_lexes ~ctxt (Parser.CASE LocTest.dummy)
+
+let test_kwd_of ctxt =
+  "of"
+    |> assert_lexes ~ctxt (Parser.OF LocTest.dummy)
+
+let test_kwd_end ctxt =
+  "end"
+    |> assert_lexes ~ctxt (Parser.END LocTest.dummy)
+
+let test_kwd_from ctxt =
+  "from"
+    |> assert_lexes ~ctxt (Parser.FROM LocTest.dummy)
+
+let test_kwd_import ctxt =
+  "import"
+    |> assert_lexes ~ctxt (Parser.IMPORT LocTest.dummy)
+
+let test_kwd_package ctxt =
+  "package"
+    |> assert_lexes ~ctxt (Parser.PACKAGE LocTest.dummy)
+
+let test_kwd_as ctxt =
+  "as"
+    |> assert_lexes ~ctxt (Parser.AS LocTest.dummy)
+
+(* Operators *)
 
 let test_op_add ctxt =
   "+"
@@ -229,6 +326,16 @@ let test_op_gte ctxt =
   ">="
     |> assert_lexes ~ctxt (Parser.GTE LocTest.dummy)
 
+let test_op_dot ctxt =
+  "."
+    |> assert_lexes ~ctxt (Parser.DOT LocTest.dummy)
+
+let test_op_cons ctxt =
+  "::"
+    |> assert_lexes ~ctxt (Parser.CONS LocTest.dummy)
+
+(* Literals *)
+
 let test_lit_bool ctxt =
   "true"
     |> assert_lexes ~ctxt (Parser.BOOL (LocTest.dummy, true));
@@ -245,13 +352,40 @@ let test_lit_int ctxt =
   "-42"
     |> assert_lexes ~ctxt (Parser.INT (LocTest.dummy, (-42)))
 
+let test_lit_float ctxt =
+  let test (expected, tokens) =
+    let test = assert_lexes ~ctxt (Parser.FLOAT (LocTest.dummy, expected)) in
+    List.iter test tokens
+  in
+  List.iter test [
+    (0.0,        ["0.0"]);
+    (4.2,        ["4.2"; "+4.2"]);
+    ((-4.2),     ["-4.2"]);
+    (4.2e10,     ["4.2e10"; "+4.2e10"; "4.2e+10"; "+4.2e+10";
+                  "4.2E10"; "+4.2E10"; "4.2E+10"; "+4.2E+10"]);
+    (4.2e-10,    ["4.2e-10"; "+4.2e-10";
+                  "4.2E-10"; "+4.2E-10"]);
+    ((-4.2e10),  ["-4.2e10"; "-4.2e+10";
+                  "-4.2E10"; "-4.2E+10"]);
+    ((-4.2e-10), ["-4.2e-10";
+                  "-4.2E-10"])
+  ]
+
+let test_lit_string ctxt =
+  let test s =
+    sprintf "%S" s
+      |> assert_lexes ~ctxt (Parser.STRING (LocTest.dummy, s))
+  in
+  test "foo bar";
+  test "foo \" bar"
+
 let test_uident ctxt =
-  "Id"
-    |> assert_lexes ~ctxt (Parser.UIDENT (LocTest.dummy, "Id"))
+  "Ident"
+    |> assert_lexes ~ctxt (Parser.UIDENT (LocTest.dummy, "Ident"))
 
 let test_lident ctxt =
-  "id"
-    |> assert_lexes ~ctxt (Parser.LIDENT (LocTest.dummy, "id"))
+  "ident"
+    |> assert_lexes ~ctxt (Parser.LIDENT (LocTest.dummy, "ident"))
 
 let test_tokens =
   "Tokens" >::: [
@@ -267,15 +401,28 @@ let test_tokens =
       "Double Arrow"      >:: test_punc_arrow;
       "Bind"              >:: test_punc_bind;
       "Comma"             >:: test_punc_comma;
+      "Ground"            >:: test_punc_ground;
+      "Pipe"              >:: test_punc_pipe;
+      "Elipsis"           >:: test_punc_elipsis;
     ];
     "Keywords" >::: [
-      "Let"  >:: test_kwd_let;
-      "Rec"  >:: test_kwd_rec;
-      "And"  >:: test_kwd_and;
-      "In"   >:: test_kwd_in;
-      "If"   >:: test_kwd_if;
-      "Then" >:: test_kwd_then;
-      "Else" >:: test_kwd_else;
+      "Type"    >:: test_kwd_type;
+      "Val"     >:: test_kwd_val;
+      "Def"     >:: test_kwd_def;
+      "Let"     >:: test_kwd_let;
+      "Rec"     >:: test_kwd_rec;
+      "And"     >:: test_kwd_and;
+      "In"      >:: test_kwd_in;
+      "If"      >:: test_kwd_if;
+      "Then"    >:: test_kwd_then;
+      "Else"    >:: test_kwd_else;
+      "Case"    >:: test_kwd_case;
+      "Of"      >:: test_kwd_of;
+      "End"     >:: test_kwd_end;
+      "From"    >:: test_kwd_from;
+      "Import"  >:: test_kwd_import;
+      "Package" >:: test_kwd_package;
+      "As"      >:: test_kwd_as;
     ];
     "Operators" >::: [
       "Addition"              >:: test_op_add;
@@ -292,10 +439,14 @@ let test_tokens =
       "Less Than"             >:: test_op_lt;
       "Greater Than"          >:: test_op_gt;
       "Greater Than or Equal" >:: test_op_gte;
+      "Dot"                   >:: test_op_dot;
+      "Cons"                  >:: test_op_cons;
     ];
     "Literals" >::: [
       "Boolean" >:: test_lit_bool;
       "Integer" >:: test_lit_int;
+      "Float"   >:: test_lit_float;
+      "String"  >:: test_lit_string;
     ];
     "Identifiers" >::: [
       "Upper Case" >:: test_uident;

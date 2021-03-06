@@ -29,6 +29,18 @@
   let punc_rparen lexbuf =
     let loc = Loc.loc lexbuf in
     RPAREN loc
+  let punc_lbracket lexbuf =
+    let loc = Loc.loc lexbuf in
+    LBRACKET loc
+  let punc_rbracket lexbuf =
+    let loc = Loc.loc lexbuf in
+    RBRACKET loc
+  let punc_lbrace lexbuf =
+    let loc = Loc.loc lexbuf in
+    LBRACE loc
+  let punc_rbrace lexbuf =
+    let loc = Loc.loc lexbuf in
+    RBRACE loc
   let punc_colon lexbuf =
     let loc = Loc.loc lexbuf in
     COLON loc
@@ -50,7 +62,19 @@
   let punc_pipe lexbuf =
     let loc = Loc.loc lexbuf in
     PIPE loc
+  let punc_elipsis lexbuf =
+    let loc = Loc.loc lexbuf in
+    ELIPSIS loc
 
+  let kwd_type lexbuf =
+    let loc = Loc.loc lexbuf in
+    TYPE loc
+  let kwd_val lexbuf =
+    let loc = Loc.loc lexbuf in
+    VAL loc
+  let kwd_def lexbuf =
+    let loc = Loc.loc lexbuf in
+    DEF loc
   let kwd_let lexbuf =
     let loc = Loc.loc lexbuf in
     LET loc
@@ -81,6 +105,18 @@
   let kwd_end lexbuf =
     let loc = Loc.loc lexbuf in
     END loc
+  let kwd_from lexbuf =
+    let loc = Loc.loc lexbuf in
+    FROM loc
+  let kwd_import lexbuf =
+    let loc = Loc.loc lexbuf in
+    IMPORT loc
+  let kwd_package lexbuf =
+    let loc = Loc.loc lexbuf in
+    PACKAGE loc
+  let kwd_as lexbuf =
+    let loc = Loc.loc lexbuf in
+    AS loc
 
   let op_add lexbuf =
     let loc = Loc.loc lexbuf in
@@ -124,6 +160,12 @@
   let op_gte lexbuf =
     let loc = Loc.loc lexbuf in
     GTE loc
+  let op_dot lexbuf =
+    let loc = Loc.loc lexbuf in
+    DOT loc
+  let op_const lexbuf =
+    let loc = Loc.loc lexbuf in
+    CONS loc
 
   let lit_true lexbuf =
     let loc = Loc.loc lexbuf in
@@ -139,6 +181,21 @@
     in
     let loc = Loc.loc lexbuf in
     INT (loc, i)
+  let lit_float lexbuf =
+    let f =
+      lexbuf
+        |> Lexing.lexeme
+        |> float_of_string
+    in
+    let loc = Loc.loc lexbuf in
+    FLOAT (loc, f)
+  let lit_string lexbuf =
+    let s =
+      let s = Lexing.lexeme lexbuf in
+      String.sub s 1 (String.length s - 2)
+    in
+    let loc = Loc.loc lexbuf in
+    STRING (loc, s)
 
   let uident lexbuf =
     let loc = Loc.loc lexbuf in
@@ -154,6 +211,10 @@ rule lex = parse
 
 | '('   { punc_lparen lexbuf }
 | ')'   { punc_rparen lexbuf }
+| '['   { punc_lbracket lexbuf }
+| ']'   { punc_rbracket lexbuf }
+| '{'   { punc_lbrace lexbuf }
+| '}'   { punc_rbrace lexbuf }
 | "->"  { punc_arrow lexbuf }
 | "=>"  { punc_darrow lexbuf }
 | ':'   { punc_colon lexbuf }
@@ -161,17 +222,25 @@ rule lex = parse
 | ','   { punc_comma lexbuf }
 | '_'   { punc_ground lexbuf }
 | '|'   { punc_pipe lexbuf }
+| "..." { punc_elipsis lexbuf }
 
-| "let"  { kwd_let lexbuf }
-| "rec"  { kwd_rec lexbuf }
-| "and"  { kwd_and lexbuf }
-| "in"   { kwd_in lexbuf }
-| "if"   { kwd_if lexbuf }
-| "then" { kwd_then lexbuf }
-| "else" { kwd_else lexbuf }
-| "case" { kwd_case lexbuf }
-| "of"   { kwd_of lexbuf }
-| "end"  { kwd_end lexbuf }
+| "type"    { kwd_type lexbuf }
+| "val"     { kwd_type lexbuf }
+| "def"     { kwd_type lexbuf }
+| "let"     { kwd_let lexbuf }
+| "rec"     { kwd_rec lexbuf }
+| "and"     { kwd_and lexbuf }
+| "in"      { kwd_in lexbuf }
+| "if"      { kwd_if lexbuf }
+| "then"    { kwd_then lexbuf }
+| "else"    { kwd_else lexbuf }
+| "case"    { kwd_case lexbuf }
+| "of"      { kwd_of lexbuf }
+| "end"     { kwd_end lexbuf }
+| "from"    { kwd_from lexbuf }
+| "import"  { kwd_import lexbuf }
+| "package" { kwd_package lexbuf }
+| "as"      { kwd_package lexbuf }
 
 | '+'  { op_add lexbuf }
 | '-'  { op_sub lexbuf }
@@ -187,10 +256,14 @@ rule lex = parse
 | "<"  { op_lt lexbuf }
 | ">"  { op_gt lexbuf }
 | ">=" { op_gte lexbuf }
+| '.'  { op_dot lexbuf }
+| "::" { op_cons lexbuf }
 
 | "true"               { lit_true lexbuf }
 | "false"              { lit_false lexbuf }
+| ('+'|'-')?['0'-'9']+'.'['0'-'9']+(['E' 'e']('+'|'-')?['0'-'9']+)? { lit_float lexbuf }
 | ('+'|'-')?['0'-'9']+ { lit_int lexbuf }
+| '"' ("\\\"" | [^'"' '\n'])* '"' { lit_string lexbuf }
 
 | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9']* { lident lexbuf }
 | ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* { uident lexbuf }

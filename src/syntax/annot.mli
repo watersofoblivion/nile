@@ -1,23 +1,49 @@
 open Format
 open Common
 
-(** {1 Annotated Abstract Syntax} *)
+(** {1 Annotated Abstract Syntax}
+ *
+ * The first intermediate form of for the compiler.  This form is an
+ * explicitly-typed lambda calculus with several properties:
+ *
+ * {ul
+ *   {li All files in a single package have been combined into one unit.}
+ *   {li All identifiers have been alpha-renamed.}
+ *   {li All names (both internal and external to the package) have been
+ *       resolved into symbols and import statements have been removed.}
+ *   {li Top-level "[def]" and "[val]" statements have been replaced with
+ *       "[let]" and "[let rec]" statements.}
+ *   {li Unary and Binary operators have been replaced with calls to built-in
+ *       functions, except for logical AND and logical OR, which have been
+ *       de-sugared into pattern matches to implement short-circuting behavior.}
+ *   {li Conditionals ("[if]" statements) have been desugard into pattern
+ *       matches over their boolean condition values.}
+ *   {li Function abstractions and applications have been uncurried.}
+ *   {li Records have been de-sugared into tuples with ascriptions.}
+ * }
+ *)
 
 (** {2 Syntax} *)
 
 type expr = private
-  | Unit                                   (** Unit *)
-  | Bool of bool                           (** Boolean *)
-  | Int of int                             (** Integer *)
-  | Var of Sym.sym                         (** Variable Identifier *)
-  | UnOp of Op.un * expr                   (** Unary Operation *)
-  | BinOp of expr * Op.bin * expr          (** Binary Operation *)
-  | Case of expr * clause list * Type.t    (** Case Of *)
-  | Let of binding * expr                  (** Value Binding *)
-  | LetRec of binding list * expr          (** Recursive Value Bindings *)
-  | Abs of Patt.t * Type.t * Type.t * expr (** Function Abstraction *)
-  | App of expr * expr                     (** Function Application *)
+  | Unit                                    (** Unit *)
+  | Bool of bool                            (** Boolean *)
+  | Int of int                              (** Integer *)
+  | Float of float                          (** Floating-point *)
+  | String of int * string                  (** String *)
+  | Tuple of expr list                      (** Tuples *)
+  | Var of Sym.sym                          (** Variable Identifier *)
+  | Case of expr * clause list * Type.t     (** Case *)
+  | Let of binding * expr                   (** Value Binding *)
+  | LetRec of binding list * expr           (** Recursive Value Bindings *)
+  | Proj of expr * int                      (** Projection *)
+  | Abs of int * param list * Type.t * expr (** Function Abstraction *)
+  | App of int * expr * expr list           (** Function Application *)
+  | Builtin of Sym.sym * expr list          (** Builtin Function Application *)
 (** An expression *)
+
+and param = Patt.t * Type.t
+(** A function parameter *)
 
 and binding = Patt.t * Type.t * expr
 (** A value Binding *)
@@ -30,8 +56,8 @@ type top = private
   | TopRec of binding list (** Recursive value bindings *)
 (** A top-level statement *)
 
-type file = top list
-(** A source file *)
+type pkg = Sym.sym * top list
+(** A source package *)
 
 (** {2 Constructors} *)
 
@@ -46,17 +72,19 @@ val bool : bool -> expr
 val int : int -> expr
 (** [int i] constructs an integer literal with the value [i]. *)
 
+val float : float -> expr
+(** [float f] constructs a floating-point literal with the value [f]. *)
+
+val string : int -> string -> expr
+(** [string len s] constructs a string literal of length [len] with the value
+    [s]. *)
+
+val tuple : expr list -> expr
+(** [tuple exprs] constructs a tuple literal with the values [exprs]. *)
+
 val var : Sym.sym -> expr
 (** [var sym] constructs a variable identifier expression referencing the value
     bound to the symbol [sym]. *)
-
-val un_op : Op.un -> expr -> expr
-(** [un_op op r] constructs a unary operator expression with the operator [op]
-    operating on [r]. *)
-
-val bin_op : expr -> Op.bin -> expr -> expr
-(** [bin_op l op r] constructs a binary operator expression with the operator
-    [op] operating on [l] and [r]. *)
 
 val case : expr -> clause list -> Type.t -> expr
 (** [case scrut clauses res] constructs a case expression scrutinizing [scrut],
@@ -70,14 +98,21 @@ val bind_rec : binding list -> expr -> expr
 (** [bind_rec bs rest] constructs a set of recursive value bindings over the
     list of bindings [bs] within the scope of both each other and [rest]. *)
 
-val abs : Patt.t -> Type.t -> Type.t -> expr -> expr
-(** [abs patt ty res expr] constructs a function abstraction expression binding
-    the parameter pattern [patt] with type [ty] within the scope of the function
-    body [expr] with the result type [res]. *)
+val proj : expr -> int -> expr
+(** [proj expr n] constructs a projection of the [n]th field of [expr]. *)
 
-val app : expr -> expr -> expr
-(** [app f x] constructs a function application expression applying the function
-    [f] to the value [x]. *)
+val abs : int -> param list -> Type.t -> expr -> expr
+(** [abs arity params res expr] constructs a function abstraction expression of
+    arity [arity] binding the parameters within the scope of the function body
+    [expr] with the result type [res]. *)
+
+val app : int -> expr -> expr list -> expr
+(** [app arity f xs] constructs a function application expression applying the function
+    [f] to the values [xs]. *)
+
+val builtin : Sym.sym -> expr list -> expr
+(** [app f xs] constructs a function application expression applying the
+    builtin function [f] to the values [xs]. *)
 
 val binding : Patt.t -> Type.t -> expr -> binding
 (** [binding patt ty expr] constructs a value binding expression binding the
@@ -96,11 +131,11 @@ val top_bind_rec : binding list -> top
 (** [top_bind_rec bs rest] constructs a set of recursive top-level value
     bindings over the list of bindings [bs]. *)
 
-(** {3 Files} *)
+(** {3 Packages} *)
 
-val file : top list -> file
-(** [file tops] constructs a source file consisting of the list of top-level
-    bindings [tops]. *)
+val pkg : Sym.sym -> top list -> pkg
+(** [pkg name tops] constructs a source package named [name] consisting of the
+    list of top-level bindings [tops]. *)
 
 (** {2 Annotation} *)
 
@@ -118,6 +153,12 @@ val annotate_file : Type.env -> Ast.file -> (Type.env * file)
 (** [annotate_file env file] type-checks the abstract syntax file [file] in the
     type environment [env] and returns an annotated syntax file along with a
     type environment with all of the top-level statements in the file bound. *)
+
+val annotate : Type.env -> Ast.file list -> (Type.env * pkg)
+(** [annotate env files] type-checks the collection of abstract syntax files
+    [files] as a single package in the type environment [env] and returns an
+    annotated syntax package along with a type environment with all of the top
+    level statements in the package bound. *)
 
 (** {2 Operations} *)
 
@@ -149,6 +190,6 @@ val type_of_top : Type.env -> top -> Type.env
     environment [env] and returns its type along with a type environment with
     the top-level value bound. *)
 
-val type_of_file : Type.env -> file -> Type.env
-(** [type_of_file] type checks the file [file] in the type environment [env] and
-    returns a type environment with all of the top-level values bound. *)
+val type_of_pkg : Type.env -> pkg -> Type.env
+(** [type_of_pkg] type checks the package [pkg] in the type environment [env]
+    and returns a type environment with all of the top-level values bound. *)
