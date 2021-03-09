@@ -1,3 +1,55 @@
+(* Errors *)
+
+exception DeclarationMismatch of Patt.t * t * t
+exception ResultMismatch of t * t
+exception UnboundIdentifier of Sym.sym
+exception CannotApply of t
+exception TooManyArgs of t * int
+exception InvalidArgs of t * t
+exception ConditionalBranchMismatch of t * t
+exception InvalidUnaryOperand of Type.t * un * Type.t
+exception InvalidBinaryOperands of Type.t * Type.t * bin * Type.t
+exception InvalidEqualityOperands of Type.t * bin * Type.t
+
+let declaration_mismatch sym expected actual =
+  DeclarationMismatch (sym, expected, actual)
+    |> raise
+
+let result_mismatch expected actual =
+  ResultMismatch (expected, actual)
+    |> raise
+
+let unbound_identifier sym =
+  UnboundIdentifier sym
+    |> raise
+
+let cannot_apply ty =
+  CannotApply ty
+    |> raise
+(*
+let too_many_args ty num =
+  TooManyArgs (ty, num)
+    |> raise *)
+
+let invalid_args expected actual =
+  InvalidArgs (expected, actual)
+    |> raise
+
+let conditional_branch_mismatch t f =
+  ConditionalBranchMismatch (t, f)
+    |> raise
+
+let invalid_unary_operand expected op actual =
+  InvalidUnaryOperand (expected, op, actual)
+    |> raise
+
+let invalid_binary_operands expected actual op actual' =
+  InvalidBinaryOperands (expected, actual, op, actual')
+    |> raise
+
+let invalid_equality_operands actual op actual' =
+  InvalidEqualityOperands (actual, op, actual')
+    |> raise
 
 (* Patterns *)
 
@@ -6,6 +58,38 @@ let rec irrefutable = function
   | Patt.Tuple (_, patts) -> List.for_all irrefutable patts
   | Patt.Cons (hd, tl) -> irrefutable hd && irrefutable tl
   | _ -> false
+
+(* Operators *)
+
+
+let type_of_un op r = match op, r with
+  | Op.Not, Type.Bool -> Type.bool
+  | Op.Not, r -> invalid_unary_operand Type.bool op r
+
+let type_of_arith l op r = match l, r with
+  | Type.Int, Type.Int -> Type.int
+  | l, r -> invalid_binary_operands Type.int l op r
+
+let type_of_bool l op r = match l, r with
+  | Type.Bool, Type.Bool -> Type.bool
+  | l, r -> invalid_binary_operands Type.bool l op r
+
+let type_of_eq l op r = match l, r with
+  | Type.Int, Type.Int
+  | Type.Bool, Type.Bool -> Type.bool
+  | l, r -> invalid_equality_operands l op r
+
+let type_of_cmp l op r = match l, r with
+  | Type.Int, Type.Int -> Type.bool
+  | l, r -> invalid_binary_operands Type.int l op r
+
+let type_of_bin l op r =
+  match op with
+    | Op.Add | Op.Sub | Op.Mul | Op.Div | Op.Mod -> type_of_arith l op r
+    | Op.And | Op.Or -> type_of_bool l op r
+    | Op.Eq | Op.Neq -> type_of_eq l op r
+    | Op.Lte | Op.Lt | Op.Gt | Op.Gte -> type_of_cmp l op r
+    | _ -> failwith "Dot or Cons"
 
 (* Abstract Syntax *)
 

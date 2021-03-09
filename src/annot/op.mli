@@ -19,50 +19,42 @@ val un_precedence : un -> int
 (** [un_precedence op] returns the operator precedence of the unary operator
     [op]. *)
 
-(** {3 Type Checking} *)
-
-exception InvalidUnaryOperand of Type.t * un * Type.t
-(** Raised when the type of a unary operand is invalid.  Contains the expected
-    type, the operator, and the actual type. *)
-
-val type_of_un : un -> Type.t -> Type.t
-(** [type_of_un op r] determines the result type of the unary operator [op]
-    applied to an argument of type [r].  Raises {!InvalidUnaryOperand} if [op]
-    cannot be applied to an argument of type [r]. *)
-
 (** {2 Binary Operators} *)
 
 type bin = private
-  | Add  (** Addition *)
-  | Sub  (** Subtraction *)
-  | Mul  (** Multiplication *)
-  | Div  (** Integer Division *)
-  | Mod  (** Modulus *)
-  | And  (** Logical And *)
-  | Or   (** Logical Or *)
-  | Eq   (** Equality *)
-  | Neq  (** Inequality *)
-  | Lte  (** Less Than or Equal *)
-  | Lt   (** Less Than *)
-  | Gt   (** Greater Than *)
-  | Gte  (** Greater Than or Equal *)
-  | Dot  (** Dot (Projection) *)
-  | Cons (** Cons *)
+  | Add of Type.t  (** Addition *)
+  | Sub of Type.t  (** Subtraction *)
+  | Mul of Type.t  (** Multiplication *)
+  | Div of Type.t  (** Integer Division *)
+  | Mod            (** Modulus *)
+  | And            (** Logical And *)
+  | Or             (** Logical Or *)
+  | Eq of Type.t   (** Equality *)
+  | Neq of Type.t  (** Inequality *)
+  | Lte of Type.t  (** Less Than or Equal *)
+  | Lt of Type.t   (** Less Than *)
+  | Gt of Type.t   (** Greater Than *)
+  | Gte of Type.t  (** Greater Than or Equal *)
+  | Cons of Type.t (** Cons *)
 (** Binary Operators *)
 
 (** {3 Constructors} *)
 
-val bin_add : bin
-(** [bin_add] constructs a binary addition operator. *)
+val bin_add : Type.t -> bin
+(** [bin_add ty] constructs a binary addition operator for values of type [ty].
+    *)
 
-val bin_sub : bin
-(** [bin_sub] constructs a binary subtraction operator. *)
+val bin_sub : Type.t -> bin
+(** [bin_sub ty] constructs a binary subtraction operator for values of type
+    [ty]. *)
 
-val bin_mul : bin
-(** [bin_mul] constructs a binary multiplication operator. *)
+val bin_mul : Type.t -> bin
+(** [bin_mul ty] constructs a binary multiplication operator for values of type
+    [ty]. *)
 
-val bin_div : bin
-(** [bin_div] constructs a binary integer division operator. *)
+val bin_div : Type.t -> bin
+(** [bin_div ty] constructs a binary integer division operator for values of
+    type [ty]. *)
 
 val bin_mod : bin
 (** [bin_mod] constructs a binary modulus operator. *)
@@ -73,49 +65,35 @@ val bin_and : bin
 val bin_or : bin
 (** [bin_or] constructs a binary logical "or" operator. *)
 
-val bin_eq : bin
-(** [bin_eq] constructs a binary equality operator. *)
+val bin_eq : Type.t -> bin
+(** [bin_eq ty] constructs a binary equality operator for values of type [ty].
+    *)
 
-val bin_neq : bin
-(** [bin_neq] constructs a binary inequality operator. *)
+val bin_neq : Type.t -> bin
+(** [bin_neq ty] constructs a binary inequality operator for values of type
+    [ty]. *)
 
-val bin_lte : bin
-(** [bin_lte] constructs a binary less than or equal operator. *)
+val bin_lte : Type.t -> bin
+(** [bin_lte ty] constructs a binary less than or equal operator for values of
+    type [ty]. *)
 
-val bin_lt : bin
-(** [bin_lt] constructs a binary less than operator. *)
+val bin_lt : Type.t -> bin
+(** [bin_lt ty] constructs a binary less than operator for values of type
+    [ty]. *)
 
-val bin_gt : bin
-(** [bin_gt] constructs a binary greater than operator. *)
+val bin_gt : Type.t -> bin
+(** [bin_gt ty] constructs a binary greater than operator for values of type
+    [ty]. *)
 
-val bin_gte : bin
-(** [bin_gte] constructs a binary greater than or equal operator. *)
+val bin_gte : Type.t -> bin
+(** [bin_gte ty] constructs a binary greater than or equal operator for values
+    of type [ty]. *)
 
-val bin_dot : bin
-(** [bin_dot] constructs a binary dot (projection) operator. *)
-
-val bin_cons : bin
-(** [bin_cons] constructs a binary cons operator. *)
+val bin_cons : Type.t -> bin
+(** [bin_cons ty] constructs a binary cons operator for values of type [ty]. *)
 
 (** {3 Operations} *)
 
 val bin_precedence : bin -> int
 (** [bin_precedence op] returns the operator precedence of the binary operator
     [op]. *)
-
-(** {3 Type Checking} *)
-
-exception InvalidBinaryOperands of Type.t * Type.t * bin * Type.t
-(** Raised when the types of a binary operand is invalid.  Contains the expected
-    type of the operands, the actual type of the left-hand operand, the
-    operator, and the actual type of the right-hand operand. *)
-
-exception InvalidEqualityOperands of Type.t * bin * Type.t
-(** Raised when the types of an equality operand is invalid.  Contains the
-    actual type of the left-hand operand, the operator, and the actual type of
-    the right-hand operand. *)
-
-val type_of_bin : Type.t -> bin -> Type.t -> Type.t
-(** [type_of_bin l op r] determines the result type of the binary operator [op]
-    applied to arguments of type [l] and [r].  Raises {!InvalidBinarOperand} if
-    [op] cannot be applied to arguments of type [l] and [r]. *)

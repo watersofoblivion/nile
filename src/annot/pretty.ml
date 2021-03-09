@@ -79,7 +79,7 @@ and pp_variant_ty constrs fmt =
 
 (* Patterns *)
 
-let rec pp names patt fmt = match patt with
+let rec patt names p fmt = match p with
   | Patt.Ground -> pp_ground_patt fmt
   | Patt.Nil -> pp_nil_patt fmt
   | Patt.Unit -> pp_unit_patt fmt

@@ -3,18 +3,29 @@ open Common
 
 (* Syntax *)
 
-type atom =
+type atom = private
   | Unit
   | Bool of bool
   | Int of int
+  | Float of float
+  | String of string
+  | Blob of bytes
+  | Timestamp of string
+  | Duration of string
   | Var of Sym.sym
-  | Abs of Patt.t * Type.t * Type.t * block
-and expr =
-  | UnOp of Op.un * atom
-  | BinOp of atom * Op.bin * atom
-  | App of atom * atom
+  | Abs of param list * Type.t * block
+  | Join of param list * Type.t * block
+and param = Patt.t * Type.t
+and expr = private
+  | App of atom * atom list
+  | Tail of atom * atom list
+  | Jump of atom * atom list
+  | Builtin of Sym.sym * atom list
+  | Tuple of atom list
+  | Proj of atom * int
+  | Constr of Sym.sym * atom option
   | Atom of atom
-and block =
+and block = private
   | Let of binding * block
   | LetRec of binding list * block
   | Case of atom * clause list * Type.t
@@ -33,12 +44,24 @@ type file = top list
 let unit = Unit
 let bool b = Bool b
 let int i = Int i
+let float f = Float f
+let string s = String s
+let blob bs = Blob bs
+let timestamp ts = Timestamp ts
+let duration d = Duration d
 let var sym = Var sym
-let abs patt arg res body = Abs (patt, arg, res, body)
+let abs params res body = Abs (params, res, body)
+let join params res body = Join (params, res, body)
 
-let un_op op r = UnOp (op, r)
-let bin_op l op r = BinOp (l, op, r)
-let app f x = App (f, x)
+let param patt ty = (patt, ty)
+
+let app f xs = App (f, xs)
+let tail f xs = Tail (f, xs)
+let jump j xs = Jump (j, xs)
+let builtin b xs = Builtin (b, xs)
+let tuple xs = Tuple xs
+let proj tuple field = Proj (tuple, field)
+let constr id value = Constr (id, value)
 let atom a = Atom a
 
 let bind b rest = Let (b, rest)
@@ -53,193 +76,3 @@ let top_bind b = TopLet b
 let top_bind_rec bs = TopRec bs
 
 let file tops = tops
-
-(* Pretty-Printing *)
-
-let rec pp_atom names atom fmt = match atom with
-  | Unit -> pp_unit fmt
-  | Bool b -> pp_bool b fmt
-  | Int i -> pp_int i fmt
-  | Var sym -> pp_var names sym fmt
-  | Abs (id, arg, res, body) -> pp_abs names id arg res body fmt
-
-and pp_unit fmt =
-  fprintf fmt "()"
-
-and pp_bool b fmt =
-  fprintf fmt "%b" b
-
-and pp_int i fmt =
-  fprintf fmt "%d" i
-
-and pp_var names sym fmt =
-  Sym.name_of sym names
-    |> fprintf fmt "%s"
-
-and pp_abs names patt arg res body fmt =
-  fprintf fmt "@[<hv>(%t: %t): %t =>@;<1 2>%t@]" (Patt.pp names patt) (Type.pp arg) (Type.pp res) (pp_block names body)
-
-and pp_expr names expr fmt = match expr with
-  | UnOp (op, r) -> pp_un_op names op r fmt
-  | BinOp (l, op, r) -> pp_bin_op names l op r fmt
-  | App (f, x) -> pp_app names f x fmt
-  | Atom atom -> pp_atom names atom fmt
-
-and pp_un_op names op r fmt =
-  fprintf fmt "%t%t" (Op.pp_un op) (pp_atom names r)
-
-and pp_bin_op names l op r fmt =
-  fprintf fmt "%t %t %t" (pp_atom names l) (Op.pp_bin op) (pp_atom names r)
-
-and pp_app names f x fmt =
-  fprintf fmt "%t %t" (pp_atom names f) (pp_atom names x)
-
-and pp_block names block fmt = match block with
-  | Let (b, rest) -> pp_bind names b rest fmt
-  | LetRec (bs, rest) -> pp_bind_rec names bs rest fmt
-  | Case (scrut, clauses, _) ->  pp_case names scrut clauses fmt
-  | Expr expr -> pp_expr names expr fmt
-
-and pp_bind names b rest fmt =
-  fprintf fmt "@[<v>let %t in@ %t@]" (pp_binding names b) (pp_block names rest)
-
-and pp_bind_rec names bs rest fmt =
-  fprintf fmt "@[<v>let rec %t in@ %t@]" (pp_bindings names bs) (pp_block names rest)
-
-and pp_case names scrut clauses fmt =
-
-and pp_bindings names bs fmt =
-  let pp_sep fmt _ = fprintf fmt " " in
-  let pp_b b fmt = pp_binding names fmt b in
-  pp_print_list ~pp_sep pp_b fmt bs
-
-and pp_binding names (sym, ty, e) fmt =
-  let id = Sym.name_of sym names in
-  fprintf fmt "%s: %t = %t" id (Type.pp ty) (pp_expr names e)
-
-let pp_top names top fmt = match top with
-  | TopLet b -> fprintf fmt "@[<v>let %t@]" (pp_binding names b)
-  | TopRec bs -> fprintf fmt "@[<v>let rec %t" (pp_bindings names bs)
-
-let pp_file names file fmt =
-  let pp_sep fmt _ = fprintf fmt "@ @ " in
-  let pp_top fmt top = pp_top names top fmt in
-  fprintf fmt "@[<v>";
-  pp_print_list ~pp_sep pp_top fmt file;
-  fprintf fmt "@]"
-
-(* Type Checking *)
-
-let (builtin_idx, builtin, builtin_aenv, builtin_tenv) =
-  let fold (idx, env, aenv, tenv) (id, ty) =
-    let env = Type.bind idx ty env in
-    let aenv = (id, idx) :: aenv in
-    let tenv = (idx, ty) :: tenv in
-    (idx + 1, env, aenv, tenv)
-  in
-  List.fold_left fold (0, Type.env, [], []) Builtin.builtins
-
-let rec type_of_atom env = function
-  | Unit -> Type.unit
-  | Bool _ -> Type.bool
-  | Int _ -> Type.int
-  | Var sym -> type_of_var env sym
-  | Abs (sym, ty, res, body) -> type_of_abs env sym ty res body
-
-and type_of_var env sym =
-  try Type.lookup sym env
-  with Not_found -> Type.unbound_identifier sym
-
-and type_of_abs env sym ty res body =
-  let env = Type.bind sym ty env in
-  let res' = type_of_block env body in
-  if Type.equal res res'
-  then Type.func ty res
-  else Type.declaration_mismatch sym res res'
-
-and type_of_expr env = function
-  | UnOp (op, r) -> type_of_un_op env op r
-  | BinOp (l, op, r) -> type_of_bin_op env l op r
-  | App (f, x) -> type_of_app env f x
-  | Atom atom -> type_of_atom env atom
-
-and type_of_un_op env op r =
-  let r = type_of_atom env r in
-  Op.type_of_un op r
-
-and type_of_bin_op env l op r =
-  let l = type_of_atom env l in
-  let r = type_of_atom env r in
-  Op.type_of_bin l op r
-
-and type_of_app env f x =
-  let x = type_of_atom env x in
-  match type_of_atom env f with
-    | Type.Fun (arg, res) ->
-      if Type.equal arg x
-      then res
-      else Type.invalid_args arg x
-    | ty -> Type.cannot_apply ty
-
-and type_of_block env = function
-  | Let ((sym, ty, expr), rest) -> type_of_bind env sym ty expr rest
-  | LetRec (bs, rest) -> type_of_bind_rec env bs rest
-  | Case (scrut, clauses, res) -> type_of_case env scrut clauses res
-  | Expr expr -> type_of_expr env expr
-
-and type_of_bind env sym ty expr rest =
-  let expr = type_of_expr env expr in
-  if Type.equal ty expr
-  then
-    let env = Type.bind sym ty env in
-    type_of_block env rest
-  else Type.declaration_mismatch sym ty expr
-
-and type_of_bind_rec env bs rest =
-  let fold env (sym, ty, _) = Type.bind sym ty env in
-  let env = List.fold_left fold env bs in
-  let _ =
-    let iter (sym, ty, expr) =
-      let expr = type_of_expr env expr in
-      if Type.equal ty expr
-      then ()
-      else Type.declaration_mismatch sym ty expr
-    in
-    List.iter iter bs
-  in
-  type_of_block env rest
-
-and type_of_case env scrut clauses res = match type_of_atom env c with
-  | Type.Bool ->
-    let t = type_of_block env t in
-    let f = type_of_block env f in
-    if Type.equal t f
-    then t
-    else Type.conditional_branch_mismatch t f
-  | ty -> Type.invalid_condition ty
-
-let type_of_top_bind env sym ty expr =
-  let expr = type_of_expr env expr in
-  if Type.equal ty expr
-  then Type.bind sym ty env
-  else Type.declaration_mismatch sym ty expr
-
-let type_of_top_bind_rec env bs =
-  let fold env (sym, ty, _) = Type.bind sym ty env in
-  let env = List.fold_left fold env bs in
-  let _ =
-    let iter (sym, ty, expr) =
-      let expr = type_of_expr env expr in
-      if Type.equal ty expr
-      then ()
-      else Type.declaration_mismatch sym ty expr
-    in
-    List.iter iter bs
-  in
-  env
-
-let type_of_top env = function
-  | TopLet (sym, ty, expr) -> type_of_top_bind env sym ty expr
-  | TopRec bs -> type_of_top_bind_rec env bs
-
-let type_of_file = List.fold_left type_of_top

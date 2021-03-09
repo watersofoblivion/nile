@@ -13,13 +13,8 @@ type t = private
   | Duration                         (** ISO-8601 Duration *)
   | Fun of t list * t                (** Functions *)
   | Tuple of int * t list            (** Tuple *)
-  | Record of field list             (** Record *)
   | Variant of constr list           (** Variant *)
-  | Package of t Sym.map * t Sym.map (** Package *)
 (** Types *)
-
-and field = Sym.sym * t
-(** Record field *)
 
 and constr = Sym.sym * t option
 (** Variant constructor *)
@@ -57,18 +52,8 @@ val func : t list -> t -> t
 val tuple : t list -> t
 (** [tuple tys] constructs a tuple type with element types [tys]. *)
 
-val record : field list -> t
-(** [record fields] constructs a record type with fields [fields]. *)
-
 val variant : constr list -> t
 (** [variant constrs] constructs a variant type with constructors [constrs]. *)
-
-val pkg : t Sym.map -> t Sym.map -> t
-(** [pkg tys fns] constructs a package type containing types [tys] and functions
-    [fns]. *)
-
-val field : Sym.sym -> t -> field
-(** [field id ty] constructs a record field named [id] of type [ty]. *)
 
 val constr : Sym.sym -> t option -> field
 (** [constr id ty] constructs a variant constructor named [id] with optional

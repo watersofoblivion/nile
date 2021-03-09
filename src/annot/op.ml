@@ -8,90 +8,42 @@ let un_not = Not
 let un_precedence = function
   | Not -> 2
 
-exception InvalidUnaryOperand of Type.t * un * Type.t
-
-let invalid_unary_operand expected op actual =
-  InvalidUnaryOperand (expected, op, actual)
-    |> raise
-
-let type_of_un op r = match op, r with
-  | Not, Type.Bool -> Type.bool
-  | Not, r -> invalid_unary_operand Type.bool op r
-
 type bin =
-  | Add
-  | Sub
-  | Mul
-  | Div
+  | Add of Type.t
+  | Sub of Type.t
+  | Mul of Type.t
+  | Div of Type.t
   | Mod
   | And
   | Or
-  | Eq
-  | Neq
-  | Lte
-  | Lt
-  | Gt
-  | Gte
-  | Dot
-  | Cons
+  | Eq of Type.t
+  | Neq of Type.t
+  | Lte of Type.t
+  | Lt of Type.t
+  | Gt of Type.t
+  | Gte of Type.t
+  | Cons of Type.t
 
-let bin_add = Add
-let bin_sub = Sub
-let bin_mul = Mul
-let bin_div = Div
+let bin_add ty = Add ty
+let bin_sub ty = Sub ty
+let bin_mul ty = Mul ty
+let bin_div ty = Div ty
 let bin_mod = Mod
 let bin_and = And
 let bin_or = Or
-let bin_eq = Eq
-let bin_neq = Neq
-let bin_lte = Lte
-let bin_lt = Lt
-let bin_gt = Gt
-let bin_gte = Gte
-let bin_dot = Dot
-let bin_cons = Cons
+let bin_eq ty = Eq ty
+let bin_neq ty = Neq ty
+let bin_lte ty = Lte ty
+let bin_lt ty = Lt ty
+let bin_gt ty = Gt ty
+let bin_gte ty = Gte ty
+let bin_cons ty = Cons ty
 
 let bin_precedence = function
-  | Dot | Cons -> 2
-  | Mul | Div | Mod -> 3
-  | Add | Sub -> 4
-  | Lte | Lt | Gt | Gte -> 6
-  | Eq | Neq -> 7
+  | Cons _ -> 2
+  | Mul _ | Div _ | Mod -> 3
+  | Add _ | Sub _ -> 4
+  | Lte _ | Lt _ | Gt _ | Gte _ -> 6
+  | Eq _ | Neq _ -> 7
   | And -> 11
   | Or -> 12
-
-exception InvalidBinaryOperands of Type.t * Type.t * bin * Type.t
-exception InvalidEqualityOperands of Type.t * bin * Type.t
-
-let invalid_binary_operands expected actual op actual' =
-  InvalidBinaryOperands (expected, actual, op, actual')
-    |> raise
-
-let invalid_equality_operands actual op actual' =
-  InvalidEqualityOperands (actual, op, actual')
-    |> raise
-
-let type_of_arith l op r = match l, r with
-  | Type.Int, Type.Int -> Type.int
-  | l, r -> invalid_binary_operands Type.int l op r
-
-let type_of_bool l op r = match l, r with
-  | Type.Bool, Type.Bool -> Type.bool
-  | l, r -> invalid_binary_operands Type.bool l op r
-
-let type_of_eq l op r = match l, r with
-  | Type.Int, Type.Int
-  | Type.Bool, Type.Bool -> Type.bool
-  | l, r -> invalid_equality_operands l op r
-
-let type_of_cmp l op r = match l, r with
-  | Type.Int, Type.Int -> Type.bool
-  | l, r -> invalid_binary_operands Type.int l op r
-
-let type_of_bin l op r =
-  match op with
-    | Add | Sub | Mul | Div | Mod -> type_of_arith l op r
-    | And | Or -> type_of_bool l op r
-    | Eq | Neq -> type_of_eq l op r
-    | Lte | Lt | Gt | Gte -> type_of_cmp l op r
-    | _ -> failwith "Dot or Cons"

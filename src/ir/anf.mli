@@ -6,18 +6,31 @@ open Common
 (** {2 Syntax} *)
 
 type atom = private
-  | Unit                                    (** Unit *)
-  | Bool of bool                            (** Boolean *)
-  | Int of int                              (** Integer *)
-  | Var of Sym.sym                          (** Variable *)
-  | Abs of Patt.t * Type.t * Type.t * block (** Function Abstraction *)
+  | Unit                                (** Unit *)
+  | Bool of bool                        (** Boolean *)
+  | Int of int                          (** Integer *)
+  | Float of float                      (** Floating Point *)
+  | String of string                    (** String *)
+  | Blob of bytes                       (** Binary Large Object (BLOB) *)
+  | Timestamp of string                 (** ISO-8601 Timestamp *)
+  | Duration of string                  (** ISO-8601 Duration *)
+  | Var of Sym.sym                      (** Variable *)
+  | Abs of param list * Type.t * block  (** Function Abstraction *)
+  | Join of param list * Type.t * block (** Join Point *)
 (** Atomic Values *)
 
+and param = Patt.t * Type.t
+(** Function Parameter *)
+
 and expr = private
-  | UnOp of Op.un * atom          (** Unary Operator *)
-  | BinOp of atom * Op.bin * atom (** Binary Operator *)
-  | App of atom * atom            (** Function Application *)
-  | Atom of atom                  (** Atomic Value *)
+  | App of atom * atom list         (** Function Application *)
+  | Tail of atom * atom list        (** Tail Application *)
+  | Jump of atom * atom list        (** Join Application *)
+  | Builtin of Sym.sym * atom list  (** Builtin Function Application *)
+  | Tuple of atom list              (** Tuple construction *)
+  | Proj of atom * int              (** Tuple projection *)
+  | Constr of Sym.sym * atom option (** Constructor construction *)
+  | Atom of atom                    (** Atomic Value *)
 (** Primitive Expressions *)
 
 and block = private
@@ -54,27 +67,68 @@ val bool : bool -> atom
 val int : int -> atom
 (** [int i] constructs an atomic integer literal with the value [i]. *)
 
+val float : float -> atom
+(** [float f] constructs an atomic floating-point literal with the value [f]. *)
+
+val string : string -> atom
+(** [string s] constructs an atomic string literal with the value [s]. *)
+
+val blob : bytes -> atom
+(** [blob bs] constructs an atomic binary large object (BLOB) literal with the
+    value [bs]. *)
+
+val timestamp : string -> atom
+(** [timestamp ts] constructs an atomic ISO-8601 timestamp literal with the
+    value [ts]. *)
+
+val duration : string -> atom
+(** [duration d] constructs an atomic ISO-8601 duration literal with the value
+    [d]. *)
+
 val var : Sym.sym -> atom
 (** [var sym] constructs an atomic variable referencing the bound value [sym]. *)
 
-val abs : Patt.t -> Type.t -> Type.t -> block -> atom
-(** [abs patt ty res body] constructs an atomic function abstraction binding the
-    pattern [patt] of type [ty] within [body] and resulting in values of type
-    [res]. *)
+val abs : param list -> Type.t -> block -> atom
+(** [abs params res body] constructs an atomic function abstraction binding the
+    parameters [params] within [body] and resulting in values of type [res]. *)
+
+val join : param list -> Type.t -> block -> atom
+(** [join params res body] constructs an atomic join point binding the
+    parameters [params] within [body] and resulting in values of type [res]. *)
+
+val param : Patt.t -> Type.t -> param
+(** [param patt ty] constructs a function parameter binding values matching the
+    pattern [patt] of type [ty]. *)
 
 (** {3 Primitive Expressions} *)
 
-val un_op : Op.un -> atom -> expr
-(** [un_op op r] constructs a unary operation by applying the unary operator
-    [op] to the atomic value [r]. *)
+val app : atom -> atom list -> expr
+(** [app f xs] constructs a function application expression applying the
+    function [f] to the atomic argument values [xs]. *)
 
-val bin_op : atom -> Op.bin -> atom -> expr
-(** [bin_op l op r] constructs a binary operator expression by applying the
-    binary operator [op] to the atomic values [l] and [r]. *)
+val tail : atom -> atom list -> expr
+(** [tail f xs] constructs a tail-position function application expression
+    applying the function [f] to the atomic argument values [xs]. *)
 
-val app : atom -> atom -> expr
-(** [app f x] constructs a function application expression by applying the
-    function [f] to the atomic value [x]. *)
+val jump : atom -> atom list -> expr
+(** [jump j xs] constructs a join point application expression applying the join
+    point [j] to the atomic argument values [xs]. *)
+
+val builtin : Sym.sym -> atom list -> expr
+(** [builtin b xs] constructs a builtin function application expression applying
+    the builtin [b] to the atomic argument values [xs]. *)
+
+val tuple : atom list -> expr
+(** [tuple xs] constructs a tuple construction expression packaging the atomic
+    values [xs] into a tuple. *)
+
+val proj : atom -> int -> expr
+(** [proj tuple field] constructs a tuple projection expression selecting the
+    field [field] from the tuple [tuple].  Fields are 1-indexed, not zero. *)
+
+val constr : Sym.sym -> atom option -> expr
+(** [constr id value] constructs a variant construction construction expression
+    constructing the construction [id] with the atomic value [value]. *)
 
 val atom : atom -> expr
 (** [atom a] constructs a primitive expression representing the atomic value
@@ -125,54 +179,3 @@ val top_bind_rec : binding list -> top
 val file : top list -> file
 (** [file tops] constructs a source file consisting of the list of top-level
     bindings [tops]. *)
-
-(** {2 Pretty Printing} *)
-
-val pp_atom : Sym.names -> atom -> formatter -> unit
-(** [pp_atom names atom fmt] pretty-prints the atomic value [atom] to the
-    formatter [fmt] using the names from the symbol table [names]. *)
-
-val pp_expr : Sym.names -> expr -> formatter -> unit
-(** [pp_expr names expr fmt] pretty-prints the primitive expression [expr] to
-    the formatter [fmt] using the names from the symbol table [names]. *)
-
-val pp_block : Sym.names -> block -> formatter -> unit
-(** [pp_block names block fmt] pretty-prints the block expression [block] to the
-    formatter [fmt] using the names from the symbol table [names]. *)
-
-val pp_top : Sym.names -> top -> formatter -> unit
-(** [pp_top names top fmt] pretty-prints the top-level expression [top] to the
-    formatter [fmt] using the names from the symbol table [names]. *)
-
-val pp_file : Sym.names -> file -> formatter -> unit
-(** [pp_file names file fmt] pretty-prints the source file [file] to the
-    formatter [fmt] using the names from the symbol table [names]. *)
-
-(** {2 Type Checking} *)
-
-val builtin : Type.env
-(** [builtin] returns a type-checking environment with the builtin functions
-    bound. *)
-
-val type_of_atom : Type.env -> atom -> Type.t
-(** [type_of_atom env atom] type checks the atomic value [atom] in the type
-    environment [env] and results in the type of the atomic value. *)
-
-val type_of_expr : Type.env -> expr -> Type.t
-(** [type_of_expr env expr] type checks the primitive expression [expr] in the
-    type environment [env] and results in the type of the primitive expression.
-    *)
-
-val type_of_block : Type.env -> block -> Type.t
-(** [type_of_block env block] type checks the block expression [block] in the
-    type environment [env] and results in the type of the block expression. *)
-
-val type_of_top : Type.env -> top -> Type.env
-(** [type_of_top env top] type checks the top-level expression [top] in the
-    type environment [env] and results in a type environment with the top-level
-    identifiers bound to their types. *)
-
-val type_of_file : Type.env -> file -> Type.env
-(** [type_of_file env file] type checks the source file [file] in the type
-    environment [env] and returns a type environment with all top-level
-    identifiers bound to their types. *)
