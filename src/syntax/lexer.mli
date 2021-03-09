@@ -200,6 +200,18 @@ val lit_float : lexbuf -> Parser.token
 val lit_string : lexbuf -> Parser.token
 (** [lit_string lexbuf] constructs a token for a literal string value. *)
 
+val lit_blob : lexbuf -> Parser.token
+(** [lit_blob lexbuf] constructs a token for a literal binary large object
+    (BLOB) value. *)
+
+val lit_timestamp : lexbuf -> Parser.token
+(** [lit_timestamp lexbuf] constructs a token for a literal ISO8601 timestamp
+    value. *)
+
+val lit_duration : lexbuf -> Parser.token
+(** [lit_duration lexbuf] constructs a token for a literal ISO8601 duration
+    value. *)
+
 (** {3 Identifiers} *)
 
 val uident : lexbuf -> Parser.token

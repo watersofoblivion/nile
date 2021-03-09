@@ -1,4 +1,3 @@
-open Format
 open Common
 
 (** {1 Abstract Syntax}
@@ -19,8 +18,11 @@ type expr = private
   | Int of Loc.t * int                               (** Integer *)
   | Float of Loc.t * float                           (** Floating-point *)
   | String of Loc.t * int * string                   (** String *)
+  | Blob of Loc.t * int * bytes                      (** Binary Large Object (BLOB) *)
+  | Timestamp of Loc.t * string                      (** ISO-8601 Timestamp *)
+  | Duration of Loc.t * string                       (** ISO-8601 Duration *)
   | Tuple of Loc.t * expr list                       (** Tuples *)
-  | Record of Loc.t * Sym.sym * field list           (** Record *)
+  | Record of Loc.t * Sym.sym option * field list    (** Record *)
   | Var of Loc.t * Sym.sym                           (** Variable Identifier *)
   | UnOp of Loc.t * Op.un * expr                     (** Unary Operation *)
   | BinOp of Loc.t * expr * Op.bin * expr            (** Binary Operation *)
@@ -103,20 +105,32 @@ val int : Loc.t -> int -> expr
     [loc]. *)
 
 val float : Loc.t -> float -> expr
-(** [float loc f] constructs an floating-point literal with the value [f] at
+(** [float loc f] constructs a floating-point literal with the value [f] at
     location [loc]. *)
 
 val string : Loc.t -> int -> string -> expr
-(** [string loc len s] constructs an string literal with the value [s] of length
+(** [string loc len s] constructs a string literal with the value [s] of length
     [len] at location [loc]. *)
 
+val blob : Loc.t -> int -> bytes -> expr
+(** [blob loc len bs] constructs a binary large object (BLOB) literal with the
+    value [bs] of length [len] at location [loc]. *)
+
+val timestamp : Loc.t -> string -> expr
+(** [timestamp loc ts] constructs a ISO-8601 timestamp literal with the value
+    [ts] at location [loc]. *)
+
+val duration : Loc.t -> string -> expr
+(** [duration loc d] constructs a ISO-8601 duration literal with the value [d]
+    at location [loc]. *)
+
 val tuple : Loc.t -> expr list -> expr
-(** [tuple loc exprs] constructs an tuple literal with the values [exprs] at
+(** [tuple loc exprs] constructs a tuple literal with the values [exprs] at
     location [loc].  The location should span from the opening parenthesis to
     the closing parenthesis. *)
 
-val record : Loc.t -> Sym.sym -> field list -> expr
-(** [record loc constr fields] constructs an record literal with the constructor
+val record : Loc.t -> Sym.sym option -> field list -> expr
+(** [record loc constr fields] constructs a record literal with the constructor
     [constr] and the fields [fields] at location [loc].  The location should
     span from the beginning of the constructor to the closing brace. *)
 
@@ -261,20 +275,3 @@ val loc_expr : expr -> Loc.t
 val loc_top : top -> Loc.t
 (** [loc_top expr] returns the location information associated with the
     top-level binding [top]. *)
-
-(** {2 Pretty Printing}
- *
- * Pretty-prints Abstract Syntax Trees.
- *)
-
-val pp_expr : Sym.names -> expr -> formatter -> unit
-(** [pp_expr names expr fmt] pretty-prints the expression [expr] to the
-    formatter [fmt] converting symbols to strings using [names]. *)
-
-val pp_top : Sym.names -> top -> formatter -> unit
-(** [pp_top names top fmt] pretty-prints the top-level binding [top] to the
-    formatter [fmt] converting symbols to strings using [names]. *)
-
-val pp_file : Sym.names -> file -> formatter -> unit
-(** [pp_file names file fmt] pretty-prints the file [file] to the formatter
-    [fmt] converting symbols to strings using [names]. *)

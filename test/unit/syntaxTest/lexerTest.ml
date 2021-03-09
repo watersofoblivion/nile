@@ -61,6 +61,15 @@ let assert_lexes ~ctxt expected str =
     | Parser.STRING (_, s), Parser.STRING (loc, s') ->
       LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
       assert_equal ~ctxt s s' ~msg:"Token values are not equal"
+    | Parser.BLOB (_, b), Parser.BLOB (loc, b') ->
+      LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
+      assert_equal ~ctxt b b' ~msg:"Token values are not equal"
+    | Parser.TIMESTAMP (_, ts), Parser.TIMESTAMP (loc, ts') ->
+      LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
+      assert_equal ~ctxt ts ts' ~msg:"Token values are not equal"
+    | Parser.DURATION (_, d), Parser.DURATION (loc, d') ->
+      LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
+      assert_equal ~ctxt d d' ~msg:"Token values are not equal"
     | Parser.UIDENT (_, id), Parser.UIDENT (loc, id')
     | Parser.LIDENT (_, id), Parser.LIDENT (loc, id') ->
       LocTest.assert_loc ~ctxt "-" (1, 0, 0) (1, len, len) len loc;
@@ -336,6 +345,10 @@ let test_op_cons ctxt =
 
 (* Literals *)
 
+let test_lit_unit ctxt =
+  "()"
+    |> assert_lexes ~ctxt (Parser.UNIT LocTest.dummy)
+
 let test_lit_bool ctxt =
   "true"
     |> assert_lexes ~ctxt (Parser.BOOL (LocTest.dummy, true));
@@ -378,6 +391,44 @@ let test_lit_string ctxt =
   in
   test "foo bar";
   test "foo \" bar"
+
+let test_lit_blob ctxt =
+  let test b =
+    sprintf "`%s`" b
+      |> assert_lexes ~ctxt (Parser.BLOB (LocTest.dummy, b))
+  in
+  List.iter test [
+    "\\01\\02";
+    "\\u01\\u02"
+  ]
+
+let test_lit_timestamp ctxt =
+  let test ts =
+    sprintf "@%s" ts
+      |> assert_lexes ~ctxt (Parser.TS (LocTest.dummy, ts))
+  in
+  List.iter test [
+    "2021-01-01";
+    "2021-01-02T03:04:05";
+    "2021-01-02T03:04:05Z";
+    "2021-01-02T03:04:05+06:07";
+    "2021-01-02T03:04:05-06:07"
+  ]
+
+let test_lit_duration ctxt =
+  let test ts =
+    sprintf "@@%s" ts
+      |> assert_lexes ~ctxt (Parser.TS (LocTest.dummy, ts))
+  in
+  List.iter test [
+    "P1Y"; "P1M"; "P1D";
+    "P1Y2M"; "P1Y2D"; "P1M2D";
+    "P1Y2M3D";
+    "PT1H"; "PT1M"; "PT1S";
+    "PT1H2M"; "PT1H2S"; "PT1M2S";
+    "PT1H2M3S";
+    "P1Y2M3DT4H5M6S"
+  ]
 
 let test_uident ctxt =
   "Ident"
@@ -443,10 +494,14 @@ let test_tokens =
       "Cons"                  >:: test_op_cons;
     ];
     "Literals" >::: [
-      "Boolean" >:: test_lit_bool;
-      "Integer" >:: test_lit_int;
-      "Float"   >:: test_lit_float;
-      "String"  >:: test_lit_string;
+      "Unit"      >:: test_lit_unit;
+      "Boolean"   >:: test_lit_bool;
+      "Integer"   >:: test_lit_int;
+      "Float"     >:: test_lit_float;
+      "String"    >:: test_lit_string;
+      "Blob"      >:: test_lit_blob;
+      "Timestamp" >:: test_lit_timestamp;
+      "Duration"  >:: test_lit_duration;
     ];
     "Identifiers" >::: [
       "Upper Case" >:: test_uident;

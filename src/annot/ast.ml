@@ -10,7 +10,11 @@ type expr =
   | Int of int
   | Float of float
   | String of int * string
+  | Blob of int * bytes
+  | Timestamp of string
+  | Duration of string
   | Tuple of expr list
+  | Constr of Sym.sym * expr option
   | Var of Sym.sym
   | Case of expr * clause list * Type.t
   | Let of binding * expr
@@ -36,7 +40,11 @@ let bool b = Bool b
 let int i = Int i
 let float f = Float f
 let string len s = String (len, s)
+let blob len bs = Blob (len, bs)
+let timestmap ts = Timestamp ts
+let duration d = Duration d
 let tuple exprs = Tuple exprs
+let constr id v = Constr (id, v)
 let var sym = Var sym
 let case scrut clauses res = Case (scrut, clauses, res)
 let bind b rest = Let (b, rest)
@@ -72,7 +80,10 @@ let rec annotate_expr env expr kontinue = match expr with
   | Ast.Bool (_, b) -> annotate_bool b kontinue
   | Ast.Int (_, i) -> annotate_int i kontinue
   | Ast.Float (_, f) -> annotate_float f kontinue
-  | Ast.String (_, len, s) -> annotate_float len s kontinue
+  | Ast.String (_, len, s) -> annotate_string len s kontinue
+  | Ast.Blob (_, len, bs) -> annotate_blob len bs kontinue
+  | Ast.Timestamp (_, ts) -> annotate_timestamp ts kontinue
+  | Ast.Duration (_, d) -> annotate_duration d kontinue
   | Ast.Tuple (_, exprs) -> annotate_tuple env exprs kontinue
   | Ast.Record (_, constr, fields) -> annotate_record env constr fields kontinue
   | Ast.Var (_, sym) -> annotate_var env sym kontinue
@@ -104,6 +115,18 @@ and annotate_float f kontinue =
 and annotate_string len s kontinue =
   string len s
     |> kontinue Type.string
+
+and annotate_blob len bs kontinue =
+  blob len bs
+    |> kontinue Type.blob
+
+and annotate_timestamp ts kontinue =
+  timestamp ts
+    |> kontinue Type.timestamp
+
+and annotate_duration d kontinue =
+  duration d
+    |> kontinue Type.duration
 
 and annotate_tuple env exprs kontinue =
 
@@ -277,239 +300,3 @@ let precedence = function
   | Case _ -> 13
   | Abs _ -> 14
   | Let _ | LetRec _ -> 15
-
-(* Pretty Printing *)
-
-let rec pp_expr names expr fmt = match expr with
-  | Unit -> pp_unit fmt
-  | Bool b -> pp_bool b fmt
-  | Int i -> pp_int i fmt
-  | Float f -> pp_float f fmt
-  | String (_, s) -> pp_string s fmt
-  | Tuple exprs -> pp_tuple names exprs fmt
-  | Var sym -> pp_var names sym fmt
-  | Case (scrut, clauses, _) -> pp_case names scrut clauses fmt
-  | Let (b, rest) -> pp_bind names b rest fmt
-  | LetRec (bs, rest) -> pp_bind_rec names bs rest fmt
-  | Proj (expr, n) -> pp_proj names expr n fmt
-  | Abs (_, params, res, expr) -> pp_abs names params res expr fmt
-  | App (_, f, xs) -> pp_app names f xs fmt
-  | Builtin (f, xs) -> pp_builtin f xs fmt
-
-and pp_unit fmt =
-  fprintf fmt "()"
-
-and pp_bool b fmt =
-  fprintf fmt "%b" b
-
-and pp_int i fmt =
-  fprintf fmt "%d" i
-
-and pp_float f fmt =
-  fprintf fmt "%f" f
-
-and pp_string s fmt =
-  fprintf fmt "%S" s
-
-and pp_tuple names exprs fmt =
-
-and pp_var names sym fmt =
-  Sym.name_of sym names
-    |> fprintf fmt "%s"
-
-(* and pp_case names scrut clauses fmt = *)
-and pp_case _ _ _ _ = failwith "TODO"
-
-and pp_bind names b rest fmt =
-  fprintf fmt "@[<v>@[<hv>let %t@ in@]@ %t@]" (pp_binding names b) (pp_expr names rest)
-
-and pp_bind_rec names bs rest fmt =
-  fprintf fmt "@[<v>@[<hv>@[<hv>let rec %t@ in@]@ %t@]" (pp_bindings names bs) (pp_expr names rest)
-
-and pp_proj names expr n fmt =
-
-and pp_abs names params res expr fmt =
-  let id = Sym.name_of id names in
-  fprintf fmt "(%t: %t" (Patt.pp names patt) (Type.pp ty);
-  let res = pp_params names res expr fmt in
-  fprintf fmt "): %t => %t" (Type.pp res) (pp_expr names expr)
-
-and pp_app names f xs fmt =
-  fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence names 0 f) (pp_expr names x)
-
-and pp_builtin names f xs fmt =
-  fprintf fmt "@[<hov 2>%t@ %t@]" (print_precedence names 0 f) (pp_expr names x)
-
-and pp_builtin names f x fmt =
-
-and print_precedence names prec expr fmt =
-  if prec < precedence expr
-  then fprintf fmt "(%t)" (pp_expr names expr)
-  else fprintf fmt "%t" (pp_expr names expr)
-
-and pp_bindings names bs fmt =
-  let pp_sep fmt _ = fprintf fmt "@ @[<hv>and " in
-  let pp_b fmt b = fprintf fmt "%t@]" (pp_binding names b) in
-  pp_print_list ~pp_sep pp_b fmt bs
-
-and pp_binding names (_, patt, ty, expr) fmt =
-  match expr with
-    | Abs (_, patt', ty, res, expr) ->
-      fprintf fmt "%s(%s: %t" (Patt.pp names patt) (Patt.pp names patt') (Type.pp ty);
-      let res = pp_params names res expr fmt in
-      fprintf fmt "): %t =@;<1 2>%t" (Type.pp res) (pp_expr names expr)
-    | expr ->
-      fprintf fmt "%t: %t =@;<1 2>%t" (Patt.pp names patt) (Type.pp ty) (pp_expr names expr)
-
-and pp_params names res expr fmt = match expr with
-  | Abs (_, patt, ty, res, expr) ->
-    fprintf fmt ", %t: %t" (Patt.pp names patt) (Type.pp ty);
-    pp_params names res expr fmt
-  | _ -> res
-
-(* and pp_clause names patt expr fmt = *)
-and pp_clause _ _ _ _ = failwith "TODO"
-
-let pp_top_bind names b fmt =
-  fprintf fmt "@[<hv>let %t@]" (pp_binding names b)
-
-let pp_top_bind_rec names bs fmt =
-  fprintf fmt "@[<hv>let rec %t" (pp_bindings names bs)
-
-let pp_top names top fmt = match top with
-  | TopLet (_, b) -> pp_top_bind names b fmt
-  | TopRec (_, bs) -> pp_top_bind_rec names bs fmt
-
-let pp_file names file fmt =
-  let pp_sep fmt _ = fprintf fmt "@ @ " in
-  let pp_top fmt top = pp_top names top fmt in
-  fprintf fmt "@[<v>";
-  pp_print_list ~pp_sep pp_top fmt file;
-  fprintf fmt "@]"
-
-(* Type Checking *)
-
-let rec type_of_expr env expr kontinue = match expr with
-  | Unit -> kontinue Type.unit
-  | Bool _ -> kontinue Type.bool
-  | Int _ -> kontinue Type.int
-  | Float _ -> kontinue Type.float
-  | String _ -> kontinue Type.string
-  | Tuple exprs -> type_of_tuple env exprs kontinue
-  | Var sym -> type_of_var env sym kontinue
-  | Case (scrut, clauses) -> type_of_case env scrut clauses kontinue
-  | Let (b, rest) -> type_of_bind env b rest kontinue
-  | LetRec (bs, rest) -> type_of_bind_rec env bs rest kontinue
-  | Proj (expr, n) -> type_of_proj env expr n kontinue
-  | Abs (arity, params, res, expr) -> type_of_abs env arity params res expr kontinue
-  | App (arity, f, xs) -> type_of_app env arity f xs kontinue
-  | Builtin (f, xs) -> type_of_builtin env f xs kontinue
-
-and type_of_tuple env exprs kontinue =
-
-and type_of_var env sym kontinue =
-  try
-    Type.lookup sym env
-      |> kontinue
-  with Not_found -> Type.unbound_identifier sym
-
-and type_of_case env scrut clauses kontinue =
-  let scrut = type_of_expr env scrut in
-  let _ =
-    let iter (patt, _) =
-      if Type.of_pattern patt scrut
-      then ()
-      else failwith "Invalid pattern"
-    in
-    List.iter iter clauses
-  in
-  let map (patt, expr) =
-    let env = Type.bind patt scrut env in
-    type_of_expr env expr
-  in
-  let fold expected actual =
-    if Type.equal expected actual
-    then ()
-    else failwith "Mismatched clause types"
-  in
-  match List.map map clauses with
-    | [] -> failwith "No clauses"
-    | hd::tl ->
-      List.iter fold hd tl
-        |> kontinue
-
-and type_of_bind env (patt, ty, expr) rest kontinue =
-  type_of_expr env expr (fun expr ->
-    if Type.equal ty expr
-    then
-      let env = Type.bind patt ty env in
-      type_of_expr env rest kontinue
-    else Type.declaration_mismatch patt ty expr)
-
-and type_of_bind_rec env bs rest kontinue =
-  let fold env (patt, ty, _) = Type.bind patt ty env in
-  let env = List.fold_left fold env bs in
-  let _ =
-    let iter (patt, ty, expr) =
-      let ty' = type_of_expr expr env in
-      if Type.equal ty ty'
-      then ()
-      else Type.declaration_mismatch patt ty expr
-    in
-    List.iter iter bs
-  in
-  type_of_expr env rest
-
-and type_of_proj env expr n kontinue =
-
-and type_of_abs env arity params res expr kontinue =
-  let env' = Type.bind patt ty env in
-  type_of_expr env expr (fun res' ->
-    if Type.equal res res'
-    then
-      Type.func ty res
-        |> kontinue
-    else Type.declaration_mismatch patt res res')
-
-and type_of_app env arity f xs kontinue =
-  type_of_expr env x (fun x ->
-    match type_of_expr env f with
-      | Type.Fun (arg, res) ->
-        if Type.equal arg x
-        then kontinue res
-        else Type.invalid_args arg x
-      | f -> Type.cannot_apply f)
-
-and type_of_builtin env f xs kontinue =
-
-let type_of_top_bind env (patt, ty, expr) kontinue =
-  type_of_expr env expr (fun expr ->
-    if Type.equal ty expr
-    then
-      Type.bind patt ty env
-        |> kontinue
-    else Type.declaration_mismatch patt ty expr)
-
-let type_of_top_bind_rec env bs =
-  let fold env (patt, ty, _) = Type.bind patt ty env in
-  let env = List.fold_left fold env bs in
-  let _ =
-    let iter (patt, ty, expr) =
-      let expr = type_of_expr env expr in
-      if Type.equal ty expr
-      then ()
-      else Type.declaration_mismatch patt ty expr
-    in
-    List.iter iter bs
-  in
-  env
-
-let type_of_top env top kontinue = match top with
-  | TopLet b -> type_of_top_bind env b kontinue
-  | TopRec bs -> type_of_top_bind_rec env bs kontinue
-
-let rec type_of_file = List.fold_left type_of_top
-
-let type_of_file env file = type_of_file env file (fun env -> env)
-let type_of_top env top = type_of_top env top (fun env -> env)
-let type_of_expr env expr = type_of_expr env expr (fun ty -> ty)

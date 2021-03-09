@@ -6,51 +6,67 @@ type t =
   | Int
   | Float
   | String
+  | Blob
+  | Timestamp
+  | Duration
   | Fun of t list * t
   | Tuple of int * t list
+  | Record of field list
+  | Variant of constr list
   | Package of t Sym.map * t Sym.map
+and field = Sym.sym * t
+and constr = Sym.sym * t option
 
 let unit = Unit
 let bool = Bool
 let int = Int
 let float = Float
 let string = String
+let blob = Blob
+let timestamp = Timestamp
+let duration = Duration
 let func args ret = Fun (args, ret)
 let tuple tys = Tuple (List.length tys, tys)
+let record fields = Record fields
+let variant constrs = Variant constrs
 let pkg tys fns = Package (tys, fns)
 
-let rec pp ty fmt = match ty with
-  | Unit -> fprintf fmt "Unit"
-  | Bool -> fprintf fmt "Bool"
-  | Int -> fprintf fmt "Int"
-  | Float -> fprintf fmt "Float"
-  | String -> fprintf fmt "String"
-  | Fun (args, ret) ->
-    let pp_arg fmt = function
-      | Fun _ as f -> fprintf fmt "(%t)" (pp f)
-      | arg -> pp arg fmt
-    in
-    let pp_sep fmt _ = fprintf fmt " -> " in
-    pp_print_list ~pp_sep pp_arg fmt args;
-    fprintf fmt " -> %t" (pp ret)
-  | Tuple (_, tys) ->
-    fprintf fmt "(@[<hv 2>";
-    let pp_sep fmt _ = fprintf fmt ",@ " in
-    let pp_ty fmt ty = pp ty fmt in
-    pp_print_list ~pp_sep pp_ty fmt tys;
-    fprintf fmt "@])"
+let field id ty = (id, ty)
+let constr id ty = (id, ty)
 
 let rec equal x y = match x, y with
   | Unit, Unit
   | Bool, Bool
   | Int, Int
   | Float, Float
-  | String, String -> true
+  | String, String
+  | Blob, Blob
+  | Timestamp, Timestamp
+  | Duration, Duration -> true
   | Fun (args, ret), Fun (args', ret') ->
     List.for_all2 equal args args'
       && equal ret ret'
   | Tuple (len, tys), Tuple (len', tys') ->
     len = len' && List.for_all2 equal tys tys'
+  | Record fields, Record fields' ->
+    let match_field (id, ty) =
+      try
+        let (_, ty') = List.assoc id fields' in
+        equal ty ty'
+      with Not_found -> false
+    in
+    List.for_all match_field fields
+  | Variant constrs, Variant constrs' ->
+    let match_constr constr =
+      try
+        let (_, ty') = List.assoc id constrs' in
+        match ty, ty' with
+          | None, None -> true
+          | Some ty, Some ty' -> equal ty ty'
+          | _ -> false
+      with Not_found -> false
+    in
+    List.for_all match_constr constrs
   | _ -> false
 
 module IdMap = Map.Make (struct

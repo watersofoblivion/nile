@@ -5,24 +5,23 @@ open Format
 (** {2 Unary} *)
 
 type un = private
-  | Not (** Boolean negation *)
+  | Not of Loc.t (** Boolean negation *)
 (** Unary Operators *)
 
 (** {3 Constructors} *)
 
-val un_not : un
-(** [un_not] constructs a unary boolean negation operator. *)
+val un_not : Loc.t -> un
+(** [un_not loc] constructs a unary boolean negation operator at location [loc].
+    *)
 
 (** {3 Operations} *)
+
+val un_loc : un -> Loc.t
+(** [un_loc op] returns the locatio of the unary operator [op]. *)
 
 val un_precedence : un -> int
 (** [un_precedence op] returns the operator precedence of the unary operator
     [op]. *)
-
-(** {3 Pretty Printing} *)
-
-val pp_un : un -> formatter -> unit
-(** [pp_un op fmt] pretty-prints [op] to the formatter [fmt]. *)
 
 (** {3 Type Checking} *)
 
@@ -38,80 +37,84 @@ val type_of_un : un -> Type.t -> Type.t
 (** {2 Binary Operators} *)
 
 type bin = private
-  | Add  (** Addition *)
-  | Sub  (** Subtraction *)
-  | Mul  (** Multiplication *)
-  | Div  (** Integer Division *)
-  | Mod  (** Modulus *)
-  | And  (** Logical And *)
-  | Or   (** Logical Or *)
-  | Eq   (** Equality *)
-  | Neq  (** Inequality *)
-  | Lte  (** Less Than or Equal *)
-  | Lt   (** Less Than *)
-  | Gt   (** Greater Than *)
-  | Gte  (** Greater Than or Equal *)
-  | Dot  (** Dot (Projection) *)
-  | Cons (** Cons *)
+  | Add of Loc.t  (** Addition *)
+  | Sub of Loc.t  (** Subtraction *)
+  | Mul of Loc.t  (** Multiplication *)
+  | Div of Loc.t  (** Integer Division *)
+  | Mod of Loc.t  (** Modulus *)
+  | And of Loc.t  (** Logical And *)
+  | Or of Loc.t   (** Logical Or *)
+  | Eq of Loc.t   (** Equality *)
+  | Neq of Loc.t  (** Inequality *)
+  | Lte of Loc.t  (** Less Than or Equal *)
+  | Lt of Loc.t   (** Less Than *)
+  | Gt of Loc.t   (** Greater Than *)
+  | Gte of Loc.t  (** Greater Than or Equal *)
+  | Dot of Loc.t  (** Dot (Projection) *)
+  | Cons of Loc.t (** Cons *)
 (** Binary Operators *)
 
 (** {3 Constructors} *)
 
-val bin_add : bin
-(** [bin_add] constructs a binary addition operator. *)
+val bin_add : Loc.t -> bin
+(** [bin_add loc] constructs a binary addition operator at location [loc]. *)
 
-val bin_sub : bin
-(** [bin_sub] constructs a binary subtraction operator. *)
+val bin_sub : Loc.t -> bin
+(** [bin_sub loc] constructs a binary subtraction operator at location [loc]. *)
 
-val bin_mul : bin
-(** [bin_mul] constructs a binary multiplication operator. *)
+val bin_mul : Loc.t -> bin
+(** [bin_mul loc] constructs a binary multiplication operator at location [loc].
+    *)
 
-val bin_div : bin
-(** [bin_div] constructs a binary integer division operator. *)
+val bin_div : Loc.t -> bin
+(** [bin_div loc] constructs a binary integer division operator at location
+    [loc]. *)
 
-val bin_mod : bin
-(** [bin_mod] constructs a binary modulus operator. *)
+val bin_mod : Loc.t -> bin
+(** [bin_mod loc] constructs a binary modulus operator at location [loc]. *)
 
-val bin_and : bin
-(** [bin_and] constructs a binary logical "and" operator. *)
+val bin_and : Loc.t -> bin
+(** [bin_and loc] constructs a binary logical "and" operator at location [loc].
+    *)
 
-val bin_or : bin
-(** [bin_or] constructs a binary logical "or" operator. *)
+val bin_or : Loc.t -> bin
+(** [bin_or loc] constructs a binary logical "or" operator at location [loc]. *)
 
-val bin_eq : bin
-(** [bin_eq] constructs a binary equality operator. *)
+val bin_eq : Loc.t -> bin
+(** [bin_eq loc] constructs a binary equality operator at location [loc]. *)
 
-val bin_neq : bin
-(** [bin_neq] constructs a binary inequality operator. *)
+val bin_neq : Loc.t -> bin
+(** [bin_neq loc] constructs a binary inequality operator at location [loc]. *)
 
-val bin_lte : bin
-(** [bin_lte] constructs a binary less than or equal operator. *)
+val bin_lte : Loc.t -> bin
+(** [bin_lte loc] constructs a binary less than or equal operator at location
+    [loc]. *)
 
-val bin_lt : bin
-(** [bin_lt] constructs a binary less than operator. *)
+val bin_lt : Loc.t -> bin
+(** [bin_lt loc] constructs a binary less than operator at location [loc]. *)
 
-val bin_gt : bin
-(** [bin_gt] constructs a binary greater than operator. *)
+val bin_gt : Loc.t -> bin
+(** [bin_gt loc] constructs a binary greater than operator at location [loc]. *)
 
-val bin_gte : bin
-(** [bin_gte] constructs a binary greater than or equal operator. *)
+val bin_gte : Loc.t -> bin
+(** [bin_gte loc] constructs a binary greater than or equal operator at location
+    [loc]. *)
 
-val bin_dot : bin
-(** [bin_dot] constructs a binary dot (projection) operator. *)
+val bin_dot : Loc.t -> bin
+(** [bin_dot loc] constructs a binary dot (projection) operator at location
+    [loc]. *)
 
-val bin_cons : bin
-(** [bin_cons] constructs a binary cons operator. *)
+val bin_cons : Loc.t -> bin
+(** [bin_cons loc] constructs a binary cons operator at location [loc]. *)
 
 (** {3 Operations} *)
+
+val bin_loc : bin -> Loc.t
+(** [bin_loc op] returns the location of the binary operator [op]. *)
 
 val bin_precedence : bin -> int
 (** [bin_precedence op] returns the operator precedence of the binary operator
     [op]. *)
-
-(** {3 Pretty Printing} *)
-
-val pp_bin : bin -> formatter -> unit
-(** [pp_bin op fmt] pretty-prints [op] to the formatter [fmt]. *)
 
 (** {3 Type Checking} *)
 

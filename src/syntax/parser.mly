@@ -8,6 +8,11 @@
     | "Unit" -> kontinue tbl Common.Type.unit
     | "Int" -> kontinue tbl Common.Type.int
     | "Bool" -> kontinue tbl Common.Type.bool
+    | "Float" -> kontinue tbl Common.Type.float
+    | "String" -> kontinue tbl Common.Type.string
+    | "Blob" -> kontinue tbl Common.Type.blob
+    | "Timestamp" -> kontinue tbl Common.Type.timestamp
+    | "Duration" -> kontinue tbl Common.Type.duration
     | ty -> failwith (sprintf "Unknown type %S" ty)
 
   let make_fun_ty a b tbl kontinue =
@@ -155,7 +160,8 @@
 %token <Loc.t * int> INT
 %token <Loc.t * bool> BOOL
 %token <Loc.t * float> FLOAT
-%token <Loc.t * string> STRING
+%token <Loc.t * string> STRING BLOB TIMESTAMP DURATION
+%token <Loc.t * string> SRC
 %token <Loc.t * string> LIDENT UIDENT
 
 %left  IN
@@ -176,6 +182,8 @@
 %type <Sym.t -> (Sym.t -> Ast.file -> (Sym.t -> Ast.file)) -> (Sym.t * Ast.file)> file
 %type <Sym.t -> (Sym.t -> Ast.expr -> (Sym.t * Ast.expr)) -> (Sym.t * Ast.expr)> unit_test
 
+%start package_only
+%start imports_only
 %start file
 %start unit_test
 
@@ -251,7 +259,7 @@ case_list:
 ;
 
 case:
-| pattern DARROW term { ($1, $3) }
+| pattern ARROW term { ($1, $3) }
 ;
 
 /************
@@ -270,11 +278,6 @@ pattern:
  ***************/
 
 ident:
-  simple_ident { $1 }
-| ident DOT simple_ident { ($1, $3) }
-;
-
-simple_ident:
   LIDENT { $1 }
 | UIDENT { $1 }
 ;
@@ -309,8 +312,23 @@ import_stmt:
 ;
 
 from:
-  FROM { Some }
-|      { None }
+  FROM SRC { Some $2 }
+|          { None }
+;
+
+import_clauses:
+  alias_clause import_clauses_rest { $1 :: $2 }
+| import_clauses_rest              { $1 }
+;
+
+import_clauses_rest:
+  PIPE alias_clause import_clauses_rest { $2 :: $3 }
+|                                        { [] }
+;
+
+alias_clause:
+  LIDENT ARROW STRING { (Some $1, $3) }
+| STRING              { (None, $1) }
 ;
 
 top_list:
@@ -319,12 +337,11 @@ top_list:
 ;
 
 top:
-  TYPE simple_ident BIND ty top                                           { (make_top_val $1 $2) :: $3 }
-| VAL simple_ident opt_annotation BIND term top                           { (make_top_val $1 $2) :: $3 }
-| DEF simple_ident LPAREN params_list RPAREN opt_annotation BIND term top { (make_top_def $1 $2) :: $3 }
-| LET binding top                                                         { (make_top_let $1 $2) :: $3 }
-| LET REC bindings top                                                    { (make_top_let_rec $1 $3) :: $4 }
-|                                                                         { [] }
+  TYPE ident BIND ty                                           { make_top_val $1 $2 }
+| VAL ident opt_annotation BIND term                           { make_top_val $1 $2 }
+| DEF ident LPAREN params_list RPAREN opt_annotation BIND term { make_top_def $1 $2 }
+| LET binding                                                  { make_top_let $1 $2 }
+| LET REC bindings                                             { make_top_let_rec $1 $3 }
 ;
 
 /***************

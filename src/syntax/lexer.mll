@@ -191,11 +191,32 @@
     FLOAT (loc, f)
   let lit_string lexbuf =
     let s =
-      let s = Lexing.lexeme lexbuf in
-      String.sub s 1 (String.length s - 2)
+      let lexeme = Lexing.lexeme lexbuf in
+      String.sub lexeme 1 (String.length lexeme - 2)
     in
     let loc = Loc.loc lexbuf in
     STRING (loc, s)
+  let lit_blob lexbuf =
+    let b =
+      let lexeme = Lexing.lexeme lexbuf in
+      String.sub lexeme 1 (String.length lexeme - 2)
+    in
+    let loc = Loc.loc lexbuf in
+    BLOB (loc, b)
+  let lit_timestamp lexbuf =
+    let ts =
+      let lexeme = Lexing.lexeme lexbuf in
+      String.sub lexeme 1 (String.length lexeme - 1)
+    in
+    let loc = Loc.loc lexbuf in
+    TIMESTAMP (loc, ts)
+  let lit_duration lexbuf =
+    let d =
+      let lexeme = Lexing.lexeme lexbuf in
+      String.sub lexeme 2 (String.length lexeme - 2)
+    in
+    let loc = Loc.loc lexbuf in
+    DURATION (loc, d)
 
   let uident lexbuf =
     let loc = Loc.loc lexbuf in
@@ -264,6 +285,9 @@ rule lex = parse
 | ('+'|'-')?['0'-'9']+'.'['0'-'9']+(['E' 'e']('+'|'-')?['0'-'9']+)? { lit_float lexbuf }
 | ('+'|'-')?['0'-'9']+ { lit_int lexbuf }
 | '"' ("\\\"" | [^'"' '\n'])* '"' { lit_string lexbuf }
+| '`' ("\\" 'u'? ['0'-'9']+)* '`' { lit_blob lexbuf }
+| "@" (['0'-'9']+ '-' ['0'-'9']+ '-' ['0'-'9']+)? ("T" ['0'-'9']+ ':' ['0'-'9']+ ':' ['0'-'9']+ ('Z' | (['+' '-'] ['0'-'9']+ ':' ['0'-'9']))?)? { lit_timestamp lexbuf }
+| "@@P" (['0'-'9']+"Y")? (['0'-'9']+"M")? (['0'-'9']+"D")? ("T" (['0'-'9']+"H")? (['0'-'9']+"M")? (['0'-'9']+"S")?)? { lit_duration lexbuf }
 
 | ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9']* { lident lexbuf }
 | ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* { uident lexbuf }

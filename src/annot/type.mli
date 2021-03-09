@@ -8,27 +8,47 @@ type t = private
   | Int                              (** Integers *)
   | Float                            (** Floating-point *)
   | String                           (** Strings *)
+  | Blob                             (** Binary Large Object (BLOB) *)
+  | Timestamp                        (** ISO-8601 Timestamp *)
+  | Duration                         (** ISO-8601 Duration *)
   | Fun of t list * t                (** Functions *)
   | Tuple of int * t list            (** Tuple *)
+  | Record of field list             (** Record *)
+  | Variant of constr list           (** Variant *)
   | Package of t Sym.map * t Sym.map (** Package *)
 (** Types *)
+
+and field = Sym.sym * t
+(** Record field *)
+
+and constr = Sym.sym * t option
+(** Variant constructor *)
 
 (** {2 Constructors} *)
 
 val unit : t
-(** [unit] constructs a unit type *)
+(** [unit] constructs a unit type. *)
 
 val bool : t
-(** [bool] constructs a boolean type *)
+(** [bool] constructs a boolean type. *)
 
 val int : t
-(** [int] constructs an integer type *)
+(** [int] constructs an integer type. *)
 
 val float : t
-(** [float] constructs an floating-point type *)
+(** [float] constructs a floating-point type. *)
 
 val string : t
-(** [float] constructs an string type *)
+(** [string] constructs a string type. *)
+
+val blob : t
+(** [blob] constructs a binary large object (BLOB) type. *)
+
+val timestamp : t
+(** [timestamp] constructs a ISO-8601 timestamp type. *)
+
+val duration : t
+(** [duration] constructs a ISO-8601 duration type. *)
 
 val func : t list -> t -> t
 (** [func args ret] constructs a function type mapping argument values of types
@@ -37,14 +57,24 @@ val func : t list -> t -> t
 val tuple : t list -> t
 (** [tuple tys] constructs a tuple type with element types [tys]. *)
 
+val record : field list -> t
+(** [record fields] constructs a record type with fields [fields]. *)
+
+val variant : constr list -> t
+(** [variant constrs] constructs a variant type with constructors [constrs]. *)
+
 val pkg : t Sym.map -> t Sym.map -> t
-(** [pkg tys fns] constructs a package containing types [tys] and functions
+(** [pkg tys fns] constructs a package type containing types [tys] and functions
     [fns]. *)
 
-(** {2 Operations} *)
+val field : Sym.sym -> t -> field
+(** [field id ty] constructs a record field named [id] of type [ty]. *)
 
-val pp : t -> formatter -> unit
-(** [pp ty fmt] pretty-prints [ty] to the formatter [fmt]. *)
+val constr : Sym.sym -> t option -> field
+(** [constr id ty] constructs a variant constructor named [id] with optional
+    type [ty]. *)
+
+(** {2 Operations} *)
 
 val equal : t -> t -> bool
 (** [equal x y] compares two types for equality. *)

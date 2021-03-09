@@ -2,3 +2,9 @@
 (menhir
  (modules parser)
  (flags --strict --explain --dump))
+
+(library
+  (name nileSyntax)
+  (instrumentation (backend bisect_ppx))
+  (libraries
+    nileCommon))

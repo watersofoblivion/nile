@@ -1,9 +1,9 @@
 (library
-  (name nile)
+  (name nileCli)
   (instrumentation (backend bisect_ppx))
   (libraries
+    cmdliner
     nileCommon
     nileSyntax
     nileIr
-    nileCodegen
-    nileCli))
+    nileCodegen))

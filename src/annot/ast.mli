@@ -31,7 +31,11 @@ type expr = private
   | Int of int                              (** Integer *)
   | Float of float                          (** Floating-point *)
   | String of int * string                  (** String *)
+  | Blob of int * bytes                     (** Binary Large Object (BLOB) *)
+  | Timestamp of string                     (** ISO-8601 Timestamp *)
+  | Duration of string                      (** ISO-8601 Duration *)
   | Tuple of expr list                      (** Tuples *)
+  | Constr of Sym.sym * expr option         (** Variant Constructor *)
   | Var of Sym.sym                          (** Variable Identifier *)
   | Case of expr * clause list * Type.t     (** Case *)
   | Let of binding * expr                   (** Value Binding *)
@@ -79,8 +83,24 @@ val string : int -> string -> expr
 (** [string len s] constructs a string literal of length [len] with the value
     [s]. *)
 
+val blob : int -> bytes -> expr
+(** [blob len bs] constructs a binary large object (BLOB) literal of length
+    [len] with the value [bs]. *)
+
+val timestamp : string -> expr
+(** [timestamp ts] constructs a ISO-8601 timestamp literal of length with the
+    value [ts]. *)
+
+val duration : string -> expr
+(** [duration ts] constructs a ISO-8601 duration literal of length with the
+    value [d]. *)
+
 val tuple : expr list -> expr
 (** [tuple exprs] constructs a tuple literal with the values [exprs]. *)
+
+val constr : Sym.sym -> expr option -> expr
+(** [constr id v] constructs a variant constructor literal with the constructor
+    [constr] and the value [v]. *)
 
 val var : Sym.sym -> expr
 (** [var sym] constructs a variable identifier expression referencing the value
@@ -149,11 +169,6 @@ val annotate_top : Type.env -> Ast.top -> (Type.env * top)
     top-level statement along with a type environment with the top-level
     statement bound. *)
 
-val annotate_file : Type.env -> Ast.file -> (Type.env * file)
-(** [annotate_file env file] type-checks the abstract syntax file [file] in the
-    type environment [env] and returns an annotated syntax file along with a
-    type environment with all of the top-level statements in the file bound. *)
-
 val annotate : Type.env -> Ast.file list -> (Type.env * pkg)
 (** [annotate env files] type-checks the collection of abstract syntax files
     [files] as a single package in the type environment [env] and returns an
@@ -164,32 +179,3 @@ val annotate : Type.env -> Ast.file list -> (Type.env * pkg)
 
 val precedence : expr -> int
 (** [precedence expr] returns the precedence of the express [expr]. *)
-
-(** {2 Pretty Printing} *)
-
-val pp_expr : Sym.names -> expr -> formatter -> unit
-(** [pp_expr names expr fmt] pretty-prints the expression [expr] to the
-    formatter [fmt] converting symbols to strings using [names]. *)
-
-val pp_top : Sym.names -> top -> formatter -> unit
-(** [pp_top names top fmt] pretty-prints the top-level binding [top] to the
-    formatter [fmt] converting symbols to strings using [names]. *)
-
-val pp_file : Sym.names -> file -> formatter -> unit
-(** [pp_file names file fmt] pretty-prints the file [file] to the formatter
-    [fmt] converting symbols to strings using [names]. *)
-
-(** {2 Type Checking} *)
-
-val type_of_expr : Type.env -> expr -> Type.t
-(** [type_of_expr env expr] type checks the expression [expr] in the type
-    environment [env] and returns its type. *)
-
-val type_of_top : Type.env -> top -> Type.env
-(** [type_of_top env top] type checks the top-level expression [top] in the type
-    environment [env] and returns its type along with a type environment with
-    the top-level value bound. *)
-
-val type_of_pkg : Type.env -> pkg -> Type.env
-(** [type_of_pkg] type checks the package [pkg] in the type environment [env]
-    and returns a type environment with all of the top-level values bound. *)

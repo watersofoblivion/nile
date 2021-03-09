@@ -1,15 +1,12 @@
 open Format
 
 type un =
-  | Not of Loc.t
+  | Not
 
-let un_not loc = Not loc
-
-let un_loc = function
-  | Not loc -> loc
+let un_not = Not
 
 let un_precedence = function
-  | Not _ -> 2
+  | Not -> 2
 
 exception InvalidUnaryOperand of Type.t * un * Type.t
 
@@ -18,67 +15,50 @@ let invalid_unary_operand expected op actual =
     |> raise
 
 let type_of_un op r = match op, r with
-  | Not _, Type.Bool -> Type.bool
-  | Not _, r -> invalid_unary_operand Type.bool op r
+  | Not, Type.Bool -> Type.bool
+  | Not, r -> invalid_unary_operand Type.bool op r
 
 type bin =
-  | Add of Loc.t
-  | Sub of Loc.t
-  | Mul of Loc.t
-  | Div of Loc.t
-  | Mod of Loc.t
-  | And of Loc.t
-  | Or of Loc.t
-  | Eq of Loc.t
-  | Neq of Loc.t
-  | Lte of Loc.t
-  | Lt of Loc.t
-  | Gt of Loc.t
-  | Gte of Loc.t
-  | Dot of Loc.t
-  | Cons of Loc.t
+  | Add
+  | Sub
+  | Mul
+  | Div
+  | Mod
+  | And
+  | Or
+  | Eq
+  | Neq
+  | Lte
+  | Lt
+  | Gt
+  | Gte
+  | Dot
+  | Cons
 
-let bin_add loc = Add loc
-let bin_sub loc = Sub loc
-let bin_mul loc = Mul loc
-let bin_div loc = Div loc
-let bin_mod loc = Mod loc
-let bin_and loc = And loc
-let bin_or loc = Or loc
-let bin_eq loc = Eq loc
-let bin_neq loc = Neq loc
-let bin_lte loc = Lte loc
-let bin_lt loc = Lt loc
-let bin_gt loc = Gt loc
-let bin_gte loc = Gte loc
-let bin_dot loc = Dot loc
-let bin_cons loc = Cons loc
-
-let bin_loc = function
-  | Add loc
-  | Sub loc
-  | Mul loc
-  | Div loc
-  | Mod loc
-  | And loc
-  | Or loc
-  | Eq loc
-  | Neq loc
-  | Lte loc
-  | Lt loc
-  | Gt loc
-  | Gte loc
-  | Dot loc
-  | Cons loc -> loc
+let bin_add = Add
+let bin_sub = Sub
+let bin_mul = Mul
+let bin_div = Div
+let bin_mod = Mod
+let bin_and = And
+let bin_or = Or
+let bin_eq = Eq
+let bin_neq = Neq
+let bin_lte = Lte
+let bin_lt = Lt
+let bin_gt = Gt
+let bin_gte = Gte
+let bin_dot = Dot
+let bin_cons = Cons
 
 let bin_precedence = function
-  | Dot _ | Cons _ -> 2
-  | Mul _ | Div _ | Mod _ -> 3
-  | Add _ | Sub _ -> 4
-  | Lte _ | Lt _ | Gt _ | Gte _ -> 6
-  | Eq _ | Neq _ -> 7
-  | And _ -> 11
-  | Or _ -> 12
+  | Dot | Cons -> 2
+  | Mul | Div | Mod -> 3
+  | Add | Sub -> 4
+  | Lte | Lt | Gt | Gte -> 6
+  | Eq | Neq -> 7
+  | And -> 11
+  | Or -> 12
 
 exception InvalidBinaryOperands of Type.t * Type.t * bin * Type.t
 exception InvalidEqualityOperands of Type.t * bin * Type.t
