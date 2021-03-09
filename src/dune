@@ -4,6 +4,7 @@
   (libraries
     nileCommon
     nileSyntax
+    nileAnnot
     nileIr
     nileCodegen
     nileCli))
