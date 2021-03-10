@@ -4,16 +4,37 @@
 
   (* Types *)
 
-  let make_prim_ty (_, id) tbl kontinue = match id with
-    | "Unit" -> kontinue tbl Common.Type.unit
-    | "Int" -> kontinue tbl Common.Type.int
-    | "Bool" -> kontinue tbl Common.Type.bool
-    | "Float" -> kontinue tbl Common.Type.float
-    | "String" -> kontinue tbl Common.Type.string
-    | "Blob" -> kontinue tbl Common.Type.blob
-    | "Timestamp" -> kontinue tbl Common.Type.timestamp
-    | "Duration" -> kontinue tbl Common.Type.duration
-    | ty -> failwith (sprintf "Unknown type %S" ty)
+  let make_unit_ty loc tbl kontinue =
+    Type.unit loc
+      |> kontinue tbl
+
+  let make_bool_ty loc tbl kontinue =
+    Type.bool loc
+      |> kontinue tbl
+
+  let make_int_ty loc tbl kontinue =
+    Type.int loc
+      |> kontinue tbl
+
+  let make_float_ty loc tbl kontinue =
+    Type.float loc
+      |> kontinue tbl
+
+  let make_string_ty loc tbl kontinue =
+    Type.string loc
+      |> kontinue tbl
+
+  let make_blob_ty loc tbl kontinue =
+    Type.blob loc
+      |> kontinue tbl
+
+  let make_timestamp_ty loc tbl kontinue =
+    Type.timestamp loc
+      |> kontinue tbl
+
+  let make_duration_ty loc tbl kontinue =
+    Type.duration loc
+      |> kontinue tbl
 
   let make_fun_ty a b tbl kontinue =
     a tbl (fun tbl a ->
@@ -21,24 +42,77 @@
         Common.Type.func a b
           |> kontinue tbl))
 
+  let make_tuple_ty lparen tys rparen tbl kontinue =
+
+  let make_field_ty (loc, id) ty tbl kontinue =
+    let (id, tbl) = Sym.symbolize id tbl in
+    ty tbl (fun tbl ty ->
+      Type.field loc id ty tbl
+        |> kontinue tbl)
+
+  let make_record_ty strct fields rbrace tbl kontinue =
+    Type.record loc fields
+      |> kontinue tbl
+
+  let make_variant_ty constrs tbl kontinue =
+
+  let make_constr_ty (loc, id) ty tbl kontinue =
+    let (id, tbl) = Sym.symbolize id tbl in
+    match ty with
+      | None ->
+        Type.constr loc id ty
+          |> kontinue tbl
+      | Some ty ->
+        ty tbl (fun tbl ty ->
+          Type.constr loc id ty
+            |> kontinue tbl)
+
   (* Patterns *)
 
-  let make_ground_patt tbl kontinue =
-    Patt.ground
+  let make_ground_patt loc tbl kontinue =
+    Patt.ground loc
       |> kontinue tbl
 
-  let make_bool_patt (_, b) tbl kontinue =
-    Patt.bool b
+  let make_nil_patt loc tbl kontinue =
+    Patt.nil loc
       |> kontinue tbl
 
-  let make_int_patt (_, i) tbl kontinue =
-    Patt.int i
+  let make_unit_patt loc tbl kontinue =
+    Patt.unit loc
       |> kontinue tbl
 
-  let make_var_patt (_, id) tbl kontinue =
+  let make_bool_patt (loc, b) tbl kontinue =
+    Patt.bool loc b
+      |> kontinue tbl
+
+  let make_int_patt (loc, i) tbl kontinue =
+    Patt.int loc i
+      |> kontinue tbl
+
+  let make_float_patt (loc, f) tbl kontinue =
+    Patt.float loc f
+      |> kontinue tbl
+
+  let make_string_patt (loc, s) tbl kontinue =
+    Patt.string loc s
+      |> kontinue tbl
+
+  let make_var_patt (loc, id) tbl kontinue =
     let (sym, tbl) = Sym.symbolize id tbl in
-    Patt.var id
+    Patt.var loc id
       |> kontinue tbl
+
+  let make_tuple_patt lparen patts rparen tbl kontinue =
+
+  let make_named_field_patt id patt tbl kontinue =
+
+  let make_bare_field_att id tbl kontinue =
+
+  let make_record_patt lbrace fields elipsis rbrace tbl kontinue =
+
+  let make_constr_patt id value tbl kontinue =
+
+  let make_or_patt patts tbl kontinue =
 
   (* Atoms *)
 
@@ -54,10 +128,34 @@
     Ast.int loc i
       |> kontinue tbl
 
+  let make_float (loc, f) tbl kontinue =
+    Ast.float loc f
+      |> kontinue tbl
+
+  let make_string (loc, s) tbl kontinue =
+    Ast.string loc s
+      |> kontinue tbl
+
+  let make_blob (loc, bs) tbl kontinue =
+    Ast.blob loc bs
+      |> kontinue tbl
+
+  let make_timestamp (loc, ts) tbl kontinue =
+    Ast.timestamp loc ts
+      |> kontinue tbl
+
+  let make_duration (loc, d) tbl kontinue =
+    Ast.make_duration loc d
+      |> kontinue tbl
+
   let make_var (loc, id) tbl kontinue =
     let (sym, tbl) = Sym.symbolize id tbl in
     Ast.var loc sym
       |> kontinue tbl
+
+  let make_tuple loc exprs tbl kontinue =
+
+  let make_record (loc, constr) fields rbrace tbl kontinue =
 
   (* Expressions *)
 
@@ -189,6 +287,20 @@
 
 %%
 
+/***************
+ * Identifiers *
+ ***************/
+
+compound_id:
+  simple_id DOT constr_id { $1 :: $3 }
+| simple_id               { $1 :: [] }
+;
+
+simple_id:
+  LIDENT { $1 }
+| UIDENT { $1 }
+;
+
 /*************************
  * Types and Annotations *
  *************************/
@@ -203,9 +315,77 @@ annotation:
 ;
 
 ty:
-  UIDENT           { make_prim_ty $1 }
-| ty ARROW ty      { make_fun_ty $1 $3 }
-| LPAREN ty RPAREN { $2 }
+  compound_id                                  { make_prim_ty $1 }
+| ty ARROW ty                                  { make_fun_ty $1 $3 }
+| LPAREN ty COMMA tuple_ty RPAREN              { make_tuple_ty $1 ($2 :: $4) $5 }
+| STRUCT LBRACE opt_record_ty opt_comma RBRACE { make_record_ty $1 $3 $4 }
+| LPAREN ty RPAREN                             { $2 }
+;
+
+tuple_ty:
+  ty COMMA tuple_ty { $1 :: $3 }
+| ty                { $1 :: [] }
+;
+
+opt_record_ty:
+  record_ty { $1 }
+|           { [] }
+;
+
+record_ty:
+  field_ty COMMA record_ty { $1 :: $3 }
+| field_ty                 { $1 :: [] }
+;
+
+field_ty:
+  simple_id COLON ty { make_field_ty $1 $3 }
+;
+
+opt_comma:
+  COMMA { () }
+|       { () }
+;
+
+/************
+ * Patterns *
+ ************/
+
+pattern:
+| GROUND                                       { make_ground_patt }
+| INT                                          { make_int_patt $1 }
+| BOOL                                         { make_bool_patt $1 }
+| FLOAT                                        { make_float_patt $1 }
+| STRING                                       { make_string_patt $1 }
+| LIDENT                                       { make_var_patt $1 }
+| LPAREN pattern COMMA tuple_pattern RPAREN    { make_tuple_patt $1 ($2 :: $4) $5 }
+| LBRACE field_pattern_list opt_elipsis RBRACE { make_record_patt $1 $2 $3 $4 }
+| compound_id opt_pattern                      { make_constr_patt $1 $2 }
+| pattern PIPE or_pattern                      { make_or_pattern ($1 :: $3) }
+;
+
+tuple_pattern:
+  pattern COMMA tuple_pattern { $1 :: $3 }
+| pattern                     { $1 :: [] }
+;
+
+field_pattern_list:
+  field_pattern COMMA field_pattern_list { $1 :: $3 }
+| field_pattern                          { $1 :: [] }
+;
+
+field_pattern:
+  simple_id COLON pattern { make_named_field_patt $1 $3 }
+| simple_id               { make_bare_field_patt $1 }
+;
+
+opt_elipsis:
+  COMMA ELIPSIS { true }
+|               { false }
+;
+
+or_pattern:
+  pattern PIPE or_pattern { $1 :: $3 }
+| pattern                 { $1 :: [] }
 ;
 
 /*******************
@@ -241,45 +421,6 @@ rec_binding:
 
 binding:
   LIDENT opt_params_list opt_annotation BIND term { make_binding $1 $2 $3 $5 }
-;
-
-/***************
- * Match Cases *
- ***************/
-
-cases:
-| PIPE case_list { $2 }
-| case_list      { $1 }
-|                { [] }
-;
-
-case_list:
-| case PIPE case_list { $1 :: $3 }
-|                     { [] }
-;
-
-case:
-| pattern ARROW term { ($1, $3) }
-;
-
-/************
- * Patterns *
- ************/
-
-pattern:
-| GROUND { make_ground_patt }
-| INT    { make_int_patt $1 }
-| BOOL   { make_bool_patt $1 }
-| LIDENT { make_var_patt $1 }
-;
-
-/***************
- * Identifiers *
- ***************/
-
-ident:
-  LIDENT { $1 }
-| UIDENT { $1 }
 ;
 
 /*************
@@ -337,11 +478,11 @@ top_list:
 ;
 
 top:
-  TYPE ident BIND ty                                           { make_top_val $1 $2 }
-| VAL ident opt_annotation BIND term                           { make_top_val $1 $2 }
-| DEF ident LPAREN params_list RPAREN opt_annotation BIND term { make_top_def $1 $2 }
-| LET binding                                                  { make_top_let $1 $2 }
-| LET REC bindings                                             { make_top_let_rec $1 $3 }
+  TYPE simple_id BIND ty                                           { make_top_val $1 $2 }
+| VAL simple_id opt_annotation BIND term                           { make_top_val $1 $2 }
+| DEF simple_id LPAREN params_list RPAREN opt_annotation BIND term { make_top_def $1 $2 }
+| LET binding                                                      { make_top_let $1 $2 }
+| LET REC bindings                                                 { make_top_let_rec $1 $3 }
 ;
 
 /***************
@@ -354,41 +495,79 @@ unit_test:
 ;
 
 term:
-  app                                                  { $1 }
-| LET binding IN term                                  { make_bind $1 $2 $4 }
+  LET binding IN term                                  { make_bind $1 $2 $4 }
 | LET REC bindings IN term                             { make_bind_rec $1 $3 $5 }
 | IF app THEN term ELSE term                           { make_cond $1 $2 $4 $6 }
-| CASE app OF cases END                                { make_case_of $2 $4 }
+| CASE app OF clauses END                              { make_case_of $2 $4 }
 | LPAREN params_list RPAREN opt_annotation DARROW term { make_abs $2 $4 $6 }
+| app                                                  { $1 }
+;
+
+clauses:
+  PIPE clause_list { $2 }
+| clause_list      { $1 }
+|                  { [] }
+;
+
+clause_list:
+  clause PIPE clause_list { $1 :: $3 }
+|                         { [] }
+;
+
+clause:
+  pattern ARROW term { make_clause $1 $3 }
 ;
 
 app:
   app atom     { make_app $1 $2 }
-| app LOR app  { make_bin_op $1 Op.bin_or   $3 }
-| app LAND app { make_bin_op $1 Op.bin_and  $3 }
-| app EQ app   { make_bin_op $1 Op.bin_eq   $3 }
-| app NEQ app  { make_bin_op $1 Op.bin_neq  $3 }
-| app LTE app  { make_bin_op $1 Op.bin_lte  $3 }
-| app LT app   { make_bin_op $1 Op.bin_lt   $3 }
-| app GT app   { make_bin_op $1 Op.bin_gt   $3 }
-| app GTE app  { make_bin_op $1 Op.bin_gte  $3 }
-| app CONS app { make_bin_op $1 Op.bin_cons $3 }
-| app ADD app  { make_bin_op $1 Op.bin_add  $3 }
-| app SUB app  { make_bin_op $1 Op.bin_sub  $3 }
-| app MUL app  { make_bin_op $1 Op.bin_mul  $3 }
-| app DIV app  { make_bin_op $1 Op.bin_div  $3 }
-| app MOD app  { make_bin_op $1 Op.bin_mod  $3 }
-| LNOT app     { make_un_op  $1 Op.un_not   $2 }
-| app DOT app  { make_bin_op $1 Op.bin_dot  $3}
+| app LOR app  { make_bin_op $1 Op.bin_or  $3 }
+| app LAND app { make_bin_op $1 Op.bin_and $3 }
+| app EQ app   { make_bin_op $1 Op.bin_eq  $3 }
+| app NEQ app  { make_bin_op $1 Op.bin_neq $3 }
+| app LTE app  { make_bin_op $1 Op.bin_lte $3 }
+| app LT app   { make_bin_op $1 Op.bin_lt  $3 }
+| app GT app   { make_bin_op $1 Op.bin_gt  $3 }
+| app GTE app  { make_bin_op $1 Op.bin_gte $3 }
+| app ADD app  { make_bin_op $1 Op.bin_add $3 }
+| app SUB app  { make_bin_op $1 Op.bin_sub $3 }
+| app MUL app  { make_bin_op $1 Op.bin_mul $3 }
+| app DIV app  { make_bin_op $1 Op.bin_div $3 }
+| app MOD app  { make_bin_op $1 Op.bin_mod $3 }
+| LNOT app     { make_un_op  $1 Op.un_not  $2 }
+| app DOT app  { make_bin_op $1 Op.bin_dot $3 }
 | atom         { $1 }
 ;
 
 atom:
-  UNIT               { make_unit $1 }
-| BOOL               { make_bool $1 }
-| INT                { make_int $1 }
-| FLOAT              { make_float $1 }
-| STRING             { make_string $1 }
-| LIDENT             { make_var $1 }
-| LPAREN term RPAREN { $2 }
+  UNIT                           { make_unit $1 }
+| BOOL                           { make_bool $1 }
+| INT                            { make_int $1 }
+| FLOAT                          { make_float $1 }
+| STRING                         { make_string $1 }
+| BLOB                           { make_blob $1 }
+| TIMESTAMP                      { make_timestamp $1 }
+| DURATION                       { make_duration $1 }
+| simple_id                      { make_var $1 }
+| LPAREN term COMMA tuple RPAREN { make_tuple $1 ($2 :: $4) $5 }
+| compound_id LBRACE opt_field_list RBRACE   { make_record $1 $3 $4 }
+| LPAREN term RPAREN             { $2 }
+;
+
+tuple:
+  term COMMA tuple { $1 :: $3 }
+| term             { $1 :: [] }
+;
+
+opt_field_list:
+  field_list { $1 }
+|            { [] }
+;
+
+field_list:
+  field COMMA field_list { $1 :: $3 }
+| field                  { $1 :: [] }
+;
+
+field:
+  atom COLON term { make_field $1 $3 }
 ;

@@ -51,7 +51,6 @@ type bin = private
   | Gt of Loc.t   (** Greater Than *)
   | Gte of Loc.t  (** Greater Than or Equal *)
   | Dot of Loc.t  (** Dot (Projection) *)
-  | Cons of Loc.t (** Cons *)
 (** Binary Operators *)
 
 (** {3 Constructors} *)
@@ -103,9 +102,6 @@ val bin_gte : Loc.t -> bin
 val bin_dot : Loc.t -> bin
 (** [bin_dot loc] constructs a binary dot (projection) operator at location
     [loc]. *)
-
-val bin_cons : Loc.t -> bin
-(** [bin_cons loc] constructs a binary cons operator at location [loc]. *)
 
 (** {3 Operations} *)
 

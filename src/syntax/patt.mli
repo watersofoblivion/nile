@@ -3,18 +3,18 @@ open Format
 (** {1 Patterns} *)
 
 type t =
-  | Ground of Loc.t                     (** Ground *)
-  | Nil of Loc.t                        (** Empty list *)
-  | Unit of Loc.t                       (** Unit *)
-  | Bool of Loc.t * bool                (** Boolean *)
-  | Int of Loc.t * int                  (** Integer *)
-  | Float of Loc.t * float              (** Floating-point *)
-  | String of Loc.t * string            (** String *)
-  | Var of Loc.t * Sym.sym              (** Variable *)
-  | Tuple of Loc.t * int * t list       (** Tuple *)
-  | Record of Loc.t * field list * bool (** Record *)
-  | Cons of Loc.t * t * t               (** Cons *)
-  | Or of Loc.t * t list                (** Or *)
+  | Ground of Loc.t                      (** Ground *)
+  | Unit of Loc.t                        (** Unit *)
+  | Bool of Loc.t * bool                 (** Boolean *)
+  | Int of Loc.t * int                   (** Integer *)
+  | Float of Loc.t * float               (** Floating-point *)
+  | String of Loc.t * string             (** String *)
+  | Var of Loc.t * Sym.sym               (** Variable *)
+  | Tuple of Loc.t * int * t list        (** Tuple *)
+  | Record of Loc.t * field list * bool  (** Record *)
+  | Constr of Loc.t * Sym.sym * t option (** Variant Constructor *)
+  | Cons of Loc.t * t * t                (** Cons *)
+  | Or of Loc.t * t list                 (** Or *)
 (** A pattern *)
 
 and field =
@@ -26,9 +26,6 @@ and field =
 
 val ground : Loc.t -> t
 (** [ground loc] constructs a ground pattern at location [loc]. *)
-
-val nil : Loc.t -> t
-(** [nil loc] constructs a nil pattern at location [loc]. *)
 
 val unit : Loc.t -> t
 (** [unit loc] constructs a unit pattern at location [loc]. *)
@@ -61,6 +58,10 @@ val record : Loc.t -> field list -> bool -> t
     matching a record when the field patterns [fields] match their corresponding
     fields.  If [elipsis] is [true], then all fields of the record not provided
     are matched against the ground ("[_]") pattern. *)
+
+val constr : Loc.t -> Sym.sym -> t option -> t
+(** [constr loc id value] constructs a variant construction pattern located at
+    [loc] matching the constructor [id] with value [value]. *)
 
 val orr : Loc.t -> t list -> t
 (** [orr loc patts] constructs an "or" pattern at location [loc] matching any of

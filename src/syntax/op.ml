@@ -36,7 +36,6 @@ type bin =
   | Gt of Loc.t
   | Gte of Loc.t
   | Dot of Loc.t
-  | Cons of Loc.t
 
 let bin_add loc = Add loc
 let bin_sub loc = Sub loc
@@ -52,7 +51,6 @@ let bin_lt loc = Lt loc
 let bin_gt loc = Gt loc
 let bin_gte loc = Gte loc
 let bin_dot loc = Dot loc
-let bin_cons loc = Cons loc
 
 let bin_loc = function
   | Add loc
@@ -69,10 +67,9 @@ let bin_loc = function
   | Gt loc
   | Gte loc
   | Dot loc
-  | Cons loc -> loc
 
 let bin_precedence = function
-  | Dot _ | Cons _ -> 2
+  | Dot _ -> 2
   | Mul _ | Div _ | Mod _ -> 3
   | Add _ | Sub _ -> 4
   | Lte _ | Lt _ | Gt _ | Gte _ -> 6

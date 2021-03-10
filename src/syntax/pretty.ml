@@ -91,7 +91,7 @@ let rec patt names patt fmt = match patt with
   | Patt.Var (_, sym) -> pp_var_patt names sym fmt
   | Patt.Tuple (_, _, patts) -> pp_tuple_patt names patts fmt
   | Patt.Record (_, fields, elipsis) -> pp_record_patt names fields elipsis fmt
-  | Patt.Cons (_, hd, tl) -> pp_cons_patt names hd tl fmt
+  | Patt.Constr (_, id, value) -> pp_constr_patt names id value fmt
   | Patt.Or (_, patts) -> pp_or_patt names patts fmt
 
 and pp_ground_patt fmt =
@@ -123,7 +123,7 @@ and pp_tuple_patt names patts fmt =
 
 and pp_record_patt names fields elipsis fmt =
 
-and pp_cons_patt names hd tl fmt =
+and pp_constr_patt names id value fmt =
 
 and pp_or_patt names patts fmt =
 
@@ -147,7 +147,6 @@ let bin op fmt = match op with
   | Gt _ -> fprintf fmt ">"
   | Gte _ -> fprintf fmt ">="
   | Dot _ -> fprintf fmt "."
-  | Cons _ -> fprintf fmt "::"
 
 (* Abstract Syntax Trees *)
 
