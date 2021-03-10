@@ -1,6 +1,6 @@
 (library
-  (name nileAnnot)
+  (name annot)
   (instrumentation (backend bisect_ppx))
   (libraries
-    nileCommon
-    nileSyntax))
+    common
+    syntax))

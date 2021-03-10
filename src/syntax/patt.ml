@@ -1,4 +1,4 @@
-open Format
+open Common
 
 (* Patterns *)
 

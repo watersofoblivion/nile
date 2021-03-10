@@ -4,7 +4,7 @@
  (flags --strict --explain --dump))
 
 (library
-  (name nileSyntax)
+  (name syntax)
   (instrumentation (backend bisect_ppx))
   (libraries
-    nileCommon))
+    common))

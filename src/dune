@@ -2,9 +2,9 @@
   (name nile)
   (instrumentation (backend bisect_ppx))
   (libraries
-    nileCommon
-    nileSyntax
-    nileAnnot
-    nileIr
-    nileCodegen
-    nileCli))
+    common
+    syntax
+    annot
+    ir
+    codegen
+    cli))

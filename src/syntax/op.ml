@@ -1,5 +1,3 @@
-open Format
-
 type un =
   | Not of Loc.t
 
@@ -66,7 +64,7 @@ let bin_loc = function
   | Lt loc
   | Gt loc
   | Gte loc
-  | Dot loc
+  | Dot loc -> loc
 
 let bin_precedence = function
   | Dot _ -> 2

@@ -1,8 +1,8 @@
 (library
-  (name nileCodegen)
+  (name codegen)
   (instrumentation (backend bisect_ppx))
   (libraries
     llvm
     llvm.analysis
-    nileCommon
-    nileIr))
+    common
+    ir))

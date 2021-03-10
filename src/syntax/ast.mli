@@ -27,7 +27,7 @@ type expr = private
   | UnOp of Loc.t * Op.un * expr                     (** Unary Operation *)
   | BinOp of Loc.t * expr * Op.bin * expr            (** Binary Operation *)
   | If of Loc.t * expr * expr * expr                 (** Conditional *)
-  | CaseOf of Loc.t * expr * clause list             (** Case *)
+  | Case of Loc.t * expr * clause list               (** Case *)
   | Let of Loc.t * binding * expr                    (** Value Binding *)
   | LetRec of Loc.t * binding list * expr            (** Recursive Value Bindings *)
   | Abs of Loc.t * param list * Type.t option * expr (** Function Abstraction *)
@@ -177,7 +177,7 @@ val abs : Loc.t -> param list -> Type.t option -> expr -> expr
     from the first element of [params] to the end of [body].  If not provided,
     the type [res] will be inferred. *)
 
-val app : Loc.t -> expr -> expr -> expr
+val app : Loc.t -> expr -> expr list -> expr
 (** [app loc f xs] constructs a function application expression at location
     [loc] applying the function [f] to the values [xs].  The location should
     span from the beginning of [f] to the end of the last element of [xs]. *)

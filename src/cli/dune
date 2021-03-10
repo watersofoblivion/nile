@@ -1,10 +1,10 @@
 (library
-  (name nileCli)
+  (name cli)
   (instrumentation (backend bisect_ppx))
   (libraries
     cmdliner
-    nileCommon
-    nileSyntax
-    nileAnnot
-    nileIr
-    nileCodegen))
+    common
+    syntax
+    annot
+    ir
+    codegen))

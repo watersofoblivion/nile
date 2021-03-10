@@ -1,5 +1,4 @@
 open Common
-open Ir
 
 (** {1 Type Checking and A-Normalization} *)
 

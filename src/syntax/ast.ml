@@ -21,7 +21,7 @@ type expr =
   | Let of Loc.t * binding * expr
   | LetRec of Loc.t * binding list * expr
   | Abs of Loc.t * param list * Type.t option * expr
-  | App of Loc.t * expr list * expr
+  | App of Loc.t * expr * expr list
 and field = Loc.t * Sym.sym * expr
 and param = Loc.t * Patt.t * Type.t
 and binding = Loc.t * Patt.t * Type.t option * expr
@@ -70,9 +70,9 @@ let param loc patt ty = (loc, patt, ty)
 let binding loc patt ty expr = (loc, patt, ty, expr)
 let clause loc patt expr = (loc, patt, expr)
 
-let top_val loc b = TopVal (loc, b)
-let top_def loc b = TopDef (loc, b)
-let top_type loc id ty = TopDef (loc, id, b)
+let top_val loc b = Val (loc, b)
+let top_def loc b = Def (loc, b)
+let top_type loc id ty = Type (loc, id, ty)
 
 let name loc id = (loc, id)
 let version loc v = (loc, v)
@@ -93,7 +93,7 @@ let precedence = function
   | App _ -> 1
   | UnOp (_, op, _) -> Op.un_precedence op
   | BinOp (_, _, op, _) -> Op.bin_precedence op
-  | If _, Case _ -> 13
+  | If _ | Case _ -> 13
   | Abs _ -> 14
   | Let _ | LetRec _ -> 15
 
@@ -114,11 +114,11 @@ let loc_expr = function
   | Case (loc, _, _)
   | Let (loc, _, _)
   | LetRec (loc, _, _)
-  | Abs (loc, _, _, _, _)
+  | Abs (loc, _, _, _)
   | App (loc, _, _)
   | Var (loc, _) -> loc
 
 let loc_top = function
-  | TopVal (loc, _)
-  | TopDef (loc, _)
-  | TopType (loc, _) -> loc
+  | Val (loc, _)
+  | Def (loc, _)
+  | Type (loc, _, _) -> loc

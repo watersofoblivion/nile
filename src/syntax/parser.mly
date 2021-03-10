@@ -255,6 +255,7 @@
 %token <Loc.t> CONS
 %token <Loc.t> EOF
 %token <Loc.t> UNIT
+%token <Loc.t> STRUCT
 %token <Loc.t * int> INT
 %token <Loc.t * bool> BOOL
 %token <Loc.t * float> FLOAT
@@ -292,8 +293,8 @@
  ***************/
 
 compound_id:
-  simple_id DOT constr_id { $1 :: $3 }
-| simple_id               { $1 :: [] }
+  simple_id DOT compound_id { $1 :: $3 }
+| simple_id                 { $1 :: [] }
 ;
 
 simple_id:
@@ -349,6 +350,11 @@ opt_comma:
 /************
  * Patterns *
  ************/
+
+opt_pattern:
+  pattern { Some $1 }
+|         { None }
+;
 
 pattern:
 | GROUND                                       { make_ground_patt }
@@ -535,6 +541,7 @@ app:
 | app MOD app  { make_bin_op $1 Op.bin_mod $3 }
 | LNOT app     { make_un_op  $1 Op.un_not  $2 }
 | app DOT app  { make_bin_op $1 Op.bin_dot $3 }
+| compound_id LBRACE opt_field_list RBRACE { make_record $1 $3 $4 }
 | atom         { $1 }
 ;
 
@@ -549,7 +556,6 @@ atom:
 | DURATION                       { make_duration $1 }
 | simple_id                      { make_var $1 }
 | LPAREN term COMMA tuple RPAREN { make_tuple $1 ($2 :: $4) $5 }
-| compound_id LBRACE opt_field_list RBRACE   { make_record $1 $3 $4 }
 | LPAREN term RPAREN             { $2 }
 ;
 
@@ -569,5 +575,5 @@ field_list:
 ;
 
 field:
-  atom COLON term { make_field $1 $3 }
+  simple_id COLON term { make_field $1 $3 }
 ;

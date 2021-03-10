@@ -1,4 +1,4 @@
-open Format
+open Common
 
 type t =
   | Unit of Loc.t
@@ -43,7 +43,7 @@ let loc = function
   | Blob loc
   | Timestamp loc
   | Duration loc
-  | Func (loc, _, _)
+  | Fun (loc, _, _)
   | Tuple (loc, _, _)
   | Record (loc, _)
   | Variant (loc, _)

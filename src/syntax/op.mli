@@ -1,5 +1,3 @@
-open Format
-
 (** {1 Operators} *)
 
 (** {2 Unary} *)

@@ -37,6 +37,6 @@ val top : Sym.names -> Ast.top -> formatter -> unit
 (** [top names t fmt] pretty-prints the top-level binding [t] to the formatter
     [fmt] resolving symbols with [names]. *)
 
-val file : Sym.names -> file -> formatter -> unit
+val file : Sym.names -> Ast.file -> formatter -> unit
 (** [file names f fmt] pretty-prints the file [f] to the formatter [fmt]
     resolving symbols with [names]. *)

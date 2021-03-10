@@ -1,4 +1,4 @@
-open Format
+open Common
 
 (** {1 Patterns} *)
 
@@ -13,7 +13,6 @@ type t =
   | Tuple of Loc.t * int * t list        (** Tuple *)
   | Record of Loc.t * field list * bool  (** Record *)
   | Constr of Loc.t * Sym.sym * t option (** Variant Constructor *)
-  | Cons of Loc.t * t * t                (** Cons *)
   | Or of Loc.t * t list                 (** Or *)
 (** A pattern *)
 

@@ -1,5 +1,4 @@
 open Common
-open Ir
 
 (* Type Checking Environment *)
 

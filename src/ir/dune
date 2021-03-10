@@ -1,6 +1,6 @@
 (library
-  (name nileIr)
+  (name ir)
   (instrumentation (backend bisect_ppx))
   (libraries
-    nileCommon
-    nileAnnot))
+    common
+    annot))
