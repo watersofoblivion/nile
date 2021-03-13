@@ -5,35 +5,41 @@ type t =
   | Bool
   | Int
   | Float
+  | Rune
   | String
+  | Byte
   | Blob
   | Timestamp
   | Duration
-  | Fun of t list * t
-  | Tuple of int * t list
-  | Variant of constr list
-and constr = Sym.sym * t option
+  | Fun of { params: t list; res: t }
+  | Tuple of { arity: int; types: t list }
+  | Variant of { constrs: constr list }
+and constr = Constr of { name: Sym.sym; params: t list }
 
 let unit = Unit
 let bool = Bool
 let int = Int
 let float = Float
+let rune = Rune
 let string = String
+let blob = Byte
 let blob = Blob
 let timestamp = Timestamp
 let duration = Duration
-let func args ret = Fun (args, ret)
-let tuple tys = Tuple (List.length tys, tys)
-let variant constrs = Variant constrs
+let func params res = Fun { params; res }
+let tuple types = Tuple { arity = List.length types; types }
+let variant constrs = Variant { constrs }
 
-let constr id ty = (id, ty)
+let constr name params = Constr { name; params }
 
 let rec equal x y = match x, y with
   | Unit, Unit
   | Bool, Bool
   | Int, Int
   | Float, Float
+  | Rune, Rune
   | String, String
+  | Byte, Byte
   | Blob, Blob
   | Timestamp, Timestamp
   | Duration, Duration -> true
@@ -70,10 +76,13 @@ let lookup = Sym.lookup
 
 let of_pattern patt ty = match patt, ty with
   | Patt.Unit, Unit
-  | Patt.Int _, Int
   | Patt.Bool _, Bool
+  | Patt.Int _, Int
   | Patt.Float _, Float
+  | Patt.Rune _, Rune
   | Patt.String _, String
+  | Patt.Byte _, Byte
+  | Patt.Blob _, Blob
   | Patt.Var _, _
   | Patt.Ground, _ -> true
   | _ -> false

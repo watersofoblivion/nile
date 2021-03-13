@@ -6,61 +6,76 @@ open Ir
 
 type expr =
   | Unit
-  | Bool of bool
-  | Int of int
-  | Float of float
-  | String of int * string
-  | Blob of int * bytes
-  | Timestamp of string
-  | Duration of string
-  | Tuple of expr list
-  | Constr of Sym.sym * expr option
-  | Var of Sym.sym
-  | Case of expr * clause list * Type.t
-  | Let of binding * expr
-  | LetRec of binding list * expr
-  | Proj of expr * int
-  | Abs of int * param list * Type.t * expr
-  | App of int * expr * expr list
-  | Builtin of Sym.sym * expr list
-and param = Patt.t * Type.t
-and binding = Patt.t * Type.t * expr
-and clause = Patt.t * expr
+  | Bool of { b: bool }
+  | Int of { i: int }
+  | Float of { f: float }
+  | Rune of { r: bytes }
+  | String of { length: int; s: string }
+  | Byte of { b: bytes }
+  | Blob of { length: int; bs: bytes }
+  | Timestamp of { ts: string }
+  | Duration of { d: string }
+  | Tuple of { exprs: expr list; ty: Type.t }
+  | Record of { constr: Sym.sym option; fields: field list; ty: Type.t }
+  | Constr of { name: Sym.sym; args: expr list; ty: Type.t }
+  | Var of { id: Sym.sym }
+  | UnOp of { op: Op.un; lhs: expr }
+  | BinOp of { op: Op.bin; lhs: expr; rhs: expr }
+  | Slice of { expr: expr; start: expr option; stop: expr option }
+  | Index of { expr: expr; idx: expr }
+  | Case of { scrut: expr; clauses: clause list; res: Type.t }
+  | Let of { binding: binding; scope: expr }
+  | LetRec of { bindings: binding list; scope: expr }
+  | TupleProj of { tuple: expr; index: int }
+  | RecordProj of { record: expr; field: Sym.sym }
+  | Abs of { arity: int; params: param list; res: Type.t; body: expr }
+  | App of { arity: int; fn: expr; args: expr list }
+and param = Param of { name: Patt.t; ty: Type.t }
+and binding = Binding of { name: Patt.t; ty: Type.t; body: expr }
+and clause = Clause of { patt: Patt.t; body: expr }
 
 type top =
-  | TopLet of binding
-  | TopRec of binding list
+  | TopLet of { binding: binding }
+  | TopRec of { bindings: binding list }
 
-type pkg = Sym.sym * top list
+type pkg = Package of { name: Sym.sym; tops: top list }
 
 (* Constructors *)
 
 let unit = Unit
-let bool b = Bool b
-let int i = Int i
-let float f = Float f
-let string len s = String (len, s)
-let blob len bs = Blob (len, bs)
-let timestmap ts = Timestamp ts
-let duration d = Duration d
-let tuple exprs = Tuple exprs
-let constr id v = Constr (id, v)
-let var sym = Var sym
-let case scrut clauses res = Case (scrut, clauses, res)
-let bind b rest = Let (b, rest)
-let bind_rec bs rest = LetRec (bs, rest)
-let proj expr n = Proj (expr, n)
-let abs arity params res expr = Abs (arity, params, res, expr)
-let app arity f xs = App (arity, f, xs)
-let builtin f xs = Builtin (f, xs)
-let param patt ty = (patt, ty)
-let binding patt ty expr = (patt, ty, expr)
-let clause patt expr = (patt, expr)
+let bool b = Bool { b }
+let int i = Int { i }
+let float f = Float { f }
+let rune r = Rune { r }
+let string s = String { length = String.length s; s }
+let byte b = Byte { b }
+let blob bs = Blob { length = Bytes.length bs; bs }
+let timestmap ts = Timestamp { ts }
+let duration d = Duration { d }
+let tuple exprs ty = Tuple { exprs; ty }
+let record constr fields ty = Record { constr; fields; ty }
+let constr name args ty = Constr { name; args; ty }
+let var sym = Var { sym }
+let un_op op prec lhs = UnOp { op; prec; lhs }
+let bin_op op prec lhs rhs = BinOp { op; prec; lhs; rhs }
+let slice expr start stop = Slice { expr; start; stop }
+let index expr idx = Index { expr; idx }
+let case scrut clauses res = Case { scrut; clauses; res }
+let bind binding scope = Let { binding; scope }
+let bind_rec bindings scope = LetRec { bindings; scope }
+let tuple_proj tuple index = TupleProj { tuple; index }
+let record_proj record field = RecordProj { record; field }
+let abs params res body = Abs { arity = List.length params; params; res; body }
+let app fn args = App { arity = List.length args; fn; args }
 
-let top_bind b = TopLet b
-let top_bind_rec bs = TopRec bs
+let param name ty = Param { name; ty }
+let binding name ty body = Binding { name; ty; body }
+let clause patt body = Clause of { patt; body }
 
-let pkg name tops = (name, tops)
+let top_bind binding = TopLet { binding }
+let top_bind_rec bindings = TopRec { bindings }
+
+let pkg name tops = Package { name; tops }
 
 (* Annotation *)
 
@@ -87,8 +102,10 @@ let rec annotate_expr env expr kontinue = match expr with
   | Ast.Tuple (_, exprs) -> annotate_tuple env exprs kontinue
   | Ast.Record (_, constr, fields) -> annotate_record env constr fields kontinue
   | Ast.Var (_, sym) -> annotate_var env sym kontinue
-  | Ast.UnOp (_, op, r) -> annotate_un_op env op r kontinue
-  | Ast.BinOp (_, l, op, r) -> annotate_bin_op env l op r kontinue
+  | Ast.UnOp (_, op, prec, r) -> annotate_un_op env op prec r kontinue
+  | Ast.BinOp (_, op, prec, l, r) -> annotate_bin_op env op prec l r kontinue
+  | Ast.Slice (_, expr, start, stop) -> annotate_slice env expr start stop kontinue
+  | Ast.Index (_, expr, idx) -> annotate_index env expr idx kontinue
   | Ast.If (_, c, t, f) -> annotate_cond env c t f kontinue
   | Ast.Case (_, scrut, clauses) -> annotate_case env scrut clauses kontinue
   | Ast.Let (_, (_, patt, ty, expr), rest) -> annotate_bind env patt ty expr rest kontinue

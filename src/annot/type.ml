@@ -5,40 +5,45 @@ type t =
   | Bool
   | Int
   | Float
+  | Rune
   | String
+  | Byte
   | Blob
   | Timestamp
   | Duration
-  | Fun of t list * t
-  | Tuple of int * t list
-  | Record of field list
-  | Variant of constr list
-  | Package of t Sym.map * t Sym.map
-and field = Sym.sym * t
-and constr = Sym.sym * t option
+  | Fun of { params: t list; res: t }
+  | Tuple of { arity: int; types: t list }
+  | Record of { fields: field list }
+  | Variant of { constrs: constr list }
+  | Named of { name: Sym.sym }
+and field = Field of { name: Sym.sym; ty: t }
+and constr = Constr of { name: Sym.sym; params: t list }
 
 let unit = Unit
 let bool = Bool
 let int = Int
 let float = Float
+let rune = Rune
 let string = String
+let byte = Byte
 let blob = Blob
 let timestamp = Timestamp
 let duration = Duration
-let func args ret = Fun (args, ret)
-let tuple tys = Tuple (List.length tys, tys)
-let record fields = Record fields
-let variant constrs = Variant constrs
-let pkg tys fns = Package (tys, fns)
+let func params ret = Fun { params; ret }
+let tuple types = Tuple { arity = List.length types; types }
+let record fields = Record { fields }
+let variant constrs = Variant { constrs }
+let named name = Named { name }
 
-let field id ty = (id, ty)
-let constr id ty = (id, ty)
+let field name ty = Field { name; ty }
+let constr name params = Constr { name; params }
 
 let rec equal x y = match x, y with
   | Unit, Unit
   | Bool, Bool
   | Int, Int
   | Float, Float
+  | Rune, Rune
   | String, String
   | Blob, Blob
   | Timestamp, Timestamp
@@ -87,6 +92,7 @@ let of_pattern patt ty = match patt, ty with
   | Patt.Int _, Int
   | Patt.Bool _, Bool
   | Patt.Float _, Float
+  | Patt.Rune _, Rune
   | Patt.String _, String
   | Patt.Var _, _
   | Patt.Ground, _ -> true

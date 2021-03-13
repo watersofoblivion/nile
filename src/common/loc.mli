@@ -1,3 +1,5 @@
+open Common
+
 (** {1 Location Tracking} *)
 
 type pos = private {
@@ -7,18 +9,30 @@ type pos = private {
 }
 (** A position in a source file. *)
 
+type src = private {
+  mojule:  Sym.sym; (** Module *)
+  major:   int;     (** Major Version *)
+  package: Sym.sym; (** Package *)
+  file:    Sym.sym  (** Offset into file *)
+}
+(** A position in a source file. *)
+
 type t = private {
-  fname:     string; (** Source File *)
-  start_pos: pos;    (** Starting position *)
-  end_pos:   pos;    (** Ending position *)
-  length:    int     (** Length in characters *)
+  src:       src; (** Source Location *)
+  start_pos: pos; (** Starting position *)
+  end_pos:   pos; (** Ending position *)
+  length:    int  (** Length in characters *)
 }
 (** A location in a source file. *)
 
 (** {2 Constructors} *)
 
-val mock : string -> int * int * int -> int * int * int -> t
-(** [mock fname start_pos end_pos] constructs a location in [fname] from
+val src : Sym.sym -> int -> Sym.sym -> Sym.sym -> src
+(** [src mojule major package file] constructs a source location from a [mojule]
+    name, a [major] version number, a [package] name, and a [file] name. *)
+
+val mock : src -> int * int * int -> int * int * int -> t
+(** [mock src start_pos end_pos] constructs a location in [src] from
     [start_pos] to [end_pos].  The start and end positions are
     [(line, col, off)] triples.  Primarily used for testing. *)
 

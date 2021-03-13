@@ -6,31 +6,82 @@ open Common
 (** {2 Syntax} *)
 
 type atom = private
-  | Unit                                (** Unit *)
-  | Bool of bool                        (** Boolean *)
-  | Int of int                          (** Integer *)
-  | Float of float                      (** Floating Point *)
-  | String of string                    (** String *)
-  | Blob of bytes                       (** Binary Large Object (BLOB) *)
-  | Timestamp of string                 (** ISO-8601 Timestamp *)
-  | Duration of string                  (** ISO-8601 Duration *)
-  | Var of Sym.sym                      (** Variable *)
-  | Abs of param list * Type.t * block  (** Function Abstraction *)
-  | Join of param list * Type.t * block (** Join Point *)
+  | Unit (** Unit *)
+  | Bool of {
+      b: bool (** Value *)
+    } (** Boolean *)
+  | Int of {
+      i: int (** Value *)
+    } (** Integer *)
+  | Float of {
+      f: float (** Value *)
+    } (** Floating Point *)
+  | Rune of {
+      r: bytes (** Value *)
+    } (** Rune *)
+  | String of {
+      length: int;   (** Length *)
+      s:      string (** Value *)
+    } (** String *)
+  | Byte of {
+      b: bytes (** Value *)
+    } (** Byte *)
+  | Blob of {
+      length: int;  (** Length *)
+      bs:     bytes (** Value *)
+    } (** Binary Large Object (BLOB) *)
+  | Timestamp of {
+      ts: string (** Value *)
+    } (** ISO-8601 Timestamp *)
+  | Duration of {
+      d: string (** Value *)
+    } (** ISO-8601 Duration *)
+  | Var of {
+      id: Sym.sym (** Name *)
+    } (** Variable *)
+  | Abs of {
+      arity:  int;        (** Arity *)
+      join:   bool;       (** Join Point *)
+      params: param list; (** Parameters *)
+      res:    Type.t;     (** Result Type *)
+      body:   block       (** Body *)
+    } (** Function Abstraction *)
 (** Atomic Values *)
 
-and param = Patt.t * Type.t
+and param = Param of {
+  name: Patt.t; (** Name *)
+  ty:   Type.t  (** Type *)
+}
 (** Function Parameter *)
 
 and expr = private
-  | App of atom * atom list         (** Function Application *)
-  | Tail of atom * atom list        (** Tail Application *)
-  | Jump of atom * atom list        (** Join Application *)
-  | Builtin of Sym.sym * atom list  (** Builtin Function Application *)
-  | Tuple of atom list              (** Tuple construction *)
-  | Proj of atom * int              (** Tuple projection *)
-  | Constr of Sym.sym * atom option (** Constructor construction *)
-  | Atom of atom                    (** Atomic Value *)
+  | App of {
+      arity: int;      (** Arity *)
+      tail:  bool;     (** Tail-call *)
+      jump:  bool;     (** Jump *)
+      fn:    atom;     (** Function *)
+      args:  atom list (** Arguments *)
+    } (** Function Application *)
+  | Builtin of {
+      builtin: Builtin.t; (** Builtin Function *)
+      args:    atom list  (** Arguments *)
+    } (** Builtin Function Application *)
+  | Tuple of {
+      arity: arity;    (** Arity *)
+      exprs: atom list (** Element Expressions *)
+    } (** Tuple construction *)
+  | Proj of {
+      tuple: atom; (** Tuple *)
+      index: int   (** Index *)
+    } (** Tuple projection *)
+  | Constr of {
+      name: Sym.sym;   (** Constructor Name *)
+      args: atom list; (** Arguments *)
+      ty:   Type.t     (** Constructor Type *)
+    } (** Constructor construction *)
+  | Atom of {
+      a: atom (** Atomic Value *)
+    } (** Atomic Value *)
 (** Primitive Expressions *)
 
 and block = private
@@ -72,6 +123,9 @@ val float : float -> atom
 
 val string : string -> atom
 (** [string s] constructs an atomic string literal with the value [s]. *)
+
+val byte : bytes -> atom
+(** [byte b] constructs an atomic byte literal with the value [b]. *)
 
 val blob : bytes -> atom
 (** [blob bs] constructs an atomic binary large object (BLOB) literal with the

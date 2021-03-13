@@ -1,111 +1,30 @@
 open Common
 
 type t =
-  | Unit of Loc.t
-  | Bool of Loc.t
-  | Int of Loc.t
-  | Float of Loc.t
-  | String of Loc.t
-  | Blob of Loc.t
-  | Timestamp of Loc.t
-  | Duration of Loc.t
-  | Fun of Loc.t * t list * t
-  | Tuple of Loc.t * int * t list
-  | Record of Loc.t * field list
-  | Variant of Loc.t * constr list
-  | Package of Loc.t * t Sym.map * t Sym.map
-and field = Loc.t * Sym.sym * t
-and constr = Loc.t * Sym.sym * t option
+  | Fun of { loc: Loc.t;  params: t list; ret: t }
+  | Tuple of { loc: Loc.t; arity: int; types: t list }
+  | Record of { loc: Loc.t; fields: field list }
+  | Variant of { loc: Loc.t; constrs: t list }
+  | Package of { loc: Loc.t; types: t Sym.map; funs: t Sym.map }
+  | Constr of { loc: Loc.t; names: Sym.sym list; params: t list }
+and field = Field of { loc: Loc.t; name: Sym.sym; ty: t }
 
-let unit loc = Unit loc
-let bool loc = Bool loc
-let int loc = Int loc
-let float loc = Float loc
-let string loc = String loc
-let blob loc = Blob loc
-let timestamp loc = Timestamp loc
-let duration loc = Duration loc
-let func loc args ret = Fun (loc, args, ret)
-let tuple loc tys = Tuple (loc, List.length tys, tys)
-let record loc fields = Record (loc, fields)
-let variant loc constrs = Variant (loc, constrs)
-let pkg loc tys fns = Package (loc, tys, fns)
+let func loc params ret = Fun { loc; params; ret }
+let tuple loc types = Tuple { loc; arity = List.length types; types }
+let record loc fields = Record { loc; fields }
+let variant loc constrs = Variant { loc; constrs }
+let pkg loc types funs = Package { loc; types; funs }
+let constr loc names params = Constr { loc; names; params }
 
-let field loc id ty = (loc, id, ty)
-let constr loc id ty = (loc, id, ty)
+let field loc name ty = Field { loc; name; ty }
 
 let loc = function
-  | Unit loc
-  | Bool loc
-  | Int loc
-  | Float loc
-  | String loc
-  | Blob loc
-  | Timestamp loc
-  | Duration loc
-  | Fun (loc, _, _)
-  | Tuple (loc, _, _)
-  | Record (loc, _)
-  | Variant (loc, _)
-  | Package (loc, _, _) -> loc
-
-let rec equal x y = match x, y with
-  | Unit _, Unit _
-  | Bool _, Bool _
-  | Int _, Int _
-  | Float _, Float _
-  | String _, String _
-  | Blob _, Blob _
-  | Timestamp _, Timestamp _
-  | Duration _, Duration _ -> true
-  | Fun (_, args, ret), Fun (_, args', ret') ->
-    List.for_all2 equal args args'
-      && equal ret ret'
-  | Tuple (_, len, tys), Tuple (_, len', tys') ->
-    len = len' && List.for_all2 equal tys tys'
-  | Record (_, fields), Record (_, fields') ->
-    let match_field (id, ty) =
-      try
-        let (_, ty') = List.assoc id fields' in
-        equal ty ty'
-      with Not_found -> false
-    in
-    List.for_all match_field fields
-  | Variant (_, constrs), Variant (_, constrs') ->
-    let match_constr constr =
-      try
-        let (_, ty') = List.assoc id constrs' in
-        match ty, ty' with
-          | None, None -> true
-          | Some ty, Some ty' -> equal ty ty'
-          | _ -> false
-      with Not_found -> false
-    in
-    List.for_all match_constr constrs
-  | _ -> false
-
-module IdMap = Map.Make (struct
-  type t = Sym.sym
-  let compare = compare
-end)
-
-type env = t Sym.map
-
-let env = Sym.empty
-let bind patt ty env = match patt with
-  | Patt.Var sym -> Sym.bind sym ty env
-  | _ -> env
-let lookup = Sym.lookup
-
-let of_pattern patt ty = match patt, ty with
-  | Patt.Unit _, Unit _
-  | Patt.Int _, Int _
-  | Patt.Bool _, Bool _
-  | Patt.Float _, Float _
-  | Patt.String _, String _
-  | Patt.Var _, _
-  | Patt.Ground, _ -> true
-  | _ -> false
+  | Fun ty -> ty.loc
+  | Tuple ty -> ty.loc
+  | Record ty -> ty.loc
+  | Variant ty -> ty.loc
+  | Package ty -> ty.loc
+  | Constr ty -> ty.loc
 
 exception DeclarationMismatch of Patt.t * t * t
 exception ResultMismatch of t * t

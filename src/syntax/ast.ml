@@ -3,92 +3,102 @@ open Common
 (* Syntax *)
 
 type expr =
-  | Unit of Loc.t
-  | Bool of Loc.t * bool
-  | Int of Loc.t * int
-  | Float of Loc.t * float
-  | String of Loc.t * int * string
-  | Blob of Loc.t * int * bytes
-  | Timestamp of Loc.t * string
-  | Duration of Loc.t * string
-  | Tuple of Loc.t * expr list
-  | Record of Loc.t * Sym.sym option * field list
-  | Var of Loc.t * Sym.sym
-  | UnOp of Loc.t * Op.un * expr
-  | BinOp of Loc.t * expr * Op.bin * expr
-  | If of Loc.t * expr * expr * expr
-  | Case of Loc.t * expr * clause list
-  | Let of Loc.t * binding * expr
-  | LetRec of Loc.t * binding list * expr
-  | Abs of Loc.t * param list * Type.t option * expr
-  | App of Loc.t * expr * expr list
-and field = Loc.t * Sym.sym * expr
-and param = Loc.t * Patt.t * Type.t
-and binding = Loc.t * Patt.t * Type.t option * expr
-and clause = Loc.t * Patt.t * expr
+  | Unit of { loc: Loc.t }
+  | Bool of { loc: Loc.t; lexeme: string }
+  | Int of { loc: Loc.t; lexeme: string; radix: int }
+  | Float of { loc: Loc.t; lexeme: string; hex: bool }
+  | Rune of { loc: Loc.t; lexeme: string }
+  | String of { loc: Loc.t; lexeme: string }
+  | Byte of { loc: Loc.t; lexeme: string }
+  | Blob of { loc: Loc.t; lexeme: string }
+  | Timestamp of { loc: Loc.t; lexeme: string }
+  | Duration of { loc: Loc.t; lexeme: string }
+  | Tuple of { loc: Loc.t; exprs: expr list }
+  | Record of { loc: Loc.t; constr: Sym.sym option; fields: field list }
+  | Var of { loc: Loc.t; id: Sym.sym }
+  | UnOp of { loc: Loc.t; op: Op.t; prec: int; rhs: expr }
+  | BinOp of { loc: Loc.t; op: Op.t; prec: int; lhs: expr; rhs: expr }
+  | Slice of { loc: Loc.t; expr: t; start: t option; stop: t option }
+  | Index of { loc: Loc.t; expr: t; idx: t }
+  | If of { loc: Loc.t; cond: expr; tru: expr; fls: expr }
+  | Case of { loc: Loc.t; scrut: expr; clauses: clause list }
+  | Let of { loc: Loc.t; binding: binding; scope: expr }
+  | LetRec of { loc: Loc.t; bindings: binding list; scope: expr }
+  | Abs of { loc: Loc.t; params: param list; res: Type.t option; body: expr }
+  | App of { loc: Loc.t; fn: expr; args: expr list }
+and field = Field of { loc: Loc.t; name: Sym.sym; value: expr }
+and param = Param of { loc: Loc.t; name: Patt.t; ty: Type.t }
+and binding = Binding of { loc: Loc.t; name: Patt.t; ty: Type.t option; body: expr }
+and clause = Clause of { loc: Loc.t; patt: Patt.t; body: expr }
 
 type top =
-  | Val of Loc.t * binding
-  | Def of Loc.t * binding
-  | Type of Loc.t * Sym.sym * Type.t
+  | Val of { loc: Loc.t; binding: binding }
+  | Def of { loc: Loc.t; binding: binding }
+  | Type of { loc: Loc.t; name: Sym.sym; defn: Type.t }
 
-type name = Loc.t * string
-type version = Loc.t * int
-type from = Loc.t * (name * version) option
-type alias = Loc.t * name * name option
-type pkgs = Loc.t * alias list
-type import = Loc.t * from option * pkgs
+type name = Name of { loc: Loc.t; name: Sym.sym }
+type version = Version of { loc: Loc.t; version: int }
+type src = Source of { loc: Loc.t; mojule: name; version: version }
+type from = From of { loc: Loc.t; source: src option }
+type alias = Alias of { loc: Loc.t; package: name; alias: name option }
+type pkgs = Packages of { loc: Loc.t; clauses: alias list }
+type import = Import of { loc: Loc.t; from: from option; package: pkgs }
 
-type pkg = Loc.t * name
+type pkg = Package of { loc: Loc.t; name: name }
 
-type file = pkg * import list * top list
+type file = File of { package: pkg; imports: import list; tops: top list }
 
 (* Constructors *)
 
-let unit loc = Unit loc
-let bool loc b = Bool (loc, b)
-let int loc i = Int (loc, i)
-let float loc f = Float (loc, f)
-let string loc len s = String (loc, len, s)
-let blob loc len bs = Blob (loc, len, bs)
-let timestamp loc ts = Timestamp (loc, ts)
-let duration loc d = Duration (loc, d)
-let tuple loc exprs = Tuple (loc, exprs)
-let record loc constr fields = Record (loc, constr, fields)
-let var loc id = Var (loc, id)
-let un_op loc op r = UnOp (loc, op, r)
-let bin_op loc l op r = BinOp (loc, l, op, r)
-let cond loc c t f = If (loc, c, t, f)
-let case loc scrut clauses = Case (loc, scrut, clauses)
-let bind loc b rest = Let (loc, b, rest)
-let bind_rec loc bs rest = LetRec (loc, bs, rest)
-let abs loc params res expr = Abs (loc, params, res, expr)
-let app loc f xs = App (loc, f, xs)
+let unit loc = Unit { loc }
+let bool loc lexeme = Bool { loc; lexeme }
+let int loc lexeme radix = Int { loc; lexeme; radix }
+let float loc lexeme hex = Float { loc; lexeme; hex }
+let rune loc lexeme = Rune { loc; lexeme }
+let string loc lexeme = String { loc; lexeme }
+let byte loc lexeme = Byte { loc; lexeme }
+let blob loc lexeme = Blob { loc; lexeme }
+let timestamp loc lexeme = Timestamp { loc; lexeme }
+let duration loc lexeme = Duration { loc; lexeme }
+let tuple loc exprs = Tuple { loc; exprs }
+let record loc constr fields = Record { loc; constr; fields }
+let var loc id = Var { loc; id }
+let un_op loc op prec rhs = UnOp { loc; op; prec; r }
+let bin_op loc op prec lhs rhs = BinOp { loc; op; prec; lhs; rhs }
+let slice loc expr start stop = Slice { loc; expr; start; stop }
+let index loc expr idx = Index { loc; expr; idx }
+let cond loc cond tru fls = If { loc; cond; tru; fls }
+let case loc scrut clauses = Case { loc; scrut; clauses }
+let bind loc binding scope = Let { loc; binding; scope }
+let bind_rec loc bindings rest = LetRec { loc; bindings; scope }
+let abs loc params res body = Abs { loc; params; res; body }
+let app loc fn args = App { loc; fn; args }
 
-let field loc id expr = (loc, id, expr)
-let param loc patt ty = (loc, patt, ty)
-let binding loc patt ty expr = (loc, patt, ty, expr)
-let clause loc patt expr = (loc, patt, expr)
+let field loc name value = Field { loc; name; value }
+let param loc name ty = Param { loc; name; ty }
+let binding loc name ty expr = Binding { loc; name; ty; expr }
+let clause loc patt expr = Clause { loc; patt; expr }
 
-let top_val loc b = Val (loc, b)
-let top_def loc b = Def (loc, b)
-let top_type loc id ty = Type (loc, id, ty)
+let top_val loc binding = Val { loc; binding }
+let top_def loc binding = Def { loc; binding }
+let top_type loc name ty = Type { loc; name; ty }
 
-let name loc id = (loc, id)
-let version loc v = (loc, v)
-let from loc src = (loc, src)
-let alias loc name local = (loc, name, local)
-let pkgs loc aliases = (loc, aliases)
-let import loc from pkgs = (loc, from, pkgs)
+let name loc id = Name { loc; id }
+let version loc major = Version { loc; major }
+let src loc mojule version = Source { loc; mojule; version }
+let from loc src = From { loc; src }
+let alias loc package alias = Alias { loc; package; alias }
+let pkgs loc clauses = Packages { loc; clauses }
+let import loc from packages = Import { loc; from; packages }
 
-let pkg loc name = (loc, name)
+let pkg loc name = Package { loc; name }
 
-let file pkg imports tops = (pkg, imports, tops)
+let file package imports tops = File { package; imports; tops }
 
 (* Operations *)
 
 let precedence = function
-  | Unit _ | Bool _ | Int _ | Float _ | String _ | Blob _ | Timestamp _ | Duration _
+  | Unit _ | Bool _ | Int _ | Float _ | Rune _ | String _ | Byte _ | Blob _ | Timestamp _ | Duration _
   | Tuple _ | Record _ | Var _ -> 0
   | App _ -> 1
   | UnOp (_, op, _) -> Op.un_precedence op
@@ -98,27 +108,31 @@ let precedence = function
   | Let _ | LetRec _ -> 15
 
 let loc_expr = function
-  | Unit loc
-  | Bool (loc, _)
-  | Int (loc, _)
-  | Float (loc, _)
-  | String (loc, _, _)
-  | Blob (loc, _, _)
-  | Timestamp (loc, _)
-  | Duration (loc, _)
-  | Tuple (loc, _)
-  | Record (loc, _, _)
-  | UnOp (loc, _, _)
-  | BinOp (loc, _, _, _)
-  | If (loc, _, _, _)
-  | Case (loc, _, _)
-  | Let (loc, _, _)
-  | LetRec (loc, _, _)
-  | Abs (loc, _, _, _)
-  | App (loc, _, _)
-  | Var (loc, _) -> loc
+  | Unit expr -> expr.loc
+  | Bool expr -> expr.loc
+  | Int expr -> expr.loc
+  | Float expr -> expr.loc
+  | Rune expr -> expr.loc
+  | String expr -> expr.loc
+  | Byte expr -> expr.loc
+  | Blob expr -> expr.loc
+  | Timestamp expr -> expr.loc
+  | Duration expr -> expr.loc
+  | Tuple expr -> expr.loc
+  | Record expr -> expr.loc
+  | UnOp expr -> expr.loc
+  | BinOp expr -> expr.loc
+  | Slice expr -> expr.loc
+  | Index expr -> expr.loc
+  | If expr -> expr.loc
+  | Case expr -> expr.loc
+  | Let expr -> expr.loc
+  | LetRec expr -> expr.loc
+  | Abs expr -> expr.loc
+  | App expr -> expr.loc
+  | Var expr -> expr.loc
 
 let loc_top = function
-  | Val (loc, _)
-  | Def (loc, _)
-  | Type (loc, _, _) -> loc
+  | Val top -> top.loc
+  | Def top -> top.loc
+  | Type top -> top.loc

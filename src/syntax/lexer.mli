@@ -4,17 +4,18 @@ open Lexing
 
 (** {2 Constructors} *)
 
-val from_string : string -> lexbuf
+val from_string : Loc.src -> string -> lexbuf
 (** [from_string str] initialize a lexing buffer from [str].  Location tracking
-    is initialized with the filename [-]. *)
+    is initialized with the source [src]. *)
 
-val from_file : string -> lexbuf
+val from_file : Loc.src -> string -> lexbuf
 (** [from_string path] initialize a lexing buffer from the file located at
-    [path].  Location tracking is initialized with the filename [path]. *)
+    [path].  Location tracking is initialized with the source [src], overwritten
+    with filename [path]. *)
 
-val from_channel : ?fname:string -> in_channel -> lexbuf
-(** [from_channel ~fname ic] initialize a lexing buffer from the input channel
-    [ic].  Location tracking is initialized with the filename [fname], which
+val from_channel : Loc.src -> in_channel -> lexbuf
+(** [from_channel src ic] initialize a lexing buffer from the input channel
+    [ic].  Location tracking is initialized with the source [src], which
     defaults to "-". *)
 
 (** {2 Entry Point} *)
@@ -132,6 +133,27 @@ val kwd_as : lexbuf -> Parser.token
 
 (** {3 Operators} *)
 
+val op_band : lexbuf -> Parser.token
+(** [op_band lexbuf] constructs a token for the [&] operator. *)
+
+val op_bxor : lexbuf -> Parser.token
+(** [op_bxor lexbuf] constructs a token for the [^] operator. *)
+
+val op_bnot : lexbuf -> Parser.token
+(** [op_bnot lexbuf] constructs a token for the [~] operator. *)
+
+val op_lsl : lexbuf -> Parser.token
+(** [op_lsl lexbuf] constructs a token for the [<<] operator. *)
+
+val op_lsr : lexbuf -> Parser.token
+(** [op_lsr lexbuf] constructs a token for the [>>] operator. *)
+
+val op_asl : lexbuf -> Parser.token
+(** [op_asl lexbuf] constructs a token for the [<<<] operator. *)
+
+val op_asr : lexbuf -> Parser.token
+(** [op_asr lexbuf] constructs a token for the [>>>] operator. *)
+
 val op_add : lexbuf -> Parser.token
 (** [op_add lexbuf] constructs a token for the [+] operator. *)
 
@@ -147,14 +169,14 @@ val op_div : lexbuf -> Parser.token
 val op_mod : lexbuf -> Parser.token
 (** [op_mod lexbuf] constructs a token for the [%] operator. *)
 
-val op_and : lexbuf -> Parser.token
-(** [op_and lexbuf] constructs a token for the [&&] operator. *)
+val op_land : lexbuf -> Parser.token
+(** [op_land lexbuf] constructs a token for the [&&] operator. *)
 
-val op_or : lexbuf -> Parser.token
-(** [op_or lexbuf] constructs a token for the [||] operator. *)
+val op_lor : lexbuf -> Parser.token
+(** [op_lor lexbuf] constructs a token for the [||] operator. *)
 
-val op_not : lexbuf -> Parser.token
-(** [op_not lexbuf] constructs a token for the [!] operator. *)
+val op_lnot : lexbuf -> Parser.token
+(** [op_lnot lexbuf] constructs a token for the [!] operator. *)
 
 val op_eq : lexbuf -> Parser.token
 (** [op_eq lexbuf] constructs a token for the [==] operator. *)
@@ -183,22 +205,27 @@ val op_cons : lexbuf -> Parser.token
 (** {3 Literals} *)
 
 val lit_unit : lexbuf -> Parser.token
-(** [lit_unit lexbuf] constructs a token for a literal [()] value. *)
+(** [lit_unit lexbuf] constructs a token for a literal unit value. *)
 
-val lit_true : lexbuf -> Parser.token
-(** [lit_true lexbuf] constructs a token for a literal [true] value. *)
+val lit_bool : lexbuf -> Parser.token
+(** [lit_bool lexbuf] constructs a token for a literal boolean value. *)
 
-val lit_false : lexbuf -> Parser.token
-(** [lit_false lexbuf] constructs a token for a literal [false] value. *)
+val lit_int : int -> lexbuf -> Parser.token
+(** [lit_int radix lexbuf] constructs a token for a literal int value with radix
+    [radix]. *)
 
-val lit_int : lexbuf -> Parser.token
-(** [lit_int lexbuf] constructs a token for a literal int value. *)
+val lit_float : bool -> lexbuf -> Parser.token
+(** [lit_float hex lexbuf] constructs a token for a literal floating-point
+    value.  If [hex] is true, the value is in hexadecimal format. *)
 
-val lit_float : lexbuf -> Parser.token
-(** [lit_float lexbuf] constructs a token for a literal floating-point value. *)
+val lit_rune : lexbuf -> Parser.token
+(** [lit_rune lexbuf] constructs a token for a literal rune value. *)
 
 val lit_string : lexbuf -> Parser.token
 (** [lit_string lexbuf] constructs a token for a literal string value. *)
+
+val lit_byte : lexbuf -> Parser.token
+(** [lit_byte lexbuf] constructs a token for a literal byte value. *)
 
 val lit_blob : lexbuf -> Parser.token
 (** [lit_blob lexbuf] constructs a token for a literal binary large object

@@ -1,6 +1,7 @@
 open Format
 open Common
 
+
 (* Syntax *)
 
 type atom = private
@@ -9,6 +10,7 @@ type atom = private
   | Int of int
   | Float of float
   | String of string
+  | Byte of bytes
   | Blob of bytes
   | Timestamp of string
   | Duration of string
@@ -42,27 +44,26 @@ type file = top list
 (* Constructors *)
 
 let unit = Unit
-let bool b = Bool b
-let int i = Int i
-let float f = Float f
-let string s = String s
-let blob bs = Blob bs
-let timestamp ts = Timestamp ts
-let duration d = Duration d
-let var sym = Var sym
-let abs params res body = Abs (params, res, body)
-let join params res body = Join (params, res, body)
+let bool b = Bool { b }
+let int i = Int { i }
+let float f = Float { f }
+let rune r = Rune { r }
+let string s = String { length = String.length s; s }
+let byte b = Byte { b }
+let blob bs = Blob { length = Bytes.length bs; bs }
+let timestamp ts = Timestamp { ts }
+let duration d = Duration { d }
+let var id = Var { id }
+let abs ?join:(join = false) params res body = Abs { arity = List.length params; join; params; res; body }
 
-let param patt ty = (patt, ty)
+let param name ty = Param { name; ty }
 
-let app f xs = App (f, xs)
-let tail f xs = Tail (f, xs)
-let jump j xs = Jump (j, xs)
-let builtin b xs = Builtin (b, xs)
-let tuple xs = Tuple xs
-let proj tuple field = Proj (tuple, field)
-let constr id value = Constr (id, value)
-let atom a = Atom a
+let app ?tail:(tail = false) ?jump:(jump = false) f args = App { arity = List.length args; tail = tail || jump; jump; fn; args }
+let builtin builtin args = Builtin { builtin; args }
+let tuple exprs = Tuple { arity = List.length exprs; exprs }
+let proj tuple index = Proj { tuple; index }
+let constr name args ty = Constr { name; args; ty }
+let atom a = Atom { a }
 
 let bind b rest = Let (b, rest)
 let bind_rec bs rest = LetRec (bs, rest)

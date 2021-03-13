@@ -1,11 +1,6 @@
 (library
-  (name nile)
+  (name opt)
   (instrumentation (backend bisect_ppx))
   (libraries
     common
-    syntax
-    annot
-    ir
-    opt
-    codegen
-    cli))
+    ir))

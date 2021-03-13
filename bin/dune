@@ -3,5 +3,5 @@
   (public_name nile)
   (modules nile)
   (libraries
-    nile
+    cli
     cmdliner))

@@ -13,77 +13,226 @@ open Common
 (** {3 Expressions} *)
 
 type expr = private
-  | Unit of Loc.t                                    (** Unit *)
-  | Bool of Loc.t * bool                             (** Boolean *)
-  | Int of Loc.t * int                               (** Integer *)
-  | Float of Loc.t * float                           (** Floating-point *)
-  | String of Loc.t * int * string                   (** String *)
-  | Blob of Loc.t * int * bytes                      (** Binary Large Object (BLOB) *)
-  | Timestamp of Loc.t * string                      (** ISO-8601 Timestamp *)
-  | Duration of Loc.t * string                       (** ISO-8601 Duration *)
-  | Tuple of Loc.t * expr list                       (** Tuples *)
-  | Record of Loc.t * Sym.sym option * field list    (** Record *)
-  | Var of Loc.t * Sym.sym                           (** Variable Identifier *)
-  | UnOp of Loc.t * Op.un * expr                     (** Unary Operation *)
-  | BinOp of Loc.t * expr * Op.bin * expr            (** Binary Operation *)
-  | If of Loc.t * expr * expr * expr                 (** Conditional *)
-  | Case of Loc.t * expr * clause list               (** Case *)
-  | Let of Loc.t * binding * expr                    (** Value Binding *)
-  | LetRec of Loc.t * binding list * expr            (** Recursive Value Bindings *)
-  | Abs of Loc.t * param list * Type.t option * expr (** Function Abstraction *)
-  | App of Loc.t * expr * expr list                  (** Function Application *)
+  | Unit of {
+      loc: Loc.t; (** Location Tracking Information *)
+    } (** Unit *)
+  | Bool of {
+      loc:    Loc.t; (** Location Tracking Information *)
+      lexeme: string (** Lexeme *)
+    } (** Boolean *)
+  | Int of {
+      loc:    Loc.t;  (** Location Tracking Information *)
+      lexeme: string; (** Lexeme *)
+      radix:  int;    (** Radix *)
+    } (** Integer *)
+  | Float of {
+      loc:    Loc.t;  (** Location Tracking Information *)
+      lexeme: string; (** Lexeme *)
+      hex:    bool    (** Is Hex Notation *)
+    } (** Floating-point *)
+  | Rune of {
+      loc:    Loc.t;  (** Location Tracking Information *)
+      lexeme: string; (** Lexeme *)
+    } (** Rune *)
+  | String of {
+      loc:    Loc.t; (** Location Tracking Information *)
+      lexeme: string (** Lexeme *)
+    } (** String *)
+  | Byte of {
+      loc:    Loc.t; (** Location Tracking Information *)
+      lexeme: string (** Lexeme *)
+    } (** Byte *)
+  | Blob of {
+      loc:    Loc.t; (** Location Tracking Information *)
+      lexeme: string (** Lexeme *)
+    } (** Binary Large Object (BLOB) *)
+  | Timestamp of {
+      loc:    Loc.t; (** Location Tracking Information *)
+      lexeme: string (** Lexeme *)
+    } (** ISO-8601 Timestamp *)
+  | Duration of {
+      loc:    Loc.t; (** Location Tracking Information *)
+      lexeme: string (** Lexeme *)
+    } (** ISO-8601 Duration *)
+  | Tuple of {
+      loc:   Loc.t;    (** Location Tracking Information *)
+      exprs: expr list (** Element Values *)
+    } (** Tuples *)
+  | Record of {
+      loc:    Loc.t;          (** Location Tracking Information *)
+      constr: Sym.sym option; (** Type Constructor *)
+      fields: field list      (** Field Constructors *)
+    } (** Record *)
+  | Var of {
+      loc: Loc.t;  (** Location Tracking Information *)
+      id:  Sym.sym (** Name *)
+    } (** Variable Identifier *)
+  | UnOp of {
+      loc: Loc.t; (** Location Tracking Information *)
+      op:  Op.un; (** Operator *)
+      rhs: expr   (** Right-Hand Side *)
+    } (** Unary Operation *)
+  | BinOp of {
+      loc: Loc.t;  (** Location Tracking Information *)
+      lhs: expr;   (** Left-Hand Side *)
+      op:  Op.bin; (** Operator *)
+      rhs: expr    (** Right-Hand Side *)
+    } (** Binary Operation *)
+  | Slice of {
+      loc:   Loc.t;       (** Location Tracking Information *)
+      expr:  expr;        (** Value to Slice *)
+      start: expr option; (** Beginning *)
+      stop:  expr option  (** End *)
+    } (** Slice *)
+  | Index of {
+      loc:  Loc.t; (** Location Tracking Information *)
+      expr: expr;  (** Value to Index *)
+      idx:  expr   (** Index *)
+    } (** Index *)
+  | If of {
+      loc:  Loc.t; (** Location Tracking Information *)
+      cond: expr;  (** Condition *)
+      tru:  expr;  (** True Branch *)
+      fls:  expr   (** False Branch *)
+    } (** Conditional *)
+  | Case of {
+      loc:     Loc.t;      (** Location Tracking Information *)
+      scrut:   expr;       (** Scurtinee *)
+      clauses: clause list (** Clauses *)
+    } (** Case *)
+  | Let of {
+      loc:     Loc.t;   (** Location Tracking Information *)
+      binding: binding; (** Binding *)
+      scope:   expr     (** Scope of Binding *)
+    } (** Value Binding *)
+  | LetRec of {
+      loc:      Loc.t;        (** Location Tracking Information *)
+      bindings: binding list; (** Bindings *)
+      scope:    expr          (** Scope of Bindings *)
+    } (** Recursive Value Bindings *)
+  | Abs of {
+      loc:    Loc.t;         (** Location Tracking Information *)
+      params: param list;    (** Parameters *)
+      res:    Type.t option; (** Result Type *)
+      body:   expr           (** Body *)
+    } (** Function Abstraction *)
+  | App of {
+      loc:  Loc.t;    (** Location Tracking Information *)
+      fn:   expr;     (** Function *)
+      args: expr list (** Arguments *)
+    } (** Function Application *)
 (** An expression *)
 
-and field = Loc.t * Sym.sym * expr
+and field = Field of {
+  loc:   Loc.t;   (** Location Tracking Information *)
+  name:  Sym.sym; (** Field Name *)
+  value: expr     (** Field Value *)
+}
 (** A record field *)
 
-and param = Loc.t * Patt.t * Type.t
+and param = Param of {
+  loc:  Loc.t;  (** Location Tracking Information *)
+  name: Patt.t; (** Bound Name *)
+  ty:   Type.t  (** Type *)
+}
 (** A parameter *)
 
-and binding = Loc.t * Patt.t * Type.t option * expr
+and binding = Binding of {
+  loc:  Loc.t;         (** Location Tracking Information *)
+  name: Patt.t;        (** Bound Name *)
+  ty:   Type.t option; (** Type *)
+  body: expr           (** Bound Value *)
+}
 (** A value Binding *)
 
-and clause = Loc.t * Patt.t * expr
+and clause = Clause of {
+  loc:  Loc.t;  (** Location Tracking Information *)
+  patt: Patt.t; (** Pattern to Match *)
+  body: expr    (** Body *)
+}
 (** A pattern matching clause *)
 
 (** {3 Top-Level Statements} *)
 
 type top = private
-  | Val of Loc.t * binding           (** Value binding *)
-  | Def of Loc.t * binding           (** Function binding *)
-  | Type of Loc.t * Sym.sym * Type.t (** Type binding *)
+  | Val of {
+      loc:     Loc.t;  (** Location Tracking Information *)
+      binding: binding (** Binding *)
+    } (** Value binding *)
+  | Def of {
+      loc:     Loc.t;  (** Location Tracking Information *)
+      binding: binding (** Bindings *)
+    } (** Function binding *)
+  | Type of {
+      loc:  Loc.t;   (** Location Tracking Information *)
+      name: Sym.sym; (** Name *)
+      defn: Type.t   (** Definition *)
+    } (** Type binding *)
 (** A top-level statement *)
 
 (** {3 Import Statements} *)
 
-type name = Loc.t * string
+type name = Name of {
+  loc:  Loc.t;  (** Location Tracking Information *)
+  name: Sym.sym (** Package Name *)
+}
 (** Import name *)
 
-type version = Loc.t * int
+type version = Version of {
+  loc:   Loc.t; (** Location Tracking Information *)
+  major: int    (** Major Version Number *)
+}
 (** Major version number *)
 
-type from = Loc.t * (name * version) option
+type src = Source of {
+  loc:     Loc.t;  (** Location Tracking Information *)
+  mojule:  name;   (** Module Name *)
+  version: version (** Major Version *)
+}
+
+type from = From of {
+  loc:    Loc.t;     (** Location Tracking Information *)
+  source: src option (** Source Module *)
+}
 (** From clause.  If the name/version pair is given, it specifies an external
     package to import.  Otherwise, it specifies the current package. *)
 
-type alias = Loc.t * name * name option
+type alias = Alias of {
+  loc:     Loc.t;      (** Location Tracking Information *)
+  package: name;       (** Package Path *)
+  alias:   name option (** Local Package Alias *)
+}
 (** Package name and optional local alias.  If no local alias is given, the
     module's declared name is used. *)
 
-type pkgs = Loc.t * alias list
+type pkgs = Packages of {
+  loc:     Loc.t;     (** Location Tracking Information *)
+  clauses: alias list (** Package Clauses *)
+}
 (** List of packages to import from a module. *)
 
-type import = Loc.t * from option * pkgs
+type import = Import of {
+  loc:      Loc.t;       (** Location Tracking Information *)
+  from:     from option; (** From Clause *)
+  packages: pkgs         (** Package and Alias List *)
+}
 (** Import statement *)
 
 (** {3 Package Statements} *)
 
-type pkg = Loc.t * name
+type pkg = Package of {
+  loc:  Loc.t; (** Location Tracking Information *)
+  name: name   (** Package Name *)
+}
 (** Package statement declaring the name of the package this file is in. *)
 
 (** {3 Source Files} *)
 
-type file = pkg * import list * top list
+type file = File of {
+  package: pkg;         (** Package Name *)
+  imports: import list; (** Imported Packages *)
+  tops:    top list     (** Top-Level Statements *)
+}
 (** A source file *)
 
 (** {2 Constructors}
@@ -97,32 +246,46 @@ val unit : Loc.t -> expr
 (** [unit loc] constructs a unit literal at location [loc]. *)
 
 val bool : Loc.t -> bool -> expr
-(** [bool loc b] constructs a boolean literal with the value [b] at location
-    [loc]. *)
-
-val int : Loc.t -> int -> expr
-(** [int loc i] constructs an integer literal with the value [i] at location
-    [loc]. *)
-
-val float : Loc.t -> float -> expr
-(** [float loc f] constructs a floating-point literal with the value [f] at
+(** [bool loc lexeme] constructs a boolean literal with the lexeme [lexeme] at
     location [loc]. *)
 
-val string : Loc.t -> int -> string -> expr
-(** [string loc len s] constructs a string literal with the value [s] of length
-    [len] at location [loc]. *)
+val int : Loc.t -> string -> int -> expr
+(** [int loc lexeme radix] constructs an integer literal with the lexeme
+    [lexeme] and radix [radix] at location [loc].  The lexeme should include the
+    [0<radix>] prefix, if present. *)
 
-val blob : Loc.t -> int -> bytes -> expr
-(** [blob loc len bs] constructs a binary large object (BLOB) literal with the
-    value [bs] of length [len] at location [loc]. *)
+val float : Loc.t -> string -> bool -> expr
+(** [float loc lexeme hex] constructs a floating-point literal with the lexeme
+    [lexeme] at location [loc].  If [hex] is true, then the lexeme is in
+    hexadecimal form.  The lexeme should include the [0f] prefix, if present. *)
+
+val rune : Loc.t -> string -> expr
+(** [rune loc lexeme] constructs a rune literal with the lexeme [lexeme] at
+    location [loc].  The lexeme should include the opening and closing single
+    quotes. *)
+
+val string : Loc.t -> string -> expr
+(** [string loc lexeme] constructs a string literal with the lexeme [lexeme] at
+    location [loc].  The lexeme should include the opening and closing double
+    quotes. *)
+
+val byte : Loc.t -> string -> expr
+(** [byte loc lexeme] constructs a byte literal with the lexeme [lexeme] at
+    location [loc].  The lexeme should include the [\<radix>] prefix. *)
+
+val blob : Loc.t -> string -> expr
+(** [blob loc lexeme] constructs a binary large object (BLOB) literal with the
+    lexeme [lexeme] at location [loc].  The lexeme should include the back
+    quotes. *)
 
 val timestamp : Loc.t -> string -> expr
-(** [timestamp loc ts] constructs a ISO-8601 timestamp literal with the value
-    [ts] at location [loc]. *)
+(** [timestamp loc lexeme] constructs a ISO-8601 timestamp literal with the
+    lexeme [lexeme] at location [loc].  The lexeme should include the [@]
+    prefix. *)
 
 val duration : Loc.t -> string -> expr
-(** [duration loc d] constructs a ISO-8601 duration literal with the value [d]
-    at location [loc]. *)
+(** [duration loc lexeme] constructs a ISO-8601 duration literal with the lexeme
+    [lexeme] at location [loc].  The lexeme should include the [@@] prefix. *)
 
 val tuple : Loc.t -> expr list -> expr
 (** [tuple loc exprs] constructs a tuple literal with the values [exprs] at
@@ -138,15 +301,25 @@ val var : Loc.t -> Sym.sym -> expr
 (** [var loc sym] constructs a variable identifier expression at location [loc]
     referencing the value bound to the symbol [sym]. *)
 
-val un_op : Loc.t -> Op.un -> expr -> expr
-(** [un_op loc op r] constructs a unary operator expression at location [loc]
-    with the operator [op] operating on [r].  The location should span from [op]
-    to [r]. *)
+val un_op : Loc.t -> Op.t -> int -> expr -> expr
+(** [un_op loc op prec r] constructs a unary operator expression at location [loc]
+    with the operator [op] of precedence [prec] operating on [r].  The location
+    should span from [op] to [r]. *)
 
-val bin_op : Loc.t -> expr -> Op.bin -> expr -> expr
-(** [bin_op loc l op r] constructs a binary operator expression at location
-    [loc] with the operator [op] operating on [l] and [r].  The location should
-    span from [l] to [r]. *)
+val bin_op : Loc.t -> Op.t -> int -> expr -> expr -> expr
+(** [bin_op loc op prec l r] constructs a binary operator expression at location
+    [loc] with the operator [op] of precedence [prec] operating on [l] and [r].
+    The location should span from [l] to [r]. *)
+
+val slice : Loc.t -> expr -> expr option -> expr option -> expr
+(** [slice loc expr start stop] constructs a slice operation at location [loc]
+    slicing the value [expr] from [start] to [stop].  The location should span
+    from the beginning of [expr] to the final [\]]. *)
+
+val index : Loc.t -> expr -> expr -> expr
+(** [index loc expr idx] constructs an index operation at location [loc]
+    indexing into the value [expr] at [index].  The location should span
+    from the beginning of [expr] to the final [\]]. *)
 
 val cond : Loc.t -> expr -> expr -> expr -> expr
 (** [cond loc c t f] constructs a conditional expression at location [loc]
@@ -229,19 +402,23 @@ val version : Loc.t -> int -> version
 (** [version loc v] constructs a major version number at location [loc] with
     version [v]. *)
 
-val from : Loc.t -> (name * version) option -> from
+val src : Loc.t -> name -> version -> src
+(** [source loc mojule version] constructs a package source at location [loc]
+    importing from module [mojule] major version [version]. *)
+
+val from : Loc.t -> src option -> from
 (** [from loc src] constucts a from clause at location [loc] importing from the
     source module [src].  If [src] is given, it specifies an external package to
     import from.  Otherwise, it specifies the current package. *)
 
 val alias : Loc.t -> name -> name option -> alias
-(** [alias name local] constructs an alias clause at location [loc] with package
-    name [name] and an optional alias [local].  If no local alias is given, the
-    module's declared name is used. *)
+(** [alias package alias] constructs an alias clause at location [loc] with
+    package name [package] and an optional alias [alias].  If no local alias is
+    given, the module's declared name is used. *)
 
 val pkgs : Loc.t -> alias list -> pkgs
-(** [pkgs loc aliases] constructs a set of module imports at location [loc]
-    importing packages [aliases]. *)
+(** [pkgs loc clauses] constructs a set of module imports at location [loc]
+    importing packages [clauses]. *)
 
 val import : Loc.t -> from option -> pkgs -> import
 (** [import loc from pkgs] constructs an import statement at location [loc]

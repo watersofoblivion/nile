@@ -20,6 +20,10 @@
     Type.float loc
       |> kontinue tbl
 
+  let make_rune_ty loc tbl kontinue =
+    Type.rune loc
+      |> kontinue tbl
+
   let make_string_ty loc tbl kontinue =
     Type.string loc
       |> kontinue tbl
@@ -93,6 +97,10 @@
     Patt.float loc f
       |> kontinue tbl
 
+  let make_rune_patt (loc, r) tbl kontinue =
+    Patt.rune loc r
+      |> kontinue tbl
+
   let make_string_patt (loc, s) tbl kontinue =
     Patt.string loc s
       |> kontinue tbl
@@ -130,6 +138,10 @@
 
   let make_float (loc, f) tbl kontinue =
     Ast.float loc f
+      |> kontinue tbl
+
+  let make_rune (loc, r) tbl kontinue =
+    Ast.rune loc r
       |> kontinue tbl
 
   let make_string (loc, s) tbl kontinue =
@@ -241,25 +253,20 @@
     | top :: tops -> top tbl (fun tbl top -> make_file tops tbl kontinue)
 %}
 
-%token <Loc.t> LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON ARROW DARROW BIND COMMA GROUND PIPE ELIPSIS
+%token <Loc.t> LPAREN RPAREN LBRACKET RBRACKET LBRACE RBRACE COLON ARROW DARROW BIND COMMA GROUND PIPE DOT DDOT ELIPSIS
 %token <Loc.t> PACKAGE IMPORT FROM
 %token <Loc.t> TYPE VAL DEF LET REC AND IN
 %token <Loc.t> IF THEN ELSE
 %token <Loc.t> CASE OF END
 %token <Loc.t> AS
-%token <Loc.t> ADD SUB MUL DIV MOD
-%token <Loc.t> LAND LOR LNOT
-%token <Loc.t> EQ NEQ
-%token <Loc.t> LTE LT GT GTE
-%token <Loc.t> DOT
-%token <Loc.t> CONS
+%token <Loc.t * string> UNOP00 UNOP01 UNOP02 UNOP03 UNOP04 UNOP05 UNOP06 UNOP07 UNOP08 UNOP09 UNOP10 UNOP11 UNOP12 UNOP13 UNOP14 UNOP15
+%token <Loc.t * string> BINOP00 BINOP01 BINOP02 BINOP03 BINOP04 BINOP05 BINOP06 BINOP07 BINOP08 BINOP09 BINOP10 BINOP11 BINOP12 BINOP13 BINOP14 BINOP15
 %token <Loc.t> EOF
-%token <Loc.t> UNIT
 %token <Loc.t> STRUCT
-%token <Loc.t * int> INT
-%token <Loc.t * bool> BOOL
-%token <Loc.t * float> FLOAT
-%token <Loc.t * string> STRING BLOB TIMESTAMP DURATION
+%token <Loc.t> UNIT
+%token <Loc.t * string> BOOL RUNE STRING TIMESTAMP DURATION
+%token <Loc.t * int * string> INT BYTE BLOB
+%token <Loc.t * bool * string> FLOAT
 %token <Loc.t * string> SRC
 %token <Loc.t * string> LIDENT UIDENT
 
@@ -272,7 +279,9 @@
 %right CONS
 %left  ADD SUB
 %left  MUL DIV MOD
-%right LNOT
+%left  BOR BXOR
+%left  BAND
+%right LNOT BNOT
 %left  DOT
 %right ARROW
 
@@ -292,12 +301,7 @@
  * Identifiers *
  ***************/
 
-compound_id:
-  simple_id DOT compound_id { $1 :: $3 }
-| simple_id                 { $1 :: [] }
-;
-
-simple_id:
+ident:
   LIDENT { $1 }
 | UIDENT { $1 }
 ;
@@ -316,11 +320,16 @@ annotation:
 ;
 
 ty:
-  compound_id                                  { make_prim_ty $1 }
+  named                                        { make_named_ty $1 }
 | ty ARROW ty                                  { make_fun_ty $1 $3 }
 | LPAREN ty COMMA tuple_ty RPAREN              { make_tuple_ty $1 ($2 :: $4) $5 }
 | STRUCT LBRACE opt_record_ty opt_comma RBRACE { make_record_ty $1 $3 $4 }
 | LPAREN ty RPAREN                             { $2 }
+;
+
+named:
+  ident DOT named { $1 :: $3 }
+| ident           { $1 :: [] }
 ;
 
 tuple_ty:
@@ -339,7 +348,7 @@ record_ty:
 ;
 
 field_ty:
-  simple_id COLON ty { make_field_ty $1 $3 }
+  ident COLON ty { make_field_ty $1 $3 }
 ;
 
 opt_comma:
@@ -351,21 +360,17 @@ opt_comma:
  * Patterns *
  ************/
 
-opt_pattern:
-  pattern { Some $1 }
-|         { None }
-;
-
 pattern:
 | GROUND                                       { make_ground_patt }
-| INT                                          { make_int_patt $1 }
 | BOOL                                         { make_bool_patt $1 }
+| INT                                          { make_int_patt $1 }
 | FLOAT                                        { make_float_patt $1 }
+| RUNE                                         { make_rune_patt $1 }
 | STRING                                       { make_string_patt $1 }
 | LIDENT                                       { make_var_patt $1 }
 | LPAREN pattern COMMA tuple_pattern RPAREN    { make_tuple_patt $1 ($2 :: $4) $5 }
 | LBRACE field_pattern_list opt_elipsis RBRACE { make_record_patt $1 $2 $3 $4 }
-| compound_id opt_pattern                      { make_constr_patt $1 $2 }
+| constr_pattern pattern_list                  { make_constr_patt $1 $2 }
 | pattern PIPE or_pattern                      { make_or_pattern ($1 :: $3) }
 ;
 
@@ -380,13 +385,23 @@ field_pattern_list:
 ;
 
 field_pattern:
-  simple_id COLON pattern { make_named_field_patt $1 $3 }
-| simple_id               { make_bare_field_patt $1 }
+  ident COLON pattern { make_named_field_patt $1 $3 }
+| ident               { make_bare_field_patt $1 }
 ;
 
 opt_elipsis:
   COMMA ELIPSIS { true }
 |               { false }
+;
+
+constr_pattern:
+  ident DOT constr_pattern { $1 :: $3 }
+| ident                    { $1 :: [] }
+;
+
+pattern_list:
+  pattern pattern_list { $1 :: $2 }
+|                      { [] }
 ;
 
 or_pattern:
@@ -427,6 +442,94 @@ rec_binding:
 
 binding:
   LIDENT opt_params_list opt_annotation BIND term { make_binding $1 $2 $3 $5 }
+;
+
+/***************
+ * Expressions *
+ ***************/
+
+/* Exposed for unit testing only */
+unit_test:
+  term EOF { $1 }
+;
+
+term:
+  LET binding IN term                                  { make_bind $1 $2 $4 }
+| LET REC bindings IN term                             { make_bind_rec $1 $3 $5 }
+| IF app THEN term ELSE term                           { make_cond $1 $2 $4 $6 }
+| CASE app OF clauses END                              { make_case_of $2 $4 }
+| LPAREN params_list RPAREN opt_annotation DARROW term { make_abs $2 $4 $6 }
+| LPAREN term COMMA tuple RPAREN                       { make_tuple $1 ($2 :: $4) $5 }
+| ident LBRACE opt_field_list RBRACE                   { make_record $1 $3 $4 }
+| app                                                  { $1 }
+;
+
+clauses:
+  PIPE clause_list { $2 }
+| clause_list      { $1 }
+|                  { [] }
+;
+
+clause_list:
+  clause PIPE clause_list { $1 :: $3 }
+|                         { [] }
+;
+
+clause:
+  pattern ARROW term { make_clause $1 $3 }
+;
+
+tuple:
+  term COMMA tuple { $1 :: $3 }
+| term             { $1 :: [] }
+;
+
+opt_field_list:
+  field_list { $1 }
+|            { [] }
+;
+
+field_list:
+  field COMMA field_list { $1 :: $3 }
+| field                  { $1 :: [] }
+;
+
+field:
+  LIDENT COLON term { make_field $1 $3 }
+;
+
+app:
+  app atom     { make_app $1 $2 }
+| app LOR app  { make_bin_op $1 Op.bin_or  $3 }
+| app LAND app { make_bin_op $1 Op.bin_and $3 }
+| app EQ app   { make_bin_op $1 Op.bin_eq  $3 }
+| app NEQ app  { make_bin_op $1 Op.bin_neq $3 }
+| app LTE app  { make_bin_op $1 Op.bin_lte $3 }
+| app LT app   { make_bin_op $1 Op.bin_lt  $3 }
+| app GT app   { make_bin_op $1 Op.bin_gt  $3 }
+| app GTE app  { make_bin_op $1 Op.bin_gte $3 }
+| app ADD app  { make_bin_op $1 Op.bin_add $3 }
+| app SUB app  { make_bin_op $1 Op.bin_sub $3 }
+| app MUL app  { make_bin_op $1 Op.bin_mul $3 }
+| app DIV app  { make_bin_op $1 Op.bin_div $3 }
+| app MOD app  { make_bin_op $1 Op.bin_mod $3 }
+| LNOT app     { make_un_op  $1 Op.un_not  $2 }
+| app DOT app  { make_bin_op $1 Op.bin_dot $3 }
+| atom         { $1 }
+;
+
+atom:
+  UNIT                           { make_unit $1 }
+| BOOL                           { make_bool $1 }
+| INT                            { make_int $1 }
+| FLOAT                          { make_float $1 }
+| RUNE                           { make_rune $1 }
+| STRING                         { make_string $1 }
+| BLOB                           { make_blob $1 }
+| TIMESTAMP                      { make_timestamp $1 }
+| DURATION                       { make_duration $1 }
+| ident                          { make_var $1 }
+| LPAREN term RPAREN             { $2 }
 ;
 
 /*************
@@ -484,96 +587,9 @@ top_list:
 ;
 
 top:
-  TYPE simple_id BIND ty                                           { make_top_val $1 $2 }
-| VAL simple_id opt_annotation BIND term                           { make_top_val $1 $2 }
-| DEF simple_id LPAREN params_list RPAREN opt_annotation BIND term { make_top_def $1 $2 }
-| LET binding                                                      { make_top_let $1 $2 }
-| LET REC bindings                                                 { make_top_let_rec $1 $3 }
-;
-
-/***************
- * Expressions *
- ***************/
-
-/* Exposed for unit testing only */
-unit_test:
-  term EOF { $1 }
-;
-
-term:
-  LET binding IN term                                  { make_bind $1 $2 $4 }
-| LET REC bindings IN term                             { make_bind_rec $1 $3 $5 }
-| IF app THEN term ELSE term                           { make_cond $1 $2 $4 $6 }
-| CASE app OF clauses END                              { make_case_of $2 $4 }
-| LPAREN params_list RPAREN opt_annotation DARROW term { make_abs $2 $4 $6 }
-| app                                                  { $1 }
-;
-
-clauses:
-  PIPE clause_list { $2 }
-| clause_list      { $1 }
-|                  { [] }
-;
-
-clause_list:
-  clause PIPE clause_list { $1 :: $3 }
-|                         { [] }
-;
-
-clause:
-  pattern ARROW term { make_clause $1 $3 }
-;
-
-app:
-  app atom     { make_app $1 $2 }
-| app LOR app  { make_bin_op $1 Op.bin_or  $3 }
-| app LAND app { make_bin_op $1 Op.bin_and $3 }
-| app EQ app   { make_bin_op $1 Op.bin_eq  $3 }
-| app NEQ app  { make_bin_op $1 Op.bin_neq $3 }
-| app LTE app  { make_bin_op $1 Op.bin_lte $3 }
-| app LT app   { make_bin_op $1 Op.bin_lt  $3 }
-| app GT app   { make_bin_op $1 Op.bin_gt  $3 }
-| app GTE app  { make_bin_op $1 Op.bin_gte $3 }
-| app ADD app  { make_bin_op $1 Op.bin_add $3 }
-| app SUB app  { make_bin_op $1 Op.bin_sub $3 }
-| app MUL app  { make_bin_op $1 Op.bin_mul $3 }
-| app DIV app  { make_bin_op $1 Op.bin_div $3 }
-| app MOD app  { make_bin_op $1 Op.bin_mod $3 }
-| LNOT app     { make_un_op  $1 Op.un_not  $2 }
-| app DOT app  { make_bin_op $1 Op.bin_dot $3 }
-| compound_id LBRACE opt_field_list RBRACE { make_record $1 $3 $4 }
-| atom         { $1 }
-;
-
-atom:
-  UNIT                           { make_unit $1 }
-| BOOL                           { make_bool $1 }
-| INT                            { make_int $1 }
-| FLOAT                          { make_float $1 }
-| STRING                         { make_string $1 }
-| BLOB                           { make_blob $1 }
-| TIMESTAMP                      { make_timestamp $1 }
-| DURATION                       { make_duration $1 }
-| simple_id                      { make_var $1 }
-| LPAREN term COMMA tuple RPAREN { make_tuple $1 ($2 :: $4) $5 }
-| LPAREN term RPAREN             { $2 }
-;
-
-tuple:
-  term COMMA tuple { $1 :: $3 }
-| term             { $1 :: [] }
-;
-
-opt_field_list:
-  field_list { $1 }
-|            { [] }
-;
-
-field_list:
-  field COMMA field_list { $1 :: $3 }
-| field                  { $1 :: [] }
-;
-
-field:
-  simple_id COLON term { make_field $1 $3 }
+  TYPE ident BIND ty                                           { make_top_val $1 $2 }
+| VAL ident opt_annotation BIND term                           { make_top_val $1 $2 }
+| DEF ident LPAREN params_list RPAREN opt_annotation BIND term { make_top_def $1 $2 }
+| LET binding                                                  { make_top_let $1 $2 }
+| LET REC bindings                                             { make_top_let_rec $1 $3 }
 ;

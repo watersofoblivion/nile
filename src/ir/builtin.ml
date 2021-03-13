@@ -1,55 +1,65 @@
-(* Built-in Function Types *)
+(* Builtins *)
 
-let builtins = [
-  ("landBool", Type.func [Type.bool; Type.bool] Type.bool);
-  ("lorBool", Type.func [Type.bool; Type.bool] Type.bool);
-  ("lnotBool", Type.func [Type.bool] Type.bool);
-  ("eqBool", Type.func [Type.bool; Type.bool] Type.bool);
-  ("neqBool", Type.func [Type.bool; Type.bool] Type.bool);
+type t =
+  | LAnd
+  | LOr
+  | LNot
+  | BAnd of { ty: Type.t }
+  | BOr of { ty: Type.t }
+  | BXor of { ty: Type.t }
+  | BNot of { ty: Type.t }
+  | Lsl of { ty: Type.t }
+  | Lsr of { ty: Type.t }
+  | Asl of { ty: Type.t }
+  | Asr of { ty: Type.t }
+  | Eq of { ty: Type.t }
+  | Neq of { ty: Type.t }
+  | Add of { ty: Type.t }
+  | Sub of { ty: Type.t }
+  | Mul of { ty: Type.t }
+  | Div of { ty: Type.t }
+  | Mod of { ty: Type.t }
+  | Lte of { ty: Type.t }
+  | Lt of { ty: Type.t }
+  | Gt of { ty: Type.t }
+  | Gte of { ty: Type.t }
+  | Slice of { ty: Type.t }
+  | Index of { ty: Type.t }
+  | Concat of { ty: Type.t }
+  | Before
+  | After
 
-  ("addInt", Type.func [Type.int; Type.int] Type.int);
-  ("subInt", Type.func [Type.int; Type.int] Type.int);
-  ("mulInt", Type.func [Type.int; Type.int] Type.int);
-  ("divInt", Type.func [Type.int; Type.int] Type.int);
-  ("modInt", Type.func [Type.int; Type.int] Type.int);
-  ("eqInt", Type.func [Type.int; Type.int] Type.bool);
-  ("neqInt", Type.func [Type.int; Type.int] Type.bool);
-  ("lteInt", Type.func [Type.int; Type.int] Type.bool);
-  ("ltInt", Type.func [Type.int; Type.int] Type.bool);
-  ("gtInt", Type.func [Type.int; Type.int] Type.bool);
-  ("gteInt", Type.func [Type.int; Type.int] Type.bool);
+let log_and = LAnd
+let log_or = LOr
+let log_not = LNot
 
-  ("addFloat", Type.func [Type.float; Type.float] Type.float);
-  ("subFloat", Type.func [Type.float; Type.float] Type.float);
-  ("mulFloat", Type.func [Type.float; Type.float] Type.float);
-  ("divFloat", Type.func [Type.float; Type.float] Type.float);
-  ("modFloat", Type.func [Type.float; Type.float] Type.float);
-  ("eqFloat", Type.func [Type.float; Type.float] Type.bool);
-  ("neqFloat", Type.func [Type.float; Type.float] Type.bool);
-  ("lteFloat", Type.func [Type.float; Type.float] Type.bool);
-  ("ltFloat", Type.func [Type.float; Type.float] Type.bool);
-  ("gtFloat", Type.func [Type.float; Type.float] Type.bool);
-  ("gteFloat", Type.func [Type.float; Type.float] Type.bool);
+let bit_and ty = BAnd { ty }
+let bit_or ty = BOr { ty }
+let bit_xor ty = BXor { ty }
+let bit_not ty = BNot { ty }
 
-  ("concatString", Type.func [Type.string; Type.string] Type.string);
+let log_shl ty = Lsl { ty }
+let log_shr ty = Lsr { ty }
+let arith_shl ty = Asl { ty }
+let arith_shr ty = Asr { ty }
 
-  ("concatBlob", Type.func [Type.blob; Type.blob] Type.blob)
+let eq ty = Eq { ty }
+let neq ty = Neq { ty }
 
-  ("beforeTime", Type.func [Type.timestamp; Type.duration] Type.timestamp);
-  ("afterTime", Type.func [Type.timestamp; Type.duration] Type.timestamp);
-  ("eqTimestamp", Type.func [Type.timestamp; Type.timestamp] Type.bool);
-  ("neqTimestamp", Type.func [Type.timestamp; Type.timestamp] Type.bool);
-  ("lteTimestamp", Type.func [Type.timestamp; Type.timestamp] Type.bool);
-  ("ltTimestamp", Type.func [Type.timestamp; Type.timestamp] Type.bool);
-  ("gtTimestamp", Type.func [Type.timestamp; Type.timestamp] Type.bool);
-  ("gteTimestamp", Type.func [Type.timestamp; Type.timestamp] Type.bool);
+let add ty = Add { ty }
+let sub ty = Sub { ty }
+let mul ty = Mul { ty }
+let div ty = Div { ty }
+let modulus ty = Mod { ty }
 
-  ("addDuration", Type.func [Type.duration; Type.duration] Type.duration);
-  ("subDuration", Type.func [Type.duration; Type.duration] Type.duration);
-  ("eqDuration", Type.func [Type.duration; Type.duration] Type.duration);
-  ("neqDuration", Type.func [Type.duration; Type.duration] Type.duration);
-  ("lteDuration", Type.func [Type.duration; Type.duration] Type.duration);
-  ("ltDuration", Type.func [Type.duration; Type.duration] Type.duration);
-  ("gtDuration", Type.func [Type.duration; Type.duration] Type.duration);
-  ("gteDuration", Type.func [Type.duration; Type.duration] Type.duration);
-]
+let lte ty = Lte { ty }
+let lt ty = Lt { ty }
+let gt ty = Gt { ty }
+let gte ty = Gte { ty }
+
+let slice ty = Slice { ty }
+let index ty = Index { ty }
+let concat ty = Concat { ty }
+
+let before = Before
+let after = After

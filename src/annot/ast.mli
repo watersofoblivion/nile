@@ -3,64 +3,145 @@ open Common
 
 (** {1 Annotated Abstract Syntax}
  *
- * The first intermediate form of for the compiler.  This form is an
- * explicitly-typed lambda calculus with several properties:
- *
- * {ul
- *   {li All files in a single package have been combined into one unit.}
- *   {li All identifiers have been alpha-renamed.}
- *   {li All names (both internal and external to the package) have been
- *       resolved into symbols and import statements have been removed.}
- *   {li Top-level "[def]" and "[val]" statements have been replaced with
- *       "[let]" and "[let rec]" statements.}
- *   {li Unary and Binary operators have been replaced with calls to built-in
- *       functions, except for logical AND and logical OR, which have been
- *       de-sugared into pattern matches to implement short-circuting behavior.}
- *   {li Conditionals ("[if]" statements) have been desugard into pattern
- *       matches over their boolean condition values.}
- *   {li Function abstractions and applications have been uncurried.}
- *   {li Records have been de-sugared into tuples with ascriptions.}
- * }
+ * The first intermediate form of for the compiler.
  *)
 
 (** {2 Syntax} *)
 
 type expr = private
-  | Unit                                    (** Unit *)
-  | Bool of bool                            (** Boolean *)
-  | Int of int                              (** Integer *)
-  | Float of float                          (** Floating-point *)
-  | String of int * string                  (** String *)
-  | Blob of int * bytes                     (** Binary Large Object (BLOB) *)
-  | Timestamp of string                     (** ISO-8601 Timestamp *)
-  | Duration of string                      (** ISO-8601 Duration *)
-  | Tuple of expr list                      (** Tuples *)
-  | Constr of Sym.sym * expr option         (** Variant Constructor *)
-  | Var of Sym.sym                          (** Variable Identifier *)
-  | Case of expr * clause list * Type.t     (** Case *)
-  | Let of binding * expr                   (** Value Binding *)
-  | LetRec of binding list * expr           (** Recursive Value Bindings *)
-  | Proj of expr * int                      (** Projection *)
-  | Abs of int * param list * Type.t * expr (** Function Abstraction *)
-  | App of int * expr * expr list           (** Function Application *)
-  | Builtin of Sym.sym * expr list          (** Builtin Function Application *)
+  | Unit (** Unit *)
+  | Bool of {
+      b: bool (** Value *)
+    } (** Boolean *)
+  | Int of {
+      i: int (** Value *)
+    } (** Integer *)
+  | Float of {
+      f: float (** Value *)
+    } (** Floating-point *)
+  | Rune of {
+      r: bytes (** Value *)
+    } (** Rune *)
+  | String of {
+      length: int;   (** Length *)
+      s:      string (** Value *)
+    } (** String *)
+  | Byte of {
+      b: bytes (** Value *)
+    } (** Byte *)
+  | Blob of {
+      length: int;  (** Length *)
+      bs:     bytes (** Value *)
+    } (** Binary Large Object (BLOB) *)
+  | Timestamp of {
+      ts: string (** Value *)
+    } (** ISO-8601 Timestamp *)
+  | Duration of {
+      d: string
+    } (** ISO-8601 Duration *)
+  | Tuple of {
+      exprs: expr list; (** Element Expressions *)
+      ty:    Type.t     (** Type *)
+    } (** Tuple *)
+  | Record of {
+      constr: Sym.sym option; (** Constructor *)
+      fields: field list;     (** Element Expressions *)
+      ty:     Type.t          (** Type *)
+    } (** Record *)
+  | Constr of {
+      name: Sym.sym;   (** Constructor Name *)
+      args: expr list; (** Arguments *)
+      ty:   Type.t     (** Type *)
+    } (** Variant Constructor *)
+  | Var of {
+      id: Sym.sym (** Identifier *)
+    } (** Variable Identifier *)
+  | UnOp of {
+      op:   Op.un; (** Operator *)
+      prec: int;   (** Precedence *)
+      rhs:  expr   (** Operand *)
+    } (** Unary Operator *)
+  | BinOp of {
+      op:   Op.bin; (** Operator *)
+      prec: int;    (** Precedence *)
+      lhs:  expr;   (** Left-Hand Operand *)
+      rhs:  expr    (** Right-Hand Operand *)
+    } (** Binary Operator *)
+  | Slice of {
+      expr:  expr;        (** Expression to Slice *)
+      start: expr option; (** Begin Index *)
+      stop:  expr option  (** End Index *)
+    } (** Slice *)
+  | Index of {
+      expr: expr; (** Expression to Slice *)
+      idx:  expr  (** Index *)
+    } (** Index *)
+  | Case of {
+      scrut:   expr;        (** Scrutinee *)
+      clauses: clause list; (** Match Clauses *)
+      res:     Type.t       (** Result type *)
+    } (** Case *)
+  | Let of {
+      binding: binding; (** Binding *)
+      scope:   expr     (** Scope of Binding *)
+    } (** Value Binding *)
+  | LetRec of {
+      bindings: binding list; (** Bindings *)
+      scope: expr             (** Scope of Bindings *)
+    } (** Recursive Value Bindings *)
+  | TupleProj of {
+      tuple: expr; (** Tuple *)
+      index: int   (** Field Index *)
+    } (** Tuple Projection *)
+  | RecordProj of {
+      record: expr;   (** Record *)
+      field:  Sym.sym (** Field Name *)
+    } (** Record Projection *)
+  | Abs of {
+      arity:  int;        (** Arity *)
+      params: param list; (** Parameters *)
+      res:    Type.t;     (** Result Type *)
+      body:   expr        (** Body *)
+    } (** Function Abstraction *)
+  | App of {
+      arity: int;      (** Arity *)
+      fn:    expr;     (** Function *)
+      args:  expr list (** Arguments *)
+    } (** Function Application *)
 (** An expression *)
 
-and param = Patt.t * Type.t
+and param = Param of {
+  name: Patt.t; (** Name *)
+  ty:   Type.t  (** Type *)
+}
 (** A function parameter *)
 
-and binding = Patt.t * Type.t * expr
+and binding = Binding of {
+  name: Patt.t; (** Name *)
+  ty:   Type.t; (** Type *)
+  body: expr    (** Body *)
+}
 (** A value Binding *)
 
-and clause = Patt.t * expr
+and clause = Clause of {
+  patt: Patt.t; (** Pattern *)
+  body: expr    (** Body *)
+}
 (** A pattern matching clause *)
 
 type top = private
-  | TopLet of binding      (** Value binding *)
-  | TopRec of binding list (** Recursive value bindings *)
+  | TopLet of {
+      binding: binding (** Binding *)
+    } (** Value binding *)
+  | TopRec of {
+      bindings: binding list (** Bindings *)
+    } (** Recursive value bindings *)
 (** A top-level statement *)
 
-type pkg = Sym.sym * top list
+type pkg = Package of {
+  name: Sym.sym; (** Name *)
+  tops: top list (** Top-Level Statements *)
+}
 (** A source package *)
 
 (** {2 Constructors} *)
@@ -79,13 +160,16 @@ val int : int -> expr
 val float : float -> expr
 (** [float f] constructs a floating-point literal with the value [f]. *)
 
-val string : int -> string -> expr
+val rune : bytes -> expr
 (** [string len s] constructs a string literal of length [len] with the value
     [s]. *)
 
-val blob : int -> bytes -> expr
-(** [blob len bs] constructs a binary large object (BLOB) literal of length
-    [len] with the value [bs]. *)
+val string : string -> expr
+(** [string s] constructs a string literal  with the value [s]. *)
+
+val blob : bytes -> expr
+(** [blob bs] constructs a binary large object (BLOB) literal with the value
+    [bs]. *)
 
 val timestamp : string -> expr
 (** [timestamp ts] constructs a ISO-8601 timestamp literal of length with the
@@ -95,16 +179,36 @@ val duration : string -> expr
 (** [duration ts] constructs a ISO-8601 duration literal of length with the
     value [d]. *)
 
-val tuple : expr list -> expr
-(** [tuple exprs] constructs a tuple literal with the values [exprs]. *)
+val tuple : expr list -> Type.t -> expr
+(** [tuple exprs ty] constructs a tuple literal of type [ty] with the values
+    [exprs]. *)
 
-val constr : Sym.sym -> expr option -> expr
-(** [constr id v] constructs a variant constructor literal with the constructor
-    [constr] and the value [v]. *)
+val record : Sym.sym option -> expr list -> Type.t -> expr
+(** [record constr exprs ty] constructs a record literal of type [ty] with the
+    constructor [constr] and the values [exprs]. *)
+
+val constr : Sym.sym -> expr list -> Type.t -> expr
+(** [constr name args ty] constructs a variant constructor literal of type [ty]
+    with the constructor [name] and the arguments [args]. *)
 
 val var : Sym.sym -> expr
 (** [var sym] constructs a variable identifier expression referencing the value
     bound to the symbol [sym]. *)
+
+val un_op : Op.un -> int -> expr -> expr
+(** [un_op op prec rhs] constructs a unary operator expression applying [op] to
+    [rhs] with precedence [prec]. *)
+
+val bin_op : Op.bin -> int -> expr -> expr -> expr
+(** [bin_op op prec lhs rhs] constructs a binary operator expression applying
+    [op] to [lhs] and [rhs] with precedence [prec]. *)
+
+val slice : expr -> expr option -> expr option -> expr
+(** [slice expr start stop] constructs a slice operator slicing [expr] from
+    [start] to [end]. *)
+
+val index : expr -> expr -> expr
+(** [index expr idx] constructs an index operator index [expr] at [idx]. *)
 
 val case : expr -> clause list -> Type.t -> expr
 (** [case scrut clauses res] constructs a case expression scrutinizing [scrut],
@@ -118,8 +222,13 @@ val bind_rec : binding list -> expr -> expr
 (** [bind_rec bs rest] constructs a set of recursive value bindings over the
     list of bindings [bs] within the scope of both each other and [rest]. *)
 
-val proj : expr -> int -> expr
-(** [proj expr n] constructs a projection of the [n]th field of [expr]. *)
+val tuple_proj : expr -> int -> expr
+(** [tuple_proj tuple index] constructs a projection of the [index]'th field of
+    the tuple [tuple]. *)
+
+val record_proj : expr -> Sym.sym -> expr
+(** [record_proj record field] constructs a projection of the field named
+    [field] of the record [record]. *)
 
 val abs : int -> param list -> Type.t -> expr -> expr
 (** [abs arity params res expr] constructs a function abstraction expression of
@@ -129,10 +238,6 @@ val abs : int -> param list -> Type.t -> expr -> expr
 val app : int -> expr -> expr list -> expr
 (** [app arity f xs] constructs a function application expression applying the function
     [f] to the values [xs]. *)
-
-val builtin : Sym.sym -> expr list -> expr
-(** [app f xs] constructs a function application expression applying the
-    builtin function [f] to the values [xs]. *)
 
 val binding : Patt.t -> Type.t -> expr -> binding
 (** [binding patt ty expr] constructs a value binding expression binding the

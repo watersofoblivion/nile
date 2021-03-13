@@ -1,3 +1,5 @@
+open Common
+
 type pos = {
   line: int;
   col:  int;
@@ -10,14 +12,23 @@ let pos pos = {
   off  = pos.pos_cnum
 }
 
+type src = {
+  mojule:  string;
+  major:   int;
+  package: string;
+  file:    string
+}
+
+let src mojule major package file = { mojule; major; package; file }
+
 type t = {
-  fname:     string;
+  src:       src;
   start_pos: pos;
   end_pos:   pos;
   length:    int
 }
 
-let mock fname (start_line, start_col, start_off) (end_line, end_col, end_off) =
+let mock mojule package file (start_line, start_col, start_off) (end_line, end_col, end_off) =
   let length =
     if start_off < 0 || end_off < 0
     then -1

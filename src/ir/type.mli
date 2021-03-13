@@ -3,20 +3,33 @@ open Format
 (** {1 Types} *)
 
 type t = private
-  | Unit                             (** Unit *)
-  | Bool                             (** Booleans *)
-  | Int                              (** Integers *)
-  | Float                            (** Floating-point *)
-  | String                           (** Strings *)
-  | Blob                             (** Binary Large Object (BLOB) *)
-  | Timestamp                        (** ISO-8601 Timestamp *)
-  | Duration                         (** ISO-8601 Duration *)
-  | Fun of t list * t                (** Functions *)
-  | Tuple of int * t list            (** Tuple *)
-  | Variant of constr list           (** Variant *)
+  | Unit (** Unit *)
+  | Bool (** Boolean *)
+  | Int (** Integer *)
+  | Float (** Floating-point *)
+  | Rune (** Rune *)
+  | String (** String *)
+  | Byte (** Byte *)
+  | Blob (** Binary Large Object (BLOB) *)
+  | Timestamp (** ISO-8601 Timestamp *)
+  | Duration (** ISO-8601 Duration *)
+  | Fun of {
+      params: t list; (** Parameter Types *)
+      res:    t       (** Result Type *)
+    } (** Function *)
+  | Tuple of {
+      arity: int;   (** Arity *)
+      types: t list (** Element Types *)
+    } (** Tuple *)
+  | Variant of {
+      constrs: constr list (** Constructors *)
+    } (** Variant *)
 (** Types *)
 
-and constr = Sym.sym * t option
+and constr = Constr of {
+  name:   Sym.sym; (** Name *)
+  params: t list   (** Parameters *)
+}
 (** Variant constructor *)
 
 (** {2 Constructors} *)
@@ -35,6 +48,9 @@ val float : t
 
 val string : t
 (** [string] constructs a string type. *)
+
+val byte : t
+(** [byte] constructs a byte type. *)
 
 val blob : t
 (** [blob] constructs a binary large object (BLOB) type. *)

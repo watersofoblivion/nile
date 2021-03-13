@@ -33,11 +33,11 @@ exception InvalidCondition of t
 (** Raised when the condition clause of a conditional statement is not a boolean
     typed value.  Contains the actual type of the condition clause. *)
 
-(** {2 Abstract Syntax Trees} *)
+(** {2 Builtins} *)
 
-val builtin : Type.env
-(** [builtin] returns a type-checking environment with the builtin functions
-    bound. *)
+val type_of_builtin : Anf.builtin -> Type.t
+
+(** {2 Abstract Syntax Trees} *)
 
 val type_of_atom : Type.env -> atom -> Type.t
 (** [type_of_atom env atom] type checks the atomic value [atom] in the type

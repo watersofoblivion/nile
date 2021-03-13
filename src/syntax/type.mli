@@ -3,53 +3,44 @@ open Common
 (** {1 Types} *)
 
 type t = private
-  | Unit of Loc.t                            (** Unit *)
-  | Bool of Loc.t                            (** Booleans *)
-  | Int of Loc.t                             (** Integers *)
-  | Float of Loc.t                           (** Floating-point *)
-  | String of Loc.t                          (** Strings *)
-  | Blob of Loc.t                            (** Binary Large Object (BLOB) *)
-  | Timestamp of Loc.t                       (** ISO-8601 Timestamp *)
-  | Duration of Loc.t                        (** ISO-8601 Duration *)
-  | Fun of Loc.t * t list * t                (** Functions *)
-  | Tuple of Loc.t * int * t list            (** Tuple *)
-  | Record of Loc.t * field list             (** Record *)
-  | Variant of Loc.t * constr list           (** Variant *)
-  | Package of Loc.t * t Sym.map * t Sym.map (** Package *)
+  | Fun of {
+      loc:    Loc.t;  (** Location Tracking Information *)
+      params: t list; (** Parameter Types *)
+      ret:    t       (** Return Type *)
+    } (** Function *)
+  | Tuple of {
+      loc:   Loc.t; (** Location Tracking Information *)
+      arity: int;   (** Arity *)
+      types: t list (** Element Types *)
+    } (** Tuple *)
+  | Record of {
+      loc:    Loc.t;     (** Location Tracking Information *)
+      fields: field list (** Fields *)
+    } (** Record *)
+  | Variant of {
+      loc:     Loc.t; (** Location Tracking Information *)
+      constrs: t list (** Constructors *)
+    } (** Variant *)
+  | Package of {
+      loc:   Loc.t;     (** Location Tracking Information *)
+      types: t Sym.map; (** Types *)
+      funs:  t Sym.map  (** Functions *)
+    } (** Package *)
+  | Constr of {
+      loc:    Loc.t;        (** Location Tracking Information *)
+      names:  Sym.sym list; (** Names *)
+      params: t list        (** Names *)
+    } (** Named *)
 (** Types *)
 
-and field = Loc.t * Sym.sym * t
+and field = Field of {
+  loc: Loc.t;    (** Location Tracking Information *)
+  name: Sym.sym; (** Field Name *)
+  ty:   t        (** Field Type *)
+}
 (** Record field *)
 
-and constr = Loc.t * Sym.sym * t option
-(** Variant constructor *)
-
 (** {2 Constructors} *)
-
-val unit : Loc.t -> t
-(** [unit loc] constructs a unit type at location [loc]. *)
-
-val bool : Loc.t -> t
-(** [bool loc] constructs a boolean type at location [loc]. *)
-
-val int : Loc.t -> t
-(** [int loc] constructs an integer type at location [loc]. *)
-
-val float : Loc.t -> t
-(** [float loc] constructs a floating-point type at location [loc]. *)
-
-val string : Loc.t -> t
-(** [string loc] constructs a string type at location [loc]. *)
-
-val blob : Loc.t -> t
-(** [blob loc] constructs a binary large object (BLOB) type at location [loc].
-    *)
-
-val timestamp : Loc.t -> t
-(** [timestamp loc] constructs a ISO-8601 timestamp type at location [loc]. *)
-
-val duration : Loc.t -> t
-(** [duration loc] constructs a ISO-8601 duration type at location [loc]. *)
 
 val func : Loc.t -> t list -> t -> t
 (** [func loc args ret] constructs a function type at location [loc] mapping
@@ -63,7 +54,7 @@ val record : Loc.t -> field list -> t
 (** [record loc fields] constructs a record type at location [loc] with field
     [fields]. *)
 
-val variant : Loc.t -> constr list -> t
+val variant : Loc.t -> t list -> t
 (** [variant loc constrs] constructs a variant type at location [loc] with
     constructors [constrs]. *)
 
@@ -71,13 +62,13 @@ val pkg : Loc.t -> t Sym.map -> t Sym.map -> t
 (** [pkg loc tys fns] constructs a package type at location [loc] containing
     types [tys] and functions [fns]. *)
 
+val constr : Loc.t -> Sym.sym list -> t list -> t
+(** [constr loc names params] constructs a type constructor type at location
+    [loc] with name [names] and parameters [params]. *)
+
 val field : Loc.t -> Sym.sym -> t -> field
 (** [field loc id ty] constructs a record field at location [loc] named [id] of
     type [ty]. *)
-
-val constr : Loc.t -> Sym.sym -> t option -> field
-(** [constr loc id ty] constructs a variant constructor at location [loc] named
-    [id] with optional type [ty]. *)
 
 (** {2 Operations} *)
 

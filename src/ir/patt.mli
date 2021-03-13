@@ -3,31 +3,55 @@ open Format
 (** {1 Patterns} *)
 
 type atom =
-  | Ground           (** Ground *)
-  | Nil              (** Empty list *)
-  | Unit             (** Unit *)
-  | Bool of bool     (** Boolean *)
-  | Int of int       (** Integer *)
-  | Float of float   (** Floating-point *)
-  | String of string (** String *)
-  | Var of Sym.sym   (** Variable *)
-(** Atomic Patterns *)
+  | Unit (** Unit *)
+  | Bool of {
+      b: bool (** Value *)
+    } (** Boolean *)
+  | Int of {
+      i: int (** Value *)
+    } (** Integer *)
+  | Float of {
+      f: float (** Value *)
+    } (** Floating-point *)
+  | Rune of {
+      r: bytes (** Value *)
+    } (** Rune *)
+  | String of {
+      length: int;   (** Length *)
+      s:      string (** Value *)
+    } (** String *)
+  | Byte of {
+      r: bytes (** Value *)
+    } (** Rune *)
+  | Blob of {
+      length: int;   (** Length *)
+      s:      bytes (** Value *)
+    } (** String *)
+  | Timestamp of {
+      ts: string (** Value *)
+    } (** Timestamp *)
+  | Duration of {
+      d: string (** Value *)
+    } (** Duration *)
+  | Var of {
+      id: Sym.sym; (** Variable Name *)
+      ty: Type.t   (** Type *)
+    } (** Variable *)
+  | Ground of {
+      ty: Type.t
+    } (** Ground *)
 
 type compound =
-  | Tuple of int * atom list        (** Tuple *)
-  | Cons of atom * atom             (** Cons *)
-  | Constr of Sym.sym * atom option (** Constructor *)
-(** Compound patterns *)
+  | Constr of {
+      name: Sym.sym; (** Constructor Name *)
+      arg:  atom     (** Argument *)
+    } (** Constructor *)
+  | Atom of {
+      atom: atom (** Pattern *)
+    } (** Atomic Pattern *)
+(** Patterns *)
 
 (** {2 Constructors} *)
-
-(** {3 Atomic Patterns} *)
-
-val ground : atom
-(** [ground] constructs a ground pattern. *)
-
-val nil : atom
-(** [nil] constructs a nil pattern. *)
 
 val unit : atom
 (** [unit] constructs a unit pattern. *)
@@ -39,25 +63,36 @@ val int : int -> atom
 (** [int i] constructs an integer pattern matching [i]. *)
 
 val float : float -> atom
-(** [float f] constructs an floating-point pattern matching [f].*)
+(** [float f] constructs a floating-point pattern matching [f].*)
+
+val rune : bytes -> atom
+(** [rune r] constructs a rune pattern matching [r]. *)
 
 val string : string -> atom
-(** [string s] constructs an string pattern matching [s]. *)
+(** [string s] constructs a string pattern matching [s]. *)
 
-val var : Sym.sym -> atom
-(** [var sym] constructs a variable pattern binding the matched value to [sym].
-    *)
+val byte : bytes -> atom
+(** [byte b] constructs a byte pattern matching [b]. *)
 
-(** {3 Compound Patterns} *)
+val blob : bytes -> atom
+(** [blob bs] constructs a binary large object (BLOB) pattern matching [bs]. *)
 
-val tuple : atom list -> compound
-(** [tuple patts] constructs a tuple pattern matching a tuple when the element
-    patterns [patts] match their corresponding elements. *)
+val timestamp : string -> atom
+(** [timestamp ts] constructs a timestamp pattern matching [ts]. *)
 
-val cons : atom -> atom -> compound
-(** [cons hd tl] constructs a cons pattern matching head and tail pattern [hd]
-    and [tl], respectively. *)
+val duration : string -> atom
+(** [duration d] constructs a duration pattern matching [d]. *)
 
-val constr : Sym.sym -> atom option -> compound
-(** [constr id patt] constructs a variant constructor pattern matching the
-    constructor [id] with the optional value pattern [patt]. *)
+val var : Sym.sym -> Type.t -> atom
+(** [var id ty] constructs a variable pattern binding the matched value of type
+    [ty] to [id]. *)
+
+val ground : Type.t -> atom
+(** [ground ty] constructs a ground pattern maching all values of type [ty]. *)
+
+val constr : Sym.sym -> atom -> compound
+(** [constr name args] constructs a variant constructor pattern matching the
+    constructor [name] with the argument patterns [args]. *)
+
+val atom : atom -> compound
+(** [atom atom] constructs an atomic pattern matching [atom]. *)

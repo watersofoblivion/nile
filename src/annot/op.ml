@@ -1,49 +1,55 @@
 open Format
 
 type un =
-  | Not
+  | LNot
+  | BNot of { ty: Type.t }
 
-let un_not = Not
-
-let un_precedence = function
-  | Not -> 2
+let un_lnot = LNot
+let un_bnot ty = BNot { ty }
 
 type bin =
-  | Add of Type.t
-  | Sub of Type.t
-  | Mul of Type.t
-  | Div of Type.t
+  | BAnd of { ty: Type.t }
+  | BOr of { ty: Type.t }
+  | BXor of { ty: Type.t }
+  | Lsl of { ty: Type.t }
+  | Lsr of { ty: Type.t }
+  | Asl of { ty: Type.t }
+  | Asr of { ty: Type.t }
+  | Add of { ty: Type.t }
+  | Sub of { ty: Type.t }
+  | Mul of { ty: Type.t }
+  | Div of { ty: Type.t }
   | Mod
-  | And
-  | Or
-  | Eq of Type.t
-  | Neq of Type.t
-  | Lte of Type.t
-  | Lt of Type.t
-  | Gt of Type.t
-  | Gte of Type.t
-  | Cons of Type.t
+  | LAnd
+  | LOr
+  | Eq of { ty: Type.t }
+  | Neq of { ty: Type.t }
+  | Lte of { ty: Type.t }
+  | Lt of { ty: Type.t }
+  | Gt of { ty: Type.t }
+  | Gte of { ty: Type.t }
+  | Concat of { ty: Type.t }
+  | Cons of { ty: Type.t }
 
-let bin_add ty = Add ty
-let bin_sub ty = Sub ty
-let bin_mul ty = Mul ty
-let bin_div ty = Div ty
+let bin_band ty = BAnd { ty }
+let bin_bor ty = BOr { ty }
+let bin_bxor ty = BXor { ty }
+let bin_lsl ty = Lsl { ty }
+let bin_lsr ty = Lsr { ty }
+let bin_asl ty = Asl { ty }
+let bin_asr ty = Asr { ty }
+let bin_add ty = Add { ty }
+let bin_sub ty = Sub { ty }
+let bin_mul ty = Mul { ty }
+let bin_div ty = Div { ty }
 let bin_mod = Mod
 let bin_and = And
 let bin_or = Or
-let bin_eq ty = Eq ty
-let bin_neq ty = Neq ty
-let bin_lte ty = Lte ty
-let bin_lt ty = Lt ty
-let bin_gt ty = Gt ty
-let bin_gte ty = Gte ty
-let bin_cons ty = Cons ty
-
-let bin_precedence = function
-  | Cons _ -> 2
-  | Mul _ | Div _ | Mod -> 3
-  | Add _ | Sub _ -> 4
-  | Lte _ | Lt _ | Gt _ | Gte _ -> 6
-  | Eq _ | Neq _ -> 7
-  | And -> 11
-  | Or -> 12
+let bin_eq ty = Eq { ty }
+let bin_neq ty = Neq { ty }
+let bin_lte ty = Lte { ty }
+let bin_lt ty = Lt { ty }
+let bin_gt ty = Gt { ty }
+let bin_gte ty = Gte { ty }
+let bin_concat ty = Concat { ty }
+let bin_cons ty = Cons { ty }

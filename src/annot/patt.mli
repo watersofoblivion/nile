@@ -3,30 +3,62 @@ open Format
 (** {1 Patterns} *)
 
 type t =
-  | Ground                (** Ground *)
-  | Nil                   (** Empty list *)
-  | Unit                  (** Unit *)
-  | Bool of bool          (** Boolean *)
-  | Int of int            (** Integer *)
-  | Float of float        (** Floating-point *)
-  | String of string      (** String *)
-  | Var of Sym.sym        (** Variable *)
-  | Tuple of int * t list (** Tuple *)
-  | Record of field list  (** Record *)
-  | Cons of t * t         (** Cons *)
-  | Or of t list          (** Or *)
+  | Unit (** Unit *)
+  | Bool of {
+      b: bool (** Value *)
+    } (** Boolean *)
+  | Int of {
+      i: int (** Value *)
+    } (** Integer *)
+  | Float of {
+      f: float (** Value *)
+    } (** Floating-point *)
+  | Rune of {
+      r: bytes (** Value *)
+    } (** Rune *)
+  | String of {
+      s: string (** Value *)
+    } (** String *)
+  | Byte of {
+      r: bytes (** Value *)
+    } (** Blob *)
+  | Blob of {
+      s: string (** Value *)
+    } (** Blob *)
+  | Timestamp of {
+      ts: string (** Value *)
+    } (** Timestamp *)
+  | Duration of {
+      d: string (** Value *)
+    } (** Duration *)
+  | Ground of {
+      ty: Type.t (** Type *)
+    }(** Ground *)
+  | Var of {
+      id: Sym.sym; (** Name *)
+      ty: Type.t   (** Type *)
+    } (** Variable *)
+  | Tuple of {
+      arity: int;    (** Arity *)
+      patts: t list; (** Element Patterns *)
+      ty:    Type.t  (** Type *)
+    } (** Tuple *)
+  | Record of {
+      fields: field list; (** Field Patterns *)
+      ty:     Type.t      (** Type *)
+    } (** Record *)
+  | Or of {
+      patts: t list (** Patterns *)
+    } (** Or *)
 (** A pattern *)
 
-and field = Sym.sym * t
+and field = Field of {
+  name: Sym.sym; (** Field Name *)
+  patt: t        (** Value Pattern *)
+}
 (** Record field *)
 
 (** {2 Constructors} *)
-
-val ground : t
-(** [ground] constructs a ground pattern. *)
-
-val nil : t
-(** [nil] constructs a nil pattern. *)
 
 val unit : t
 (** [unit] constructs a unit pattern. *)
@@ -38,22 +70,40 @@ val int : int -> t
 (** [int i] constructs an integer pattern matching [i]. *)
 
 val float : float -> t
-(** [float f] constructs an floating-point pattern matching [f].*)
+(** [float f] constructs a floating-point pattern matching [f].*)
+
+val rune : bytes -> t
+(** [rune r] constructs a rune pattern matching [r]. *)
 
 val string : string -> t
-(** [string s] constructs an string pattern matching [s]. *)
+(** [string s] constructs a string pattern matching [s]. *)
 
-val var : Sym.sym -> t
-(** [var sym] constructs a variable pattern binding the matched value to [sym].
-    *)
+val byte : bytes -> t
+(** [byte b] constructs a byte pattern matching [b]. *)
 
-val tuple : t list -> t
-(** [tuple patts] constructs a tuple pattern matching a tuple when the element
-    patterns [patts] match their corresponding elements. *)
+val blob : bytes -> t
+(** [blob bs] constructs a blob pattern matching [bs]. *)
 
-val record : field list -> t
-(** [record fields] constructs a record pattern matching a record when the field
-    patterns [fields] match their corresponding fields. *)
+val timestamp : string -> t
+(** [timestamp ts] constructs a timestamp pattern matching [ts]. *)
+
+val duration : string -> t
+(** [duration d] constructs a duration pattern matching [d]. *)
+
+val ground : Type.t -> t
+(** [ground ty] constructs a ground pattern matching values of type [ty]. *)
+
+val var : Sym.sym -> Type.t -> t
+(** [var sym ty] constructs a variable pattern matching values of type [ty] and
+    binding the matched value to [sym]. *)
+
+val tuple : t list -> Type.t -> t
+(** [tuple patts ty] constructs a tuple pattern matching a tuple of type [ty]
+    when the element patterns [patts] match their corresponding elements. *)
+
+val record : field list -> Type.t -> t
+(** [record fields] constructs a record pattern matching a record of type [ty]
+    when the field patterns [fields] match their corresponding fields. *)
 
 val orr : t list -> t
 (** [orr patts] constructs an "or" pattern matching any of the patters [patts].
