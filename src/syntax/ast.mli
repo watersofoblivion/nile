@@ -2,7 +2,10 @@ open Common
 
 (** {1 Abstract Syntax}
  *
- * The external syntax of the language.
+ * The external syntax of the language.  This includes not only the parsed
+ * values, but in some cases the lexeme parsed.  This is to be able to
+ * accurately pretty-print the source code without it having to be fully valid.
+ * This is useful for both formatting and for error messages.
  *)
 
 (** {2 Syntax}
@@ -10,49 +13,128 @@ open Common
  * Data types representing all of the various constructs in the external syntax.
  *)
 
-(** {3 Expressions} *)
+(** {3 Numeric Options}
+ *
+ * Properties of numbers relevant to parsing and printing.
+ *)
+
+type radix = private
+  | Binary  (** Binary *)
+  | Octal   (** Octal *)
+  | Decimal (** Decimal *)
+  | Hex     (** Hexadecimal *)
+(** Numeric Radix *)
+
+(** {3 Format Strings Options}
+ *
+ * Options that can be given as part of format string interpolations.
+ *)
+
+type wp = private
+  | Natural       (** Unspecified *)
+  | Static of {
+      min: int; (** Minimum *)
+    } (** Given at compile time *)
+  | Dynamic       (** Given at runtime (as an argument) *)
+(** The width or precision of a format string interpolation *)
+
+type justification = private
+  | Left  (** Left Justified *)
+  | Right (** Right Justified *)
+(** Format string interpolation justification *)
+
+type signedness = private
+  | Unsigned (** Unsigned *)
+  | Signed   (** Signed, only print negative signs *)
+  | Positive (** Signed, always print sign *)
+  | Space    (** Signed, print space for positive sign. *)
+(** Format string integer interpolation sign handling *)
+
+(** {3 Format BLOB (Binary Large Object) Options}
+ *
+ * Options that can be given as part of format BLOB (Binary Large Object)
+ * interpolations.
+ *)
+
+type endianness = private
+  | Big    (** Big endian *)
+  | Little (** Little endian *)
+(** Endianness *)
+
+(** {3 Expressions}
+ *
+ * Core expressions in the language.
+ *)
 
 type expr = private
   | Unit of {
       loc: Loc.t; (** Location Tracking Information *)
     } (** Unit *)
   | Bool of {
-      loc:    Loc.t; (** Location Tracking Information *)
-      lexeme: string (** Lexeme *)
+      loc: Loc.t; (** Location Tracking Information *)
+      b:   bool   (** Value *)
     } (** Boolean *)
   | Int of {
       loc:    Loc.t;  (** Location Tracking Information *)
       lexeme: string; (** Lexeme *)
-      radix:  int;    (** Radix *)
+      radix:  radix;  (** Radix *)
+      i:      Z.t     (** Value *)
     } (** Integer *)
   | Float of {
       loc:    Loc.t;  (** Location Tracking Information *)
       lexeme: string; (** Lexeme *)
-      hex:    bool    (** Is Hex Notation *)
+      hex:    bool;   (** Is Hex Notation *)
+      q:      Q.t     (** Value *)
     } (** Floating-point *)
   | Rune of {
-      loc:    Loc.t;  (** Location Tracking Information *)
-      lexeme: string; (** Lexeme *)
+      loc:  Loc.t;   (** Location Tracking Information *)
+      r:    Uchar.t; (** Value *)
+      size: int      (** Size in bytes *)
     } (** Rune *)
   | String of {
-      loc:    Loc.t; (** Location Tracking Information *)
-      lexeme: string (** Lexeme *)
+      loc: Loc.t;   (** Location Tracking Information *)
+      fmt: fmt list (** Format Components *)
     } (** String *)
   | Byte of {
-      loc:    Loc.t; (** Location Tracking Information *)
-      lexeme: string (** Lexeme *)
+      loc:    Loc.t;  (** Location Tracking Information *)
+      lexeme: string; (** Lexeme *)
+      radix:  radix;  (** Radix *)
+      b:      bytes   (** Value *)
     } (** Byte *)
   | Blob of {
-      loc:    Loc.t; (** Location Tracking Information *)
-      lexeme: string (** Lexeme *)
+      loc:    Loc.t;             (** Location Tracking Information *)
+      endian: endianness option; (** Endianness *)
+      fmt:    blb_fmt list       (** Format Components *)
     } (** Binary Large Object (BLOB) *)
   | Timestamp of {
-      loc:    Loc.t; (** Location Tracking Information *)
-      lexeme: string (** Lexeme *)
+      loc:        Loc.t;       (** Location Tracking Information *)
+      extended:   bool;        (** Extended Format *)
+      year:       expr option; (** Year *)
+      month:      expr option; (** Month *)
+      week:       expr option; (** Week of year *)
+      dow:        expr option; (** Day of week *)
+      day:        expr option; (** Day of month *)
+      ordinal:    expr option; (** Ordinal day *)
+      hour:       expr option; (** Hour *)
+      minue:      expr option; (** Minute *)
+      second:     expr option; (** Second *)
+      fraction:   expr option; (** Fractional value *)
+      utc:        bool;        (** UTC Timezone *)
+      off_sign:   bool;        (** Offset Sign *)
+      off_hour:   expr option; (** Offset hour *)
+      off_minute: expr option; (** Offset minutes *)
     } (** ISO-8601 Timestamp *)
   | Duration of {
-      loc:    Loc.t; (** Location Tracking Information *)
-      lexeme: string (** Lexeme *)
+      loc:      Loc.t;       (** Location Tracking Information *)
+      extended: bool;        (** Extended Format *)
+      years:    expr option; (** Years *)
+      months:   expr option; (** Months *)
+      weeks:    expr option; (** Weeks *)
+      days:     expr option; (** Days *)
+      hours:    expr option; (** Hours *)
+      minutes:  expr option; (** Minutes *)
+      seconds:  expr option; (** Seconds *)
+      fraction: expr option; (** Fractional value *)
     } (** ISO-8601 Duration *)
   | Tuple of {
       loc:   Loc.t;    (** Location Tracking Information *)
@@ -68,15 +150,17 @@ type expr = private
       id:  Sym.sym (** Name *)
     } (** Variable Identifier *)
   | UnOp of {
-      loc: Loc.t; (** Location Tracking Information *)
-      op:  Op.un; (** Operator *)
-      rhs: expr   (** Right-Hand Side *)
+      loc:  Loc.t; (** Location Tracking Information *)
+      op:   Op.un; (** Operator *)
+      prec: int;   (** Precedence *)
+      rhs:  expr   (** Right-Hand Side *)
     } (** Unary Operation *)
   | BinOp of {
-      loc: Loc.t;  (** Location Tracking Information *)
-      lhs: expr;   (** Left-Hand Side *)
-      op:  Op.bin; (** Operator *)
-      rhs: expr    (** Right-Hand Side *)
+      loc:  Loc.t;  (** Location Tracking Information *)
+      op:   Op.bin; (** Operator *)
+      prec: int;    (** Precedence *)
+      lhs:  expr;   (** Left-Hand Side *)
+      rhs:  expr    (** Right-Hand Side *)
     } (** Binary Operation *)
   | Slice of {
       loc:   Loc.t;       (** Location Tracking Information *)
@@ -100,12 +184,12 @@ type expr = private
       scrut:   expr;       (** Scurtinee *)
       clauses: clause list (** Clauses *)
     } (** Case *)
-  | Let of {
+  | Bind of {
       loc:     Loc.t;   (** Location Tracking Information *)
       binding: binding; (** Binding *)
       scope:   expr     (** Scope of Binding *)
     } (** Value Binding *)
-  | LetRec of {
+  | BindRec of {
       loc:      Loc.t;        (** Location Tracking Information *)
       bindings: binding list; (** Bindings *)
       scope:    expr          (** Scope of Bindings *)
@@ -152,7 +236,191 @@ and clause = Clause of {
 }
 (** A pattern matching clause *)
 
-(** {3 Top-Level Statements} *)
+and fmt = private
+  | FmtConst of {
+      loc:  Loc.t;        (** Location Tracking Information *)
+      str:  Uchar.t list; (** Constant Value *)
+      len:  int;          (** Length in runes *)
+      size: int           (** Size in bytes *)
+    } (** Constant Value *)
+  | FmtPct of {
+      loc:   Loc.t;     (** Location Tracking Information *)
+      width: int option (** Minimum Width *)
+    } (** Percent Interpolation *)
+  | FmtBool of {
+      loc:   Loc.t;      (** Location Tracking Information *)
+      width: int option; (** Minimum Width *)
+      expr:  expr option (** Value Expression *)
+    } (** Boolean Interpolation *)
+  | FmtInt of {
+      loc:           Loc.t;         (** Location Tracking Information *)
+      width:         wp;            (** Minimum Width *)
+      discrim:       Uchar.t;       (** Discriminator Value *)
+      radix:         radix;         (** Radix *)
+      expr:          expr option;   (** Value Expression *)
+      sign:          signedness;    (** Signedness *)
+      justification: justification; (** Justification *)
+      capital:       bool;          (** Use capitals for hexadecimal values *)
+      alt:           bool;          (** Use alternate formatting.  Underscores for decimal numbers, or [0<radix>] for non-decimal numbers. *)
+    } (** Integer Interpolation *)
+  | FmtFloat of {
+      loc:           Loc.t;         (** Location Tracking Information *)
+      width:         wp;            (** Minimum Width *)
+      precision:     wp;            (** Precision *)
+      expr:          expr option;   (** Value Expression *)
+      sign:          signedness;    (** Signedness *)
+      justification: justification; (** Justification *)
+    } (** Floating Point Interpolation *)
+  | FmtRune of {
+      loc:           Loc.t;        (** Location Tracking Information *)
+      width:         wp;           (** Minimum Width *)
+      discrim:       Uchar.t;      (** Discriminator Value *)
+      expr:          expr option;  (** Value Expression *)
+      quote:         bool;         (** Quoted *)
+      justification: justification (** Justification *)
+    } (** Rune Interpolation *)
+  | FmtString of {
+      loc:           Loc.t;        (** Location Tracking Information *)
+      width:         wp;           (** Minimum Width *)
+      expr:          expr option;  (** Value expression *)
+      quote:         bool;         (** Quoted *)
+      justification: justification (** Justification *)
+    } (** String Interpolation *)
+(** Format String Components and Interpolations *)
+
+and blb_fmt = private
+  | BlbFmtConst of {
+      loc:    Loc.t;  (** Location Tracking Information *)
+      lexeme: string; (** Lexeme *)
+      bs:     bytes;  (** Value *)
+      size:   int     (** Size *)
+    } (** Constant *)
+  | BlbFmtBool of {
+      loc:    Loc.t;             (** Location Tracking Information *)
+      width:  int;               (** Width in bytes, must be a power of 2 *)
+      endian: endianness option; (** Endianness *)
+      expr:   expr option        (** Value Expression *)
+    } (** Boolean Interpolation *)
+  | BlbFmtInt of {
+      loc:    Loc.t;             (** Location Tracking Information *)
+      width:  int;               (** Width in bytes, must be a power of 2 *)
+      endian: endianness option; (** Endianness *)
+      expr:   expr option        (** Value Expression *)
+    } (** Integer Interpolation *)
+  | BlbFmtFloat of {
+      loc: Loc.t;       (** Location Tracking Information *)
+      expr: expr option (** Value Expression *)
+    } (** Floating-point Interpolation *)
+  | BlbFmtRune of {
+      loc: Loc.t;                (** Location Tracking Information *)
+      endian: endianness option; (** Endianness *)
+      expr: expr option          (** Value Expression *)
+    } (** Rune Interpolation *)
+  | BlbFmtString of {
+      loc: Loc.t;                (** Location Tracking Information *)
+      endian: endianness option; (** Endianness *)
+      expr: expr option          (** Value Expression *)
+    } (** String Interpolation *)
+  | BlbFmtByte of {
+      loc: Loc.t;       (** Location Tracking Information *)
+      expr: expr option (** Value Expression *)
+    } (** Byte Interpolation *)
+  | BlbFmtBlob of {
+      loc: Loc.t;       (** Location Tracking Information *)
+      expr: expr option (** Value Expression *)
+    } (** BLOB Interpolation *)
+(** Format BLOB Components and Interpolations *)
+
+and ts_fmt = private
+  | TsFmtConst of {
+      loc: Loc.t;       (** Location Tracking Information *)
+      str: Uchar.t list (** Value *)
+    } (** Constant *)
+  | TsFmtPct of {
+      loc:   Loc.t; (** Location Tracking Information *)
+      width: wp     (** Minimum Width *)
+    } (** Percent Interpolation *)
+  | TsFmtWeekDay of {
+      loc:    Loc.t;       (** Location Tracking Information *)
+      width:  wp;          (** Minimum Width *)
+      expr:   expr option; (** Value Expression *)
+      named:  bool;        (** Use the name instead of the number *)
+      monday: bool;        (** Monday is the first day of the week *)
+      full:   bool         (** Use the full weekday name  *)
+    } (** Week Day Interpolation *)
+  | TsFmtMonthDay of {
+      loc:   Loc.t;       (** Location Tracking Information *)
+      width: wp;          (** Minimum Width *)
+      expr:  expr option; (** Value Expression *)
+      pad:   bool;        (** Pad the day to two digits with leading zeros *)
+    } (** Month Day Interpolation *)
+  | TsFmtMonth of {
+      loc:   Loc.t;       (** Location Tracking Information *)
+      width: wp;          (** Minimum Width *)
+      expr:  expr option; (** Value Expression *)
+      named: bool;        (** Use the month name instead of the number *)
+      full:  bool         (** Use the full month name or pad the month number to two digits with leading zeros. *)
+    } (** Month Interpolation *)
+  | TsFmtYear of {
+      loc:     Loc.t;       (** Location Tracking Information *)
+      width:   wp;          (** Minimum Width *)
+      expr:    expr option; (** Value Expression *)
+      century: bool;        (** Display Century *)
+      pad:     bool         (** Pad the year to two or four digits with leading zeros *)
+    } (** Year Interpolation *)
+  | TsFmtHour of {
+      loc:         Loc.t;       (** Location Tracking Information *)
+      width:       wp;          (** Minimum Width *)
+      expr:        expr option; (** Value Expression *)
+      twenty_four: bool;        (** Use a 24-hour clock *)
+      pad:         bool;        (** Pad the hour to two digits with leading zeros *)
+    } (** Month Interpolation *)
+  | TsFmtAmPm of {
+      loc:     Loc.t;       (** Location Tracking Information *)
+      width:   wp;          (** Minimum Width *)
+      expr:    expr option; (** Value Expression *)
+      capital: bool         (** Use capital letters *)
+    } (** AM/PM Interpolation *)
+  | TsFmtMinute of {
+      loc:   Loc.t;       (** Location Tracking Information *)
+      width: wp;          (** Minimum Width *)
+      expr:  expr option; (** Value Expression *)
+      pad:   bool         (** Pad to two digits with leading zeros *)
+    } (** Minutes Interpolation *)
+  | TsFmtSecond of {
+      loc:   Loc.t;       (** Location Tracking Information *)
+      width: wp;          (** Minimum Width *)
+      expr:  expr option; (** Value Expression *)
+      pad:   bool         (** Pad to two digits with leading zeros *)
+    } (** Seconds Interpolation *)
+  | TsFmtSubsec of {
+      loc:       Loc.t;      (** Location Tracking Information *)
+      width:     wp;         (** Minimum Width *)
+      precision: wp;         (** Number of digits to display *)
+      expr:      expr option (** Value Expression *)
+    } (** Subsecond Interpolation *)
+  | TsFmtZone of {
+      loc: Loc.t
+    } (** Zone Expression *)
+  | TsFmtYearDay of {
+      loc:   Loc.t;       (** Location Tracking Information *)
+      width: wp;          (** Minimum Width *)
+      expr:  expr option; (** Value Expression *)
+      pad:   bool         (** Pad to three digits with leading zeros *)
+    } (** Day of Year Interpolation *)
+  | TsFmtYearWeek of {
+      loc:   Loc.t;       (** Location Tracking Information *)
+      width: wp;          (** Minimum Width *)
+      expr:  expr option; (** Value Expression *)
+      pad:   bool         (** Pad to two digits with leading zeros *)
+    } (** Week of Year Interpolation *)
+(** Format Timestamp Components and Interpolations *)
+
+(** {3 Top-Level Statements}
+ *
+ * Statements that occur at the top-level of an individual file, excluding the
+ * file-structure statements (such as [package] and [import] declarations.
+ *)
 
 type top = private
   | Val of {
@@ -170,7 +438,10 @@ type top = private
     } (** Type binding *)
 (** A top-level statement *)
 
-(** {3 Import Statements} *)
+(** {3 Import Statements}
+ *
+ * Dependencies, imports, and local names.
+ *)
 
 type name = Name of {
   loc:  Loc.t;  (** Location Tracking Information *)
@@ -218,7 +489,10 @@ type import = Import of {
 }
 (** Import statement *)
 
-(** {3 Package Statements} *)
+(** {3 Package Statements}
+ *
+ * The opening [package] statement of a file.
+ *)
 
 type pkg = Package of {
   loc:  Loc.t; (** Location Tracking Information *)
@@ -226,7 +500,11 @@ type pkg = Package of {
 }
 (** Package statement declaring the name of the package this file is in. *)
 
-(** {3 Source Files} *)
+(** {3 Source Files}
+ *
+ * A source file of the language.  This combines all of the previously defined
+ * components.
+ *)
 
 type file = File of {
   package: pkg;         (** Package Name *)
@@ -240,6 +518,69 @@ type file = File of {
  * Functions to construct Abstract Syntax Trees.
  *)
 
+(** {3 Numeric Options} *)
+
+val binary : radix
+(** [binary] constructs a binary radix. *)
+
+val octal : radix
+(** [octal] constructs an octal radix. *)
+
+val decimal : radix
+(** [decimal] constructs a decimal radix. *)
+
+val hex : radix
+(** [hex] constructs a hexadecimal radix. *)
+
+(** {3 Format String Options} *)
+
+(** {4 Width and Precision} *)
+
+val natural : wp
+(** [natural] constructs the natural width for a format string interpolation. *)
+
+val static : int -> wp
+(** [static min] constructs a statically defined minimum width of [min] for a
+   format string interpolation. *)
+
+val dynamic : wp
+(** [dynamic] constructs a dynamically defined minimum width for a format string
+   interpolation. *)
+
+(** {4 Justification} *)
+
+val left : justification
+(** [left] constructs a left justification for a format string interpolation. *)
+
+val right : justification
+(** [right] constructs a right justification for a format string interpolation.
+   *)
+
+(** {4 Signedness} *)
+
+val unsigned : signedness
+(** [unsigned] constructs an unsigned signedness for a format string
+   interpolation. *)
+
+val signed : signedness
+(** [signed] constructs an signed signedness for a format string
+   interpolation. *)
+
+val positive : signedness
+(** [positive] constructs an positive signedness for a format string
+   interpolation. *)
+
+val space : signedness
+(** [space] constructs an space signedness for a format string interpolation. *)
+
+(** {3 Format BLOB (Binary Large Object) Options} *)
+
+val big : endianness
+(** [big] constructs a big endianness for a format BLOB interpolation. *)
+
+val little : endianness
+(** [little] constructs a little endianness for a format BLOB interpolation. *)
+
 (** {3 Expressions} *)
 
 val unit : Loc.t -> expr
@@ -249,43 +590,46 @@ val bool : Loc.t -> bool -> expr
 (** [bool loc lexeme] constructs a boolean literal with the lexeme [lexeme] at
     location [loc]. *)
 
-val int : Loc.t -> string -> int -> expr
-(** [int loc lexeme radix] constructs an integer literal with the lexeme
-    [lexeme] and radix [radix] at location [loc].  The lexeme should include the
-    [0<radix>] prefix, if present. *)
+val int : Loc.t -> string -> radix -> Z.t -> expr
+(** [int loc lexeme radix i] constructs an integer literal with the lexeme
+    [lexeme], radix [radix], and value [i] at location [loc].  The lexeme should
+    include the [0<radix>] prefix, if present. *)
 
-val float : Loc.t -> string -> bool -> expr
-(** [float loc lexeme hex] constructs a floating-point literal with the lexeme
-    [lexeme] at location [loc].  If [hex] is true, then the lexeme is in
-    hexadecimal form.  The lexeme should include the [0f] prefix, if present. *)
+val float : Loc.t -> string -> bool -> Q.t -> expr
+(** [float loc lexeme hex q] constructs a floating-point literal with the lexeme
+    [lexeme] and the rational value [q] at location [loc].  If [hex] is true,
+    then the lexeme is in hexadecimal form.  The lexeme should include the [0f]
+    prefix, if present. *)
 
-val rune : Loc.t -> string -> expr
-(** [rune loc lexeme] constructs a rune literal with the lexeme [lexeme] at
-    location [loc].  The lexeme should include the opening and closing single
-    quotes. *)
+val rune : Loc.t -> Uchar.t -> expr
+(** [rune loc r] constructs a rune literal with the value [r] at location [loc].
+    The location should include the opening and closing single quotes. *)
 
-val string : Loc.t -> string -> expr
-(** [string loc lexeme] constructs a string literal with the lexeme [lexeme] at
-    location [loc].  The lexeme should include the opening and closing double
-    quotes. *)
+val string : Loc.t -> fmt list -> expr
+(** [string loc fmt] constructs a string literal with the format components
+    [fmt] at location [loc].  The location should include the opening and
+    closing double quotes. *)
 
-val byte : Loc.t -> string -> expr
-(** [byte loc lexeme] constructs a byte literal with the lexeme [lexeme] at
-    location [loc].  The lexeme should include the [\<radix>] prefix. *)
+val byte : Loc.t -> string -> radix -> bytes -> expr
+(** [byte loc lexeme radix b] constructs a byte literal with the lexeme
+    [lexeme], radix [radix], and value [b] at location [loc].  The lexeme should
+    include the [\<radix>] prefix. *)
 
-val blob : Loc.t -> string -> expr
-(** [blob loc lexeme] constructs a binary large object (BLOB) literal with the
-    lexeme [lexeme] at location [loc].  The lexeme should include the back
-    quotes. *)
+val blob : Loc.t -> endianness -> blb_fmt list -> expr
+(** [blob loc endian fmt] constructs a binary large object (BLOB) literal with
+    the default endianness [endian] and the format components [fmt] at location
+    [loc].  The location should include the back quotes. *)
 
-val timestamp : Loc.t -> string -> expr
-(** [timestamp loc lexeme] constructs a ISO-8601 timestamp literal with the
-    lexeme [lexeme] at location [loc].  The lexeme should include the [@]
-    prefix. *)
+val timestamp : Loc.t -> bool -> expr option -> expr option -> expr option -> expr option -> expr option -> expr option -> expr option -> expr option -> expr option -> expr option -> bool -> bool -> expr option -> expr option -> expr
+(** [timestamp loc extended year month week dow day ordinal hour minute second fraction utc off_sign off_hour off_minute]
+    constructs a ISO-8601 timestamp literal.  The location should include the
+    [@] prefix. The various components are specified with the arguments. *)
 
-val duration : Loc.t -> string -> expr
-(** [duration loc lexeme] constructs a ISO-8601 duration literal with the lexeme
-    [lexeme] at location [loc].  The lexeme should include the [@@] prefix. *)
+val duration : Loc.t -> bool -> expr option -> expr option -> expr option -> expr option -> expr option -> expr option -> expr option -> expr option -> expr
+(** [duration loc extended years months weeks days hours minutes seconds fraction]
+    constructs a ISO-8601 duration literal with the lexeme [lexeme] at location
+    [loc].  The location should include the [@@] prefix.  The various components
+    are specified with the arguments. *)
 
 val tuple : Loc.t -> expr list -> expr
 (** [tuple loc exprs] constructs a tuple literal with the values [exprs] at
@@ -301,12 +645,12 @@ val var : Loc.t -> Sym.sym -> expr
 (** [var loc sym] constructs a variable identifier expression at location [loc]
     referencing the value bound to the symbol [sym]. *)
 
-val un_op : Loc.t -> Op.t -> int -> expr -> expr
+val un_op : Loc.t -> Op.un -> int -> expr -> expr
 (** [un_op loc op prec r] constructs a unary operator expression at location [loc]
     with the operator [op] of precedence [prec] operating on [r].  The location
     should span from [op] to [r]. *)
 
-val bin_op : Loc.t -> Op.t -> int -> expr -> expr -> expr
+val bin_op : Loc.t -> Op.bin -> int -> expr -> expr -> expr
 (** [bin_op loc op prec l r] constructs a binary operator expression at location
     [loc] with the operator [op] of precedence [prec] operating on [l] and [r].
     The location should span from [l] to [r]. *)
@@ -375,6 +719,172 @@ val clause : Loc.t -> Patt.t -> expr -> clause
 (** [clause loc patt expr] constructs a pattern matching clause at location
     [loc] that executes [expr] when [patt] is matched.  The location should span
     from the beginning of [patt] to the end of [expr]. *)
+
+(** {3 Format Strings} *)
+
+val fmt_const : Loc.t -> Uchar.t list -> fmt
+(** [fmt_const loc str] constructs a format string constant component at
+    location [loc] with the value [str]. *)
+
+val fmt_pct : Loc.t -> fmt
+(** [fmt)_pct loc] constructs a format string percent interpolation at location
+    [loc]. *)
+
+val fmt_bool : Loc.t -> expr option -> fmt
+(** [fmt_bool loc expr] constructs a format string boolean interpolation at
+    location [loc] with the optional value expression [expr]. *)
+
+val fmt_int : Loc.t -> wp -> Uchar.t -> radix -> expr option -> signedness -> justification -> bool -> bool -> fmt
+(** [fmt_int loc width discrim radix expr signedness justification capital alt]
+    constructs a format string integer interpolation at location [loc] with the
+    width [width], the discriminator value [discrim], the radix [radix], and the
+    optional value expression [expr].  Sign handling is given by [signedness]
+    and justification by [justification].  If [capital] is true, capital letters
+    are used when printing hexadecimal.  If [alt] is true, alternate formatting
+    is used: for decimal numbers, underscores are added for readability, for
+    non-decimal numbers the [0<radix>] prefix is added. *)
+
+val fmt_float : Loc.t -> wp -> wp -> expr option -> signedness -> justification -> fmt
+(** [fmt_float loc width precision expr signedness justification] constructs a
+    format string floating-point interpolation at location [loc] with width
+    [width], precision [precision], and the optional value expression [expr].
+    Sign handling is given by [signedness] and justification by [justification].
+    *)
+
+val fmt_rune : Loc.t -> wp -> Uchar.t -> expr option -> bool -> justification -> fmt
+(** [fmt_rune loc width discrim expr quote justification] constructs a format
+    string rune interpolation at location [loc] with width [width],
+    discriminator [discrim], and the optional value expression [expr].  If
+    [quote] is true, then the rune is quoted.  Justification is given by
+    [justification]. *)
+
+val fmt_string : Loc.t -> wp -> expr option -> bool -> justification -> fmt
+(** [fmt_string loc width expr quote justification] constructs a format
+    string string interpolation at location [loc] with width [width],
+    discriminator [discrim], and the optional value expression [expr].  If
+    [quote] is true, then the string is quoted.  Justification is given by
+    [justification]. *)
+
+(** {3 Format BLOBs (Binary Large Objects)} *)
+
+val blb_fmt_const : Loc.t -> string -> bytes -> blb_fmt
+(** [blb_fmt_const loc lexeme bs] constructs a BLOB format constant with lexeme
+    [lexeme] and value [bs] at location [loc]. *)
+
+val blb_fmt_bool : Loc.t -> int -> endianness option -> expr option -> blb_fmt
+(** [blb_fmt_bool loc width endian expr] constructs a BLOB format boolean
+    interpolation with width [width], endianness [endian], and optional value
+    expression [expr] at location [loc]. *)
+
+val blb_fmt_int : Loc.t -> int -> endianness option -> expr option -> blb_fmt
+(** [blb_fmt_int loc width endian expr] constructs a BLOB format integer
+    interpolation with width [width], endianness [endian], and optional value
+    expression [expr] at location [loc]. *)
+
+val blb_fmt_float : Loc.t -> expr option -> blb_fmt
+(** [blb_fmt_float loc expr] constructs a BLOB format floating-point
+    interpolation with optional value expression [expr] at location [loc]. *)
+
+val blb_fmt_rune : Loc.t -> endianness option -> expr option -> blb_fmt
+(** [blb_fmt_rune loc endian expr] constructs a BLOB format rune interpolation
+    with the endianness [endian] and optional value expression [expr] at
+    location [loc]. *)
+
+val blb_fmt_string : Loc.t -> endianness option -> expr option -> blb_fmt
+(** [blb_fmt_string loc endian expr] constructs a BLOB format string
+    interpolation with the endianness [endian] and optional value expression
+    [expr] at location [loc]. *)
+
+val blb_fmt_byte : Loc.t -> expr option -> blb_fmt
+(** [blb_fmt_byte loc expr] constructs a BLOB format byte interpolation with
+    optional value expression [expr] at location [loc]. *)
+
+val blb_fmt_blob : Loc.t -> expr option -> blb_fmt
+(** [blb_fmt_blob loc expr] constructs a BLOB format BLOB interpolation with
+    optional value expression [expr] at location [loc]. *)
+
+(** {3 Format Timestamps} *)
+
+val ts_fmt_const : Loc.t -> Uchar.t list -> ts_fmt
+(** [ts_fmt_const loc str] constructs a constant timestamp format component at
+    location [loc] with value [str]. *)
+
+val ts_fmt_pct : Loc.t -> wp -> ts_fmt
+(** [ts_fmt_pct loc width] constructs a timestamp format percent interpolation
+    at location [loc] with width [width]. *)
+
+val ts_fmt_week_day : Loc.t -> wp -> expr option -> bool -> bool -> bool -> ts_fmt
+(** [ts_fmt_week_day loc width expr named monday full] constructs a timestamp
+    format week day interpolation at [loc] with width [width] and optional value
+    expression [expr].  If [named] is true, use the week day name, otherwise use
+    the number.  If [monday] is true, then Monday is considered the first day of
+    the week, otherwise Sunday is.  If [full] is true, the full week day name is
+    used, otherwise it is abbreviated. *)
+
+val ts_fmt_month_day : Loc.t -> wp -> expr option -> bool -> ts_fmt
+(** [ts_fmt_month_day loc width expr pad] constructs a timestamp format month
+    day interpolation at location [loc] with width [width] and optional value
+    expression [expr].  If [pad] is true, then the day is padded to two digits
+    with leading zeros. *)
+
+val ts_fmt_month : Loc.t -> wp -> expr option -> bool -> bool -> ts_fmt
+(** [ts_fmt_month loc width expr named full] constructs a timestamp format month
+    interpolation at location [loc] with width [width] and optional value
+    expression [expr].  If [named] is true, then the month name is used,
+    otherwise the month number is used.  If [full] is true, then the full month
+    name is used or the month number is padded to two digits with leading zeros,
+    otherwise the abbreviated month name is used or the month number is not
+    padded. *)
+
+val ts_fmt_year : Loc.t -> wp -> expr option -> bool -> bool -> ts_fmt
+(** [ts_fmt_year loc width expr century pad] constructs a timestamp format year
+    interpolation at location [loc] with width [width] and optional value
+    expression [expr].  If [century] is true, then the century is displayed.  If
+    [pad] is true, then pad the year to two (or four, if [century] is true)
+    digits with leading zeros. *)
+
+val ts_fmt_hour : Loc.t -> wp -> expr option -> bool -> bool -> ts_fmt
+(** [ts_fmt_hour loc width expr twenty_four pad] constructs a timestamp format
+    hour interpolation at location [loc] with width [width] and optional value
+    expression [expr].  If [twenty_four] is true, then a 24-hour clock is used.
+    If [pad] is true, the hour is padded to two digits with leading zeros. *)
+
+val ts_fmt_am_pm : Loc.t -> wp -> expr option -> bool -> ts_fmt
+(** [ts_fmt_am_pm loc width expr capital] constructs a timestamp format AM/PM
+    interpolation at location [loc] with width [width] and optional value
+    expression [expr].  If [capital] is true, then a capital AM or PM value is
+    used, otherwise a lower-case value is used. *)
+
+val ts_fmt_minute : Loc.t -> wp -> expr option -> bool -> ts_fmt
+(** [ts_fmt_minute loc width expr pad] constructs a timestamp format minute
+    interpolation at location [loc] with width [width] and optional value
+    expression [expr].  If [pad] is true, then the minute is padded to two
+    digits with leading zeros. *)
+
+val ts_fmt_second : Loc.t -> wp -> expr option -> bool -> ts_fmt
+(** [ts_fmt_second loc width expr pad] constructs a timestamp format second
+    interpolation at location [loc] with width [width] and optional value
+    expression [expr].  If [pad] is true, then the minute is padded to two
+    digits with leading zeros. *)
+
+val ts_fmt_subsecond : Loc.t -> wp -> wp -> expr option -> ts_fmt
+(** [ts_fmt_subsecond loc width precision expr] constructs a timestamp format
+    sub-second interpolation at location [loc] with width [width], precision
+    [precision], and optional value expression [expr]. *)
+
+val ts_fmt_zone : Loc.t -> ts_fmt (** TODO *)
+
+val ts_fmt_year_day : Loc.t -> wp -> expr option -> bool -> ts_fmt
+(** [ts_fmt_year_day loc width expr pad] constructs a timestamp format day of
+    year interpolation at location [loc] with width [width] and optional value
+    expression [expr].  If [pad] is true, then the day is padded to three
+    digits with leading zeros. *)
+
+val ts_fmt_year_week : Loc.t -> wp -> expr option -> bool -> ts_fmt
+(** [ts_fmt_year_week loc width expr pad] constructs a timestamp format week of
+    year interpolation at location [loc] with width [width] and optional value
+    expression [expr].  If [pad] is true, then the week is padded to two
+    digits with leading zeros. *)
 
 (** {3 Top-Level Statements} *)
 

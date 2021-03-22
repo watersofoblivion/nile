@@ -1,5 +1,3 @@
-open Common
-
 type pos = {
   line: int;
   col:  int;

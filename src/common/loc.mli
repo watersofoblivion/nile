@@ -1,5 +1,3 @@
-open Common
-
 (** {1 Location Tracking} *)
 
 type pos = private {

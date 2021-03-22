@@ -4,8 +4,9 @@
   (libraries
     common
     syntax
-    annot
-    ir
-    opt
-    codegen
-    cli))
+;    annot
+;    ir
+;    opt
+;    codegen
+;    cli
+))

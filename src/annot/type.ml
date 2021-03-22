@@ -73,27 +73,3 @@ let rec equal x y = match x, y with
     in
     List.for_all match_constr constrs
   | _ -> false
-
-module IdMap = Map.Make (struct
-  type t = Sym.sym
-  let compare = compare
-end)
-
-type env = t Sym.map
-
-let env = Sym.empty
-let bind patt ty env = match patt with
-  | Patt.Var sym -> Sym.bind sym ty env
-  | _ -> env
-let lookup = Sym.lookup
-
-let of_pattern patt ty = match patt, ty with
-  | Patt.Unit, Unit
-  | Patt.Int _, Int
-  | Patt.Bool _, Bool
-  | Patt.Float _, Float
-  | Patt.Rune _, Rune
-  | Patt.String _, String
-  | Patt.Var _, _
-  | Patt.Ground, _ -> true
-  | _ -> false

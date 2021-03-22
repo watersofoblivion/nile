@@ -3,9 +3,10 @@
   (instrumentation (backend bisect_ppx))
   (libraries
     cmdliner
-    common
-    syntax
-    annot
-    ir
-    opt
-    codegen))
+;    common
+;    syntax
+;    annot
+;    ir
+;    opt
+;    codegen))
+))

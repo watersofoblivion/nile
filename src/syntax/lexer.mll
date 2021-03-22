@@ -227,6 +227,56 @@
     LIDENT (loc, Lexing.lexeme lexbuf)
 }
 
+(* Tokens *)
+
+let sign = ['+' '-']
+
+let b_radix = ['B' 'b']
+let o_radix = ['O' 'o']
+let d_radix = ['D' 'd']
+let h_radix = ['X' 'x']
+let f_radix = ['F' 'f']
+
+let b_digit = ['0'-'1']
+let o_digit = ['0'-'7']
+let d_digit = ['0'-'9']
+let h_digit = ['0'-'9' 'A'-'F' 'a'-'f']
+
+let exp = ['E' 'e']
+
+let quote = "'"
+let dquote = '"'
+let backtick = '`'
+
+let esc = "\\"
+let esc_quote = esc quote
+let esc_dquote = esc dquote
+
+let uchar = esc "u" h_digit+
+
+let upper = ['A'-'Z']
+let lower = ['a'-'z']
+let ident = (upper|lower|d_digit)
+
+let d_digit_4 = d_digit d_digit d_digit d_digit
+let d_digit_3 = d_digit d_digit d_digit
+let d_digit_2 = b_digit d_digit
+
+let year = d_digit_4
+let month = d_digit_2
+let week = d_digit_2
+let day = d_digit_2
+let dow = d_digit
+let ordinal = d_digit_3
+
+let hour = d_digit_2
+let minute = d_digit_2
+let second = d_digit_2
+
+let fraction = '.' d_digit+
+
+(* Entry Points *)
+
 rule lex src = parse
 (* Non-printable *)
 | eof        { eof lexbuf }
@@ -305,39 +355,138 @@ rule lex src = parse
 | "false" { lit_bool lexbuf }
 
 (* Integer *)
-| ('+'|'-')?  '0' ['B' 'b']   ['0'-'1']+                 { lit_int 2 lexbuf }
-| ('+'|'-')?  '0' ['O' 'o']   ['0'-'7']+                 { lit_int 8 lexbuf }
-| ('+'|'-')? ('0' ['D' 'd'])? ['0'-'9']+                 { lit_int 10 lexbuf }
-| ('+'|'-')?  '0' ['X' 'x']   ['0'-'9' 'A'-'F' 'a'-'f']+ { lit_int 16 lexbuf }
+| sign?  '0' b_radix   b_digit+ { lit_int 2 lexbuf }
+| sign?  '0' o_radix   o_digit+ { lit_int 8 lexbuf }
+| sign? ('0' d_radix)? d_digit+ { lit_int 10 lexbuf }
+| sign?  '0' h_radix   h_digit+ { lit_int 16 lexbuf }
 
 (* Floating-Point *)
-| ('+'|'-')?['0'-'9']+'.'['0'-'9']+(['E' 'e']('+'|'-')?['0'-'9']+)? { lit_float false lexbuf }
-| (['F' 'f'] ['0'-'9' 'A'-'F' 'a'-'f']+                             { lit_float true lexbuf }
+| sign? d_digit+ '.' d_digit+ (exp sign? d_digit+)? { lit_float false lexbuf }
+| '0' r_radix h_digit+                              { lit_float true lexbuf }
 
 (* Rune *)
-| "'" ("\\'" | "\\u" ['0'-'9' 'A'-'F' 'a'-'f']+ | [^'\'' '\n']) "'" { lit_rune lexbuf }
+| quote (esc_quote | uchar | [^'\'' '\n']) quote { lit_rune lexbuf }
 
 (* String *)
-| '"' ("\\\"" | "\\u" ['0'-'9' 'A'-'F' 'a'-'f']+ | [^'"' '\n'])* '"' { lit_string lexbuf }
+| dquote (esc_dquote | uchar | [^'"' '\n'])* dquote { lit_string lexbuf }
 
 (* Byte *)
-|  "\\" ['B' 'b']   ['0'-'1']+                 { lit_byte 2 lexbuf }
-|  "\\" ['O' 'o']   ['0'-'7']+                 { lit_byte 8 lexbuf }
-| ("\\" ['D' 'd'])? ['0'-'9']+                 { lit_byte 10 lexbuf }
-|  "\\" ['X' 'x']?  ['0'-'9' 'A'-'F' 'a'-'f']+ { lit_byte 10 lexbuf }
+|  esc b_radix   b_digit+ { lit_byte 2 lexbuf }
+|  esc o_radix   o_digit+ { lit_byte 8 lexbuf }
+| (esc d_radix)? d_digit+ { lit_byte 10 lexbuf }
+|  esc x_radix?  h_digit+ { lit_byte 16 lexbuf }
 
 (* Blob *)
-| '`' ( "\\" ['B' 'b']   ['0'-'1']+)? '`'                 { lit_blob 2 lexbuf }
-| '`' ( "\\" ['O' 'o']   ['0'-'7']+)? '`'                 { lit_blob 8 lexbuf }
-| '`' (("\\" ['D' 'd'])? ['0'-'9']+)? '`'                 { lit_blob 10 lexbuf }
-| '`' ( "\\" ['X' 'x']   ['0'-'9' 'A'-'F' 'a'-'f']+)? '`' { lit_blob 16 lexbuf }
-
-(* Timestamp *)
-| "@" (['0'-'9']+ '-' ['0'-'9']+ '-' ['0'-'9']+)? ("T" ['0'-'9']+ ':' ['0'-'9']+ ':' ['0'-'9']+ ('Z' | (['+' '-'] ['0'-'9']+ ':' ['0'-'9']))?)? { lit_timestamp lexbuf }
-
-(* Duration *)
-| "@@" (['0'-'9']+"Y")? (['0'-'9']+"M")? (['0'-'9']+"D")? ("T" (['0'-'9']+"H")? (['0'-'9']+"M")? (['0'-'9']+"S")?)? { lit_duration lexbuf }
+| backtick ( esc b_radix   b_digit+)? backtick { lit_blob 2 lexbuf }
+| backtick ( esc o_radix   o_digit+)? backtick { lit_blob 8 lexbuf }
+| backtick ((esc d_radix)? d_digit+)? backtick { lit_blob 10 lexbuf }
+| backtick ( esc h_radix   h_digit+)? backtick { lit_blob 16 lexbuf }
 
 (* Identifiers *)
-| ['a'-'z']['a'-'z' 'A'-'Z' '0'-'9']* { lident lexbuf }
-| ['A'-'Z']['a'-'z' 'A'-'Z' '0'-'9']* { uident lexbuf }
+| lower ident* { lident lexbuf }
+| upper ident* { uident lexbuf }
+
+lit_timestamp year month week dow day ordinal hour minute second fraction off_hour off_minute
+(** Timestamps *)
+| '@' (year as year) (fraction? as fraction) {
+    lit_timestamp ~year:(Some year)
+      ~fraction:fraction
+  }
+| '@' (year as year) 'W' (week as week) {
+    lit_timestamp ~year:(Some year) ~week:(Some week)
+  }
+| '@' (year as year) 'W' (week as week) dow {
+    lit_timestamp ~year:(Some year) ~week:(Some week) ~dow:(Some dow)
+  }
+| '@' (year as year) (ordinal as ordinal) {
+    lit_timestamp ~year:(Some year) ~ordinal:(Some ordinal)
+  }
+| '@' (year as year) (month as month) (fraction? as fraction) {
+    lit_timestamp ~year:(Some year) ~month:(Some month)
+      ~fraction:fraction
+  }
+| '@' (year as year) (month as month) (day as day) (fraction? as fraction) {
+    lit_timestamp ~year:(Some year) ~month:(Some month) ~day:(Some day)
+      ~fraction:fraction
+  }
+| '@' (year as year) (month as month) (day as day) 'T' (hour as hour) (fraction? as fraction) {
+    lit_timestamp ~year:(Some year) ~month:(Some month) ~day:(Some day)
+      ~hour:(Some hour)
+      ~fraction:fraction
+  }
+| '@' (year as year) (month as month) (day as day) 'T' (hour as hour) (minute as minute) (fraction? as fraction) {
+    lit_timestamp ~year:(Some year) ~month:(Some month) ~day:(Some day)
+      ~hour:(Some hour) ~minute:(Some minute)
+      ~fraction:fraction
+  }
+| '@' (year as year) (month as month) (day as day) 'T' (hour as hour) (minute as minute) (second as second) (fraction? as fraction) {
+    lit_timestamp ~year:(Some year) ~month:(Some month) ~day:(Some day)
+      ~hour:(Some hour) ~minute:(Some minute) ~second:(Some second)
+      ~fraction:fraction
+  }
+| '@' (year as year) (month as month) (day as day) 'T' (hour as hour) (minute as minute) (second as second) 'Z' {
+    lit_timestamp ~year:(Some year) ~month:(Some month) ~day:(Some day)
+      ~hour:(Some hour) ~minute:(Some minute) ~second:(Some second)
+      ~utc:true
+      ~fraction:fraction
+  }
+| '@' (year as year) (month as month) (day as day) 'T' (hour as hour) (minute as minute) (second as second) 'Z' sign? (hour as off_hour) {
+    lit_timestamp ~year:(Some year) ~month:(Some month) ~day:(Some day)
+      ~hour:(Some hour) ~minute:(Some minute) ~second:(Some second)
+      ~sign:sign ~off_hour:(Some off_hour)
+      ~fraction:fraction
+  }
+| '@' (year as year) (month as month) (day as day) 'T' (hour as hour) (minute as minute) (second as second) 'Z' sign? (hour as off_hour) (minute as off_minute) {
+    lit_timestamp ~year:(Some year) ~month:(Some month) ~day:(Some day)
+      ~hour:(Some hour) ~minute:(Some minute) ~second:(Some second)
+      ~sign:sign ~off_hour:(Some off_hour) ~off_minute:(Some off_minute)
+      ~fraction:fraction
+  }
+| '@' 'T' (hour as hour) (fraction? as fraction) {
+    lit_timestamp ~hour:(Some hour)
+      ~fraction:fraction
+  }
+| '@' 'T' (hour as hour) (minute as minute) (fraction? as fraction) {
+    lit_timestamp ~hour:(Some hour) ~minute:(Some minute)
+      ~fraction:fraction
+  }
+| '@' 'T' (hour as hour) (minute as minute) (second as second) (fraction? as fraction) {
+    lit_timestamp ~hour:(Some hour) ~minute:(Some minute) ~second:(Some second)
+      ~fraction:fraction
+  }
+| '@' 'T' (hour as hour) (minute as minute) (second as second) 'Z' {
+    lit_timestamp ~hour:(Some hour) ~minute:(Some minute) ~second:(Some second)
+      ~utc:true
+      ~fraction:fraction
+  }
+| '@' 'T' (hour as hour) (minute as minute) (second as second) 'Z' sign? (hour as off_hour) {
+    lit_timestamp ~hour:(Some hour) ~minute:(Some minute) ~second:(Some second)
+      ~sign:sign ~off_hour:(Some off_hour)
+      ~fraction:fraction
+  }
+| '@' 'T' (hour as hour) (minute as minute) (second as second) 'Z' sign? (hour as off_hour) (minute as off_minute) {
+    lit_timestamp ~hour:(Some hour) ~minute:(Some minute) ~second:(Some second)
+      ~sign:sign ~off_hour:(Some off_hour) ~off_minute:(Some off_minute)
+      ~fraction:fraction
+  }
+| '@' (year as year) '-' 'W' (week as week)
+| '@' (year as year) '-' 'W' (week as week) '-' dow
+| '@' (year as year) '-' (ordinal as ordinal)
+| '@' (year as year) '-' (month as month) (fraction? as fraction)
+| '@' (year as year) '-' (month as month) '-' (day as day) (fraction? as fraction)
+| '@' (year as year) '-' (month as month) '-' (day as day) 'T' (hour as hour) (fraction? as fraction)
+| '@' (year as year) '-' (month as month) '-' (day as day) 'T' (hour as hour) ':' (minute as minute) (fraction? as fraction)
+| '@' (year as year) '-' (month as month) '-' (day as day) 'T' (hour as hour) ':' (minute as minute) ':' (second as second) (fraction? as fraction)
+| '@' (year as year) '-' (month as month) '-' (day as day) 'T' (hour as hour) ':' (minute as minute) ':' (second as second) 'Z'
+| '@' (year as year) '-' (month as month) '-' (day as day) 'T' (hour as hour) ':' (minute as minute) ':' (second as second) 'Z' sign? (hour as off_hour)
+| '@' (year as year) '-' (month as month) '-' (day as day) 'T' (hour as hour) ':' (minute as minute) ':' (second as second) 'Z' sign? (hour as off_hour) ':' (minute as off_minute)
+| '@' 'T' (hour as hour) (fraction? as fraction)
+| '@' 'T' (hour as hour) ':' (minute as minute) (fraction? as fraction)
+| '@' 'T' (hour as hour) ':' (minute as minute) ':' (second as second) (fraction? as fraction)
+| '@' 'T' (hour as hour) ':' (minute as minute) ':' (second as second) 'Z'
+| '@' 'T' (hour as hour) ':' (minute as minute) ':' (second as second) 'Z' sign? (hour as off_hour)
+| '@' 'T' (hour as hour) ':' (minute as minute) ':' (second as second) 'Z' sign? (hour as off_hour) ':' (minute as off_minute)
+
+(* Durations *)
+| "@@" (d_digit+ 'Y' fraction?)? (d_digit+ 'M' fraction?)? (d_digit+ 'D' fraction?)? ('T' (d_digit+ 'H' fraction?)? (d_digit+ 'M' fraction?)? (d_digit+ 'S' fraction?)?)?
+| "@@" d_digit+ 'W'

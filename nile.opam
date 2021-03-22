@@ -19,6 +19,7 @@ build: [
 ]
 depends: [
   "dune"
+  "zarith"
   "menhir"
   "ounit2"
   "cmdliner"

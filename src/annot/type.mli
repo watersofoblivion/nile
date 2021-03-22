@@ -103,28 +103,3 @@ val constr : Sym.sym -> t list -> field
 
 val equal : t -> t -> bool
 (** [equal x y] compares two types for equality. *)
-
-(** {2 Type Checking} *)
-
-(** {3 Environments} *)
-
-type env
-(** A type environment *)
-
-val env : env
-(** [env] constructs an empty type environment. *)
-
-val bind : Patt.t -> t -> env -> env
-(** [bind patt ty env] constructs copy of [env] extended by binding the type
-    [ty] to the pattern [patt].  Any type previously bound to [patt] is masked.
-    The original environment is left unaltered. *)
-
-val lookup : Sym.sym -> env -> t
-(** [lookup sym env] finds the type bound to the symbol [sym] in the environment
-    [env], or raises {!Not_found} if the symbol is unbound. *)
-
-(** {3 Patterns} *)
-
-val of_pattern : Patt.t -> t -> bool
-(** [of_pattern patt ty] tests whether or not the pattern [patt] matches
-    values of type [ty]. *)
